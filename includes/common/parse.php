@@ -70,7 +70,7 @@ function gstore_epp_device_type($product_id){
 
 /**
  * Context from a product id: brand, model, storage, color, condition, device_type, group_key
- * group_key := "<brand> <model>" (strictly; storage NOT included)
+ * group_key: = "<brand> <model>" (strictly; storage NOT included)
  */
 function gstore_epp_parse_by_product_id($product_id){
     $brand     = gstore_epp_attr($product_id, 'brand');
