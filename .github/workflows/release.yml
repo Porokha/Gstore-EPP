@@ -2,13 +2,18 @@ name: Build and Release Gstore-EPP
 
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
-      - 'v*' # automatically runs when you push a tag like v1.1.0
-  workflow_dispatch: # allows you to trigger manually if needed
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -16,10 +21,27 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Get version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(grep "Version:" gstore-epp.php | head -1 | awk '{print $3}')
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
       - name: Create plugin ZIP
         run: |
           mkdir -p build
-          zip -r "build/gstore-epp.zip" . -x "*.git*" -x ".github/*" -x "build/*" -x ".idea/*"
+          zip -r "build/gstore-epp.zip" . \
+            -x "*.git*" \
+            -x ".github/*" \
+            -x "build/*" \
+            -x ".idea/*" \
+            -x "node_modules/*" \
+            -x "vendor/*"
 
       - name: Upload ZIP as artifact
         uses: actions/upload-artifact@v4
@@ -30,16 +52,56 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
     steps:
+      - name: Checkout for version
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(grep "Version:" gstore-epp.php | head -1 | awk '{print $3}')
+            TAG_NAME="v$VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
       - name: Download built artifact
         uses: actions/download-artifact@v4
         with:
           name: gstore-epp
 
-      - name: Create GitHub Release
+      - name: Create or update release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          name: "Gstore-EPP ${{ steps.version.outputs.version }}"
+          body: |
+            🚀 **Gstore — Enhanced Product Page**
+            
+            **Version:** ${{ steps.version.outputs.version }}
+            **Commit:** `${{ github.sha }}`
+            
+            ## Installation
+            1. Download `gstore-epp.zip` below
+            2. WordPress Admin → Plugins → Add New → Upload Plugin
+            3. Upload and activate
+            
+            ## What's New
+            - Fixed siblings query (attribute-based grouping)
+            - Added FBT endpoint with inheritance
+            - Fixed admin white screen errors
+            - Improved group key parsing
+            - React hooks properly imported
+            - Storage switcher working
           files: gstore-epp.zip
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
