@@ -1,42 +1,53 @@
-name: Build & Release Gstore-EPP
+name: Build and Release Gstore-EPP
 
 on:
-  workflow_dispatch:          # Allows manual run from GitHub UI
   push:
+    branches:
+      - main
     tags:
-      - 'v*'                  # Runs when you push a tag like v1.1.0
+      - 'v*' # e.g. v1.0.0, v1.2.3
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write         # Required to create a release
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up ZIP structure
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer
+
+      - name: Create plugin ZIP
         run: |
           mkdir -p build
-          zip -r build/gstore-epp.zip . \
-            -x '*.git*' \
-            -x '*.github*' \
-            -x 'node_modules/*' \
-            -x 'vendor/*' \
-            -x '*.DS_Store' \
-            -x '__MACOSX'
+          zip -r "build/gstore-epp.zip" . -x "*.git*" -x ".github/*" -x "build/*"
+
+      - name: Upload ZIP as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gstore-epp
+          path: build/gstore-epp.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download built artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gstore-epp
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: "Gstore-EPP ${{ github.ref_name }}"
-          body: |
-            🚀 Automatic release for **Gstore — Enhanced Product Page**  
-            Built from commit: `${{ github.sha }}`
-          files: build/gstore-epp.zip
+          files: gstore-epp.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
