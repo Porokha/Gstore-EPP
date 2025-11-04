@@ -7,10 +7,41 @@ if (!defined('ABSPATH')) { exit; }
 add_action('woocommerce_before_single_product', function(){
 	if (!is_product()) return;
 
-	// Hide default WooCommerce product display
+	// Hide default WooCommerce product display + theme sidebar
 	echo '<style>
+        /* Hide WooCommerce default product */
         .single-product div.product { display: none !important; }
-        #gstore-epp-shadow-host { min-height: 500px; }
+        
+        /* Hide theme sidebar on product pages */
+        .single-product #secondary,
+        .single-product .sidebar,
+        .single-product aside { display: none !important; }
+        
+        /* Make content area full width */
+        .single-product #primary,
+        .single-product .content-area,
+        .single-product main { 
+            width: 100% !important; 
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Full width container */
+        .single-product .site-content,
+        .single-product .container { 
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+        }
+        
+        /* Shadow host styling */
+        #gstore-epp-shadow-host { 
+            min-height: 500px;
+            width: 100%;
+            display: block;
+            background: #fff;
+        }
     </style>';
 
 	// Insert Shadow host
