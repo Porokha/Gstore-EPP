@@ -1,0 +1,40 @@
+name: Build & Release Gstore-EPP
+
+on:
+  workflow_dispatch:          # Allows manual run from GitHub UI
+  push:
+    tags:
+      - 'v*'                  # Runs when you push a tag like v1.0.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write         # Required to create a release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up ZIP structure
+        run: |
+          mkdir -p build
+          zip -r build/gstore-epp.zip . \
+            -x '*.git*' \
+            -x '*.github*' \
+            -x 'node_modules/*' \
+            -x 'vendor/*' \
+            -x '*.DS_Store' \
+            -x '__MACOSX'
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Gstore-EPP ${{ github.ref_name }}"
+          body: |
+            🚀 Automatic release for **Gstore — Enhanced Product Page**  
+            Built from commit: `${{ github.sha }}`
+          files: build/gstore-epp.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
