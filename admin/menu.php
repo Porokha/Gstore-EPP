@@ -13,13 +13,14 @@ add_action('admin_menu', function(){
     add_submenu_page('gstore_root','Global Add-ons','Global Add-ons','manage_woocommerce','gstore_addons','gstore_addons_page');
     add_submenu_page('gstore_root','Debug & Logging','Debug & Logging','manage_woocommerce','gstore_debug','gstore_debug_page');
     add_submenu_page('gstore_root','Maintenance','Maintenance','manage_woocommerce','gstore_maint','gstore_maint_page');
-
-    add_action('admin_post_gstore_save_rule','gstore_handle_save_rule');
-    add_action('admin_post_gstore_delete_rule','gstore_handle_delete_rule');
-    add_action('admin_post_gstore_clear_rules','gstore_handle_clear_rules');
-    add_action('admin_post_gstore_save_addons','gstore_handle_save_addons');
-    add_action('admin_post_gstore_save_debug','gstore_handle_save_debug');
 });
+
+// Register admin post actions
+add_action('admin_post_gstore_save_rule','gstore_handle_save_rule');
+add_action('admin_post_gstore_delete_rule','gstore_handle_delete_rule');
+add_action('admin_post_gstore_clear_rules','gstore_handle_clear_rules');
+add_action('admin_post_gstore_save_addons','gstore_handle_save_addons');
+add_action('admin_post_gstore_save_debug','gstore_handle_save_debug');
 
 // --- Pricing Rules UI
 function gstore_rules_page(){
@@ -28,43 +29,59 @@ function gstore_rules_page(){
 }
 
 function gstore_fetch_models_without_rule(){
-    global $wpdb; $table = gstore_epp_table_rules();
-    $q = new WP_Query(['post_type'=>'product','posts_per_page'=>-1,'post_status'=>'publish','fields'=>'ids']);
+    global $wpdb;
+    $table = gstore_epp_table_rules();
+
+    $q = new WP_Query([
+            'post_type'=>'product',
+            'posts_per_page'=>-1,
+            'post_status'=>'publish',
+            'fields'=>'ids'
+    ]);
+
     $all = [];
     if ($q->have_posts()){
         foreach ($q->posts as $pid){
-            $ctx = gstore_epp_parse_by_product_id($pid); if (!$ctx) continue;
-            if (!$ctx['group_key']) continue;
-            $all[$ctx['group_key']] = ['group_key'=>$ctx['group_key'], 'device_type'=>$ctx['device_type']];
+            $ctx = gstore_epp_parse_by_product_id($pid);
+            if (!$ctx || !$ctx['group_key']) continue;
+            $all[$ctx['group_key']] = [
+                    'group_key'=>$ctx['group_key'],
+                    'device_type'=>$ctx['device_type']
+            ];
         }
     }
     wp_reset_postdata();
+
     if (!$all) return [];
 
     $keys = array_keys($all);
-    $ph = implode(',', array_fill(0, count($keys), '%s'));
-    $existing = $wpdb->get_col( $wpdb->prepare("SELECT group_key FROM {$table} WHERE group_key IN ($ph)", $keys) );
+    $placeholders = implode(',', array_fill(0, count($keys), '%s'));
+    $existing = $wpdb->get_col( $wpdb->prepare("SELECT group_key FROM {$table} WHERE group_key IN ($placeholders)", $keys) );
+
     $has = $existing ? array_flip($existing) : [];
     $out = [];
-    foreach($all as $gk=>$row){ if (!isset($has[$gk])) $out[] = $row; }
+    foreach($all as $gk=>$row){
+        if (!isset($has[$gk])) $out[] = $row;
+    }
     return $out;
 }
 
 function gstore_rule_list_page(){
-    global $wpdb; $table = gstore_epp_table_rules();
+    global $wpdb;
+    $table = gstore_epp_table_rules();
     $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY updated_at DESC", ARRAY_A);
     $cands = gstore_fetch_models_without_rule();
     ?>
     <div class="wrap">
         <h1 class="wp-heading-inline">Pricing Rules</h1>
         <a class="page-title-action" href="<?php echo esc_url( admin_url('admin.php?page=gstore_rules&action=edit') ); ?>">Add New</a>
-        <?php if (!empty($_GET['updated'])) echo '<div class="notice notice-success"><p>Saved.</p></div>'; ?>
-        <?php if (!empty($_GET['err'])) echo '<div class="notice notice-error"><p>Error occurred. See logs/error.log</p></div>'; ?>
+        <?php if (!empty($_GET['updated'])) echo '<div class="notice notice-success is-dismissible"><p>Saved successfully.</p></div>'; ?>
+        <?php if (!empty($_GET['err'])) echo '<div class="notice notice-error is-dismissible"><p>Error occurred. Check logs/error.log</p></div>'; ?>
         <hr class="wp-header-end" />
 
-        <h2>Existing</h2>
+        <h2>Existing Rules</h2>
         <table class="widefat fixed striped">
-            <thead><tr><th>Group Key</th><th>Device</th><th>Default Tier</th><th>Updated</th><th></th></tr></thead>
+            <thead><tr><th>Group Key</th><th>Device</th><th>Default Tier</th><th>Updated</th><th>Actions</th></tr></thead>
             <tbody>
             <?php if ($rows): foreach($rows as $r): ?>
                 <tr>
@@ -73,8 +90,8 @@ function gstore_rule_list_page(){
                     <td><?php echo esc_html($r['default_condition']); ?></td>
                     <td><?php echo esc_html($r['updated_at']); ?></td>
                     <td>
-                        <a class="button" href="<?php echo esc_url( admin_url('admin.php?page=gstore_rules&action=edit&group_key='.urlencode($r['group_key'])) ); ?>">Edit</a>
-                        <a class="button button-link-delete" href="<?php echo wp_nonce_url( admin_url('admin-post.php?action=gstore_delete_rule&group_key='.urlencode($r['group_key'])), 'gstore_delete_rule' ); ?>">Delete</a>
+                        <a class="button button-small" href="<?php echo esc_url( admin_url('admin.php?page=gstore_rules&action=edit&group_key='.urlencode($r['group_key'])) ); ?>">Edit</a>
+                        <a class="button button-small button-link-delete" href="<?php echo esc_url( wp_nonce_url( admin_url('admin-post.php?action=gstore_delete_rule&group_key='.urlencode($r['group_key'])), 'gstore_delete_rule' ) ); ?>" onclick="return confirm('Delete this rule?');">Delete</a>
                     </td>
                 </tr>
             <?php endforeach; else: ?>
@@ -85,16 +102,16 @@ function gstore_rule_list_page(){
 
         <h2 style="margin-top:24px;">Models Without Rule</h2>
         <table class="widefat fixed striped">
-            <thead><tr><th>Group Key</th><th>Device</th><th></th></tr></thead>
+            <thead><tr><th>Group Key</th><th>Device</th><th>Actions</th></tr></thead>
             <tbody>
             <?php if ($cands): foreach($cands as $c): ?>
                 <tr>
                     <td><?php echo esc_html($c['group_key']); ?></td>
                     <td><?php echo esc_html($c['device_type']); ?></td>
-                    <td><a class="button button-primary" href="<?php echo esc_url( admin_url('admin.php?page=gstore_rules&action=edit&group_key='.urlencode($c['group_key']).'&device_type='.urlencode($c['device_type'])) ); ?>">Create Rule</a></td>
+                    <td><a class="button button-primary button-small" href="<?php echo esc_url( admin_url('admin.php?page=gstore_rules&action=edit&group_key='.urlencode($c['group_key']).'&device_type='.urlencode($c['device_type'])) ); ?>">Create Rule</a></td>
                 </tr>
             <?php endforeach; else: ?>
-                <tr><td colspan="3">All covered or discovery did not find any models.</td></tr>
+                <tr><td colspan="3">All models have rules or no products found.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
@@ -103,12 +120,19 @@ function gstore_rule_list_page(){
 }
 
 function gstore_rule_edit_page(){
-    global $wpdb; $table = gstore_epp_table_rules();
+    global $wpdb;
+    $table = gstore_epp_table_rules();
 
     $group_key  = isset($_GET['group_key']) ? sanitize_text_field($_GET['group_key']) : '';
     $device_type= isset($_GET['device_type']) ? sanitize_text_field($_GET['device_type']) : 'phone';
-    $row = null; if ($group_key){ $row = $wpdb->get_row( $wpdb->prepare("SELECT * FROM {$table} WHERE group_key=%s LIMIT 1", $group_key), ARRAY_A ); }
-    if ($row){ $device_type = $row['device_type']; }
+
+    $row = null;
+    if ($group_key){
+        $row = $wpdb->get_row( $wpdb->prepare("SELECT * FROM {$table} WHERE group_key=%s LIMIT 1", $group_key), ARRAY_A );
+    }
+    if ($row){
+        $device_type = $row['device_type'];
+    }
 
     $default_condition = $row ? ($row['default_condition'] ?: '') : '';
     $pricing = $row && $row['pricing_json'] ? json_decode($row['pricing_json'], true) : [];
@@ -118,19 +142,20 @@ function gstore_rule_edit_page(){
     <div class="wrap">
         <h1 class="wp-heading-inline"><?php echo $row?'Edit Rule':'Add Rule'; ?></h1>
         <hr class="wp-header-end" />
+
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-            <?php wp_nonce_field('gstore_save_rule'); ?>
+            <?php wp_nonce_field('gstore_save_rule','gstore_save_rule_nonce'); ?>
             <input type="hidden" name="action" value="gstore_save_rule" />
 
             <table class="form-table">
                 <tr>
-                    <th>Group Key</th>
-                    <td><input type="text" name="group_key" class="regular-text" required value="<?php echo esc_attr($group_key); ?>"></td>
+                    <th><label for="group_key">Group Key</label></th>
+                    <td><input type="text" id="group_key" name="group_key" class="regular-text" required value="<?php echo esc_attr($group_key); ?>" <?php echo $row?'readonly':''; ?>></td>
                 </tr>
                 <tr>
-                    <th>Device Type</th>
+                    <th><label for="device_type">Device Type</label></th>
                     <td>
-                        <select name="device_type">
+                        <select id="device_type" name="device_type">
                             <option value="phone" <?php selected($device_type,'phone'); ?>>Phone</option>
                             <option value="laptop" <?php selected($device_type,'laptop'); ?>>Laptop</option>
                         </select>
@@ -139,14 +164,14 @@ function gstore_rule_edit_page(){
                 <tr>
                     <th>Default Used Tier</th>
                     <td>
-                        <em>(Optional; if empty, UI does not highlight a default)</em><br>
+                        <p class="description">Optional: Pre-select a tier for USED condition</p>
                         <?php foreach($tiers as $t): ?>
-                            <label style="margin-right:12px;">
+                            <label style="display:inline-block;margin-right:12px;">
                                 <input type="radio" name="default_condition" value="<?php echo esc_attr($t); ?>" <?php checked($default_condition,$t); ?> />
-                                <?php echo esc_html($t); ?>
+                                <?php echo esc_html($t); ?>%
                             </label>
                         <?php endforeach; ?>
-                        <label style="margin-left:12px;">
+                        <label style="display:inline-block;margin-left:12px;">
                             <input type="radio" name="default_condition" value="" <?php checked($default_condition,''); ?> /> None
                         </label>
                     </td>
@@ -154,9 +179,9 @@ function gstore_rule_edit_page(){
             </table>
 
             <h2>Pricing (GEL)</h2>
-            <p>Tiers with empty price will be greyed out on the product page.</p>
+            <p class="description">Leave empty to disable that tier. Empty tiers will be greyed out on product page.</p>
             <table class="widefat striped" style="max-width:720px;">
-                <thead><tr><th>Tier</th><th>Regular</th><th>Sale</th></tr></thead>
+                <thead><tr><th>Tier</th><th>Regular Price</th><th>Sale Price</th></tr></thead>
                 <tbody>
                 <?php foreach($tiers as $t):
                     $reg = isset($pricing[$t]['regular']) ? $pricing[$t]['regular'] : '';
@@ -164,41 +189,53 @@ function gstore_rule_edit_page(){
                     ?>
                     <tr>
                         <td><strong><?php echo esc_html($t); ?>%</strong></td>
-                        <td><input type="text" name="pricing[<?php echo esc_attr($t); ?>][regular]" value="<?php echo esc_attr($reg); ?>"></td>
-                        <td><input type="text" name="pricing[<?php echo esc_attr($t); ?>][sale]" value="<?php echo esc_attr($sal); ?>"></td>
+                        <td><input type="number" step="0.01" name="pricing[<?php echo esc_attr($t); ?>][regular]" value="<?php echo esc_attr($reg); ?>" placeholder="0.00"></td>
+                        <td><input type="number" step="0.01" name="pricing[<?php echo esc_attr($t); ?>][sale]" value="<?php echo esc_attr($sal); ?>" placeholder="0.00"></td>
                     </tr>
                 <?php endforeach; ?>
                 <tr>
-                    <td><strong>+ New Battery (phones)</strong></td>
+                    <td><strong>+ New Battery</strong><br><small>(Phones only)</small></td>
                     <?php
                     $nb_reg = isset($pricing['new_battery']['regular']) ? $pricing['new_battery']['regular'] : '';
                     $nb_sal = isset($pricing['new_battery']['sale']) ? $pricing['new_battery']['sale'] : '';
                     ?>
-                    <td><input type="text" name="pricing[new_battery][regular]" value="<?php echo esc_attr($nb_reg); ?>"></td>
-                    <td><input type="text" name="pricing[new_battery][sale]" value="<?php echo esc_attr($nb_sal); ?>"></td>
+                    <td><input type="number" step="0.01" name="pricing[new_battery][regular]" value="<?php echo esc_attr($nb_reg); ?>" placeholder="0.00"></td>
+                    <td><input type="number" step="0.01" name="pricing[new_battery][sale]" value="<?php echo esc_attr($nb_sal); ?>" placeholder="0.00"></td>
                 </tr>
                 </tbody>
             </table>
 
             <p class="submit">
-                <button class="button button-primary">Save Rule</button>
-                <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=gstore_rules')); ?>">Back</a>
+                <button type="submit" class="button button-primary button-large">Save Rule</button>
+                <a class="button button-large" href="<?php echo esc_url(admin_url('admin.php?page=gstore_rules')); ?>">Cancel</a>
             </p>
         </form>
     </div>
     <?php
 }
 
-// Handlers (save/delete/clear) — all with nonce, redirect, and logs
+// Handlers
 function gstore_handle_save_rule(){
-    if (!current_user_can('manage_woocommerce')) wp_die('Not allowed');
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die('Unauthorized', 'Error', ['response'=>403]);
+    }
+
+    // Check nonce
+    if (!isset($_POST['gstore_save_rule_nonce']) || !wp_verify_nonce($_POST['gstore_save_rule_nonce'], 'gstore_save_rule')) {
+        wp_die('Nonce verification failed', 'Error', ['response'=>403]);
+    }
+
     try{
-        check_admin_referer('gstore_save_rule');
-        global $wpdb; $table = gstore_epp_table_rules();
+        global $wpdb;
+        $table = gstore_epp_table_rules();
 
         $group_key = sanitize_text_field($_POST['group_key'] ?? '');
         $device_type = sanitize_text_field($_POST['device_type'] ?? 'phone');
         $default_condition = isset($_POST['default_condition']) ? sanitize_text_field($_POST['default_condition']) : '';
+
+        if (!$group_key) {
+            throw new Exception('Group key is required');
+        }
 
         $pricing = isset($_POST['pricing']) && is_array($_POST['pricing']) ? $_POST['pricing'] : [];
         $clean = [];
@@ -210,117 +247,173 @@ function gstore_handle_save_rule(){
         $json = wp_json_encode($clean);
 
         $exists = $wpdb->get_var( $wpdb->prepare("SELECT id FROM {$table} WHERE group_key=%s LIMIT 1", $group_key) );
+
         if ($exists){
             $wpdb->update($table, [
-                'device_type'=>$device_type,
-                'default_condition'=>$default_condition,
-                'pricing_json'=>$json,
-            ], ['id'=>$exists], ['%s','%s','%s'], ['%d']);
+                    'device_type'=>$device_type,
+                    'default_condition'=>$default_condition,
+                    'pricing_json'=>$json,
+                    'updated_at'=>current_time('mysql')
+            ], ['id'=>$exists], ['%s','%s','%s','%s'], ['%d']);
         } else {
             $wpdb->insert($table, [
-                'group_key'=>$group_key,
-                'device_type'=>$device_type,
-                'default_condition'=>$default_condition,
-                'pricing_json'=>$json,
+                    'group_key'=>$group_key,
+                    'device_type'=>$device_type,
+                    'default_condition'=>$default_condition,
+                    'pricing_json'=>$json,
             ], ['%s','%s','%s','%s']);
         }
+
         gstore_log_debug('rule_saved', compact('group_key','device_type'));
-        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&updated=1') ); exit;
+
+        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&updated=1') );
+        exit;
+
     } catch(\Throwable $e){
-        gstore_log_error('rule_save_failed', ['err'=>$e->getMessage()]);
-        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&err=1') ); exit;
+        gstore_log_error('rule_save_failed', ['err'=>$e->getMessage(),'trace'=>$e->getTraceAsString()]);
+        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&err=1') );
+        exit;
     }
 }
 
 function gstore_handle_delete_rule(){
-    if (!current_user_can('manage_woocommerce')) wp_die('Not allowed');
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die('Unauthorized', 'Error', ['response'=>403]);
+    }
+
+    check_admin_referer('gstore_delete_rule');
+
     try{
-        check_admin_referer('gstore_delete_rule');
-        global $wpdb; $table = gstore_epp_table_rules();
+        global $wpdb;
+        $table = gstore_epp_table_rules();
         $group_key = isset($_GET['group_key']) ? sanitize_text_field($_GET['group_key']) : '';
+
         if ($group_key){
             $wpdb->delete($table, ['group_key'=>$group_key], ['%s']);
             gstore_log_debug('rule_deleted', ['group_key'=>$group_key]);
         }
-        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&updated=1') ); exit;
+
+        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&updated=1') );
+        exit;
+
     } catch(\Throwable $e){
         gstore_log_error('rule_delete_failed', ['err'=>$e->getMessage()]);
-        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&err=1') ); exit;
+        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&err=1') );
+        exit;
     }
 }
 
 function gstore_handle_clear_rules(){
-    if (!current_user_can('manage_woocommerce')) wp_die('Not allowed');
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die('Unauthorized', 'Error', ['response'=>403]);
+    }
+
+    check_admin_referer('gstore_clear_rules');
+
     try{
-        check_admin_referer('gstore_clear_rules');
-        global $wpdb; $table = gstore_epp_table_rules();
+        global $wpdb;
+        $table = gstore_epp_table_rules();
         $cnt = $wpdb->query("TRUNCATE TABLE {$table}");
         gstore_log_debug('rules_cleared', ['count'=>$cnt]);
-        wp_safe_redirect( admin_url('admin.php?page=gstore_maint&updated=1') ); exit;
+
+        wp_safe_redirect( admin_url('admin.php?page=gstore_maint&updated=1') );
+        exit;
+
     } catch(\Throwable $e){
         gstore_log_error('rules_clear_failed', ['err'=>$e->getMessage()]);
-        wp_safe_redirect( admin_url('admin.php?page=gstore_maint&err=1') ); exit;
+        wp_safe_redirect( admin_url('admin.php?page=gstore_maint&err=1') );
+        exit;
     }
 }
 
-// --- Add-ons (laptops) + reset
+// --- Add-ons (laptops)
 function gstore_addons_page(){
-    $row = get_option('gstore_epp_addons_laptop', ['rows'=>[]]);
+    $data = get_option('gstore_epp_addons_laptop', ['rows'=>[]]);
+    $rows = isset($data['rows']) && is_array($data['rows']) ? $data['rows'] : [];
     ?>
     <div class="wrap">
         <h1 class="wp-heading-inline">Global Add-ons (Laptops)</h1>
-        <?php if (!empty($_GET['updated'])) echo '<div class="notice notice-success"><p>Saved.</p></div>'; ?>
-        <?php if (!empty($_GET['err'])) echo '<div class="notice notice-error"><p>Error occurred. See logs.</p></div>'; ?>
+        <?php if (!empty($_GET['updated'])) echo '<div class="notice notice-success is-dismissible"><p>Saved successfully.</p></div>'; ?>
+        <?php if (!empty($_GET['err'])) echo '<div class="notice notice-error is-dismissible"><p>Error occurred. Check logs.</p></div>'; ?>
         <hr class="wp-header-end" />
 
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-            <?php wp_nonce_field('gstore_save_addons'); ?>
+            <?php wp_nonce_field('gstore_save_addons','gstore_save_addons_nonce'); ?>
             <input type="hidden" name="action" value="gstore_save_addons">
 
-            <table class="widefat striped" id="gstore-addons-table" style="max-width:860px;">
-                <thead><tr><th>Key</th><th>Label (shown on UI)</th><th>Price (GEL)</th><th></th></tr></thead>
-                <tbody>
+            <table class="widefat striped" style="max-width:860px;">
+                <thead><tr><th>Key</th><th>Label (shown on UI)</th><th>Price (GEL)</th><th>Remove</th></tr></thead>
+                <tbody id="addons-tbody">
                 <?php
-                $rows = isset($row['rows']) && is_array($row['rows']) ? $row['rows'] : [];
-                if (!$rows) {
-                    echo '<tr><td colspan="4"><em>No add-ons. Add one below.</em></td></tr>';
-                } else {
+                if ($rows) {
                     foreach($rows as $i=>$r){
                         $k = esc_attr($r['key'] ?? '');
                         $l = esc_attr($r['label'] ?? '');
                         $p = esc_attr($r['price'] ?? '');
                         echo '<tr>';
-                        echo '<td><input name="rows['.$i.'][key]" value="'.$k.'" /></td>';
-                        echo '<td><input name="rows['.$i.'][label]" value="'.$l.'" /></td>';
-                        echo '<td><input name="rows['.$i.'][price]" value="'.$p.'" /></td>';
-                        echo '<td></td>';
+                        echo '<td><input name="rows['.$i.'][key]" value="'.$k.'" class="regular-text" /></td>';
+                        echo '<td><input name="rows['.$i.'][label]" value="'.$l.'" class="regular-text" /></td>';
+                        echo '<td><input type="number" step="0.01" name="rows['.$i.'][price]" value="'.$p.'" style="width:100px;" /></td>';
+                        echo '<td><button type="button" class="button button-small remove-row">Remove</button></td>';
                         echo '</tr>';
                     }
+                } else {
+                    echo '<tr><td colspan="4"><em>No add-ons yet. Add one below.</em></td></tr>';
                 }
                 ?>
-                <!-- empty last row for quick add -->
-                <tr>
-                    <td><input name="rows[new][key]" placeholder="ram-16" /></td>
-                    <td><input name="rows[new][label]" placeholder="Add RAM 16GB" /></td>
-                    <td><input name="rows[new][price]" placeholder="199.00" /></td>
-                    <td></td>
-                </tr>
                 </tbody>
             </table>
 
+            <p>
+                <button type="button" class="button" id="add-row">+ Add Row</button>
+            </p>
+
             <p class="submit">
-                <button class="button button-primary">Save</button>
-                <a class="button" href="<?php echo esc_url( wp_nonce_url(admin_url('admin-post.php?action=gstore_save_addons&reset=1'), 'gstore_save_addons') ); ?>">Reset to defaults</a>
+                <button type="submit" class="button button-primary">Save Add-ons</button>
+                <a class="button" href="<?php echo esc_url( wp_nonce_url(admin_url('admin-post.php?action=gstore_save_addons&reset=1'), 'gstore_save_addons','gstore_save_addons_nonce') ); ?>" onclick="return confirm('Reset to empty list?');">Reset</a>
             </p>
         </form>
+
+        <script>
+            jQuery(function($){
+                var rowIndex = <?php echo count($rows); ?>;
+                $('#add-row').on('click', function(){
+                    $('#addons-tbody').append(
+                        '<tr>' +
+                        '<td><input name="rows['+rowIndex+'][key]" class="regular-text" placeholder="ram-16" /></td>' +
+                        '<td><input name="rows['+rowIndex+'][label]" class="regular-text" placeholder="Add RAM 16GB" /></td>' +
+                        '<td><input type="number" step="0.01" name="rows['+rowIndex+'][price]" style="width:100px;" placeholder="199.00" /></td>' +
+                        '<td><button type="button" class="button button-small remove-row">Remove</button></td>' +
+                        '</tr>'
+                    );
+                    rowIndex++;
+                });
+
+                $(document).on('click', '.remove-row', function(){
+                    if (confirm('Remove this row?')) {
+                        $(this).closest('tr').remove();
+                    }
+                });
+            });
+        </script>
     </div>
     <?php
 }
 
 function gstore_handle_save_addons(){
-    if (!current_user_can('manage_woocommerce')) wp_die('Not allowed');
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die('Unauthorized', 'Error', ['response'=>403]);
+    }
+
+    if (!isset($_GET['reset'])) {
+        if (!isset($_POST['gstore_save_addons_nonce']) || !wp_verify_nonce($_POST['gstore_save_addons_nonce'], 'gstore_save_addons')) {
+            wp_die('Nonce verification failed', 'Error', ['response'=>403]);
+        }
+    } else {
+        check_admin_referer('gstore_save_addons', 'gstore_save_addons_nonce');
+    }
+
     try{
-        check_admin_referer('gstore_save_addons');
         if (isset($_GET['reset'])){
             delete_option('gstore_epp_addons_laptop');
         } else {
@@ -336,10 +429,14 @@ function gstore_handle_save_addons(){
             }
             update_option('gstore_epp_addons_laptop', ['rows'=>$out], false);
         }
-        wp_safe_redirect( admin_url('admin.php?page=gstore_addons&updated=1') ); exit;
+
+        wp_safe_redirect( admin_url('admin.php?page=gstore_addons&updated=1') );
+        exit;
+
     } catch(\Throwable $e){
         gstore_log_error('addons_save_failed',['err'=>$e->getMessage()]);
-        wp_safe_redirect( admin_url('admin.php?page=gstore_addons&err=1') ); exit;
+        wp_safe_redirect( admin_url('admin.php?page=gstore_addons&err=1') );
+        exit;
     }
 }
 
@@ -350,38 +447,66 @@ function gstore_debug_page(){
     ?>
     <div class="wrap">
         <h1 class="wp-heading-inline">Debug & Logging</h1>
-        <?php if (!empty($_GET['updated'])) echo '<div class="notice notice-success"><p>Saved.</p></div>'; ?>
+        <?php if (!empty($_GET['updated'])) echo '<div class="notice notice-success is-dismissible"><p>Saved successfully.</p></div>'; ?>
         <hr class="wp-header-end" />
+
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-            <?php wp_nonce_field('gstore_save_debug'); ?>
+            <?php wp_nonce_field('gstore_save_debug','gstore_save_debug_nonce'); ?>
             <input type="hidden" name="action" value="gstore_save_debug">
+
             <table class="form-table">
                 <tr>
-                    <th>Full debug</th>
-                    <td><label><input type="checkbox" name="debug_full" value="1" <?php checked($full,1); ?>> Write everything to <code>logs/fdebug.log</code></label></td>
+                    <th>Full Debug Logging</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="debug_full" value="1" <?php checked($full,1); ?>>
+                            Write all operations to <code>logs/fdebug.log</code>
+                        </label>
+                        <p class="description">Enable for troubleshooting siblings, pricing, FBT, etc.</p>
+                    </td>
                 </tr>
                 <tr>
-                    <th>Error logging</th>
-                    <td><label><input type="checkbox" name="debug_errors" value="1" <?php checked($err,1); ?>> Write errors to <code>logs/error.log</code></label></td>
+                    <th>Error Logging Only</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="debug_errors" value="1" <?php checked($err,1); ?>>
+                            Write errors to <code>logs/error.log</code>
+                        </label>
+                        <p class="description">Recommended to keep enabled.</p>
+                    </td>
                 </tr>
             </table>
-            <p class="submit"><button class="button button-primary">Save</button></p>
+
+            <p class="submit">
+                <button type="submit" class="button button-primary">Save Settings</button>
+            </p>
         </form>
     </div>
     <?php
 }
+
 function gstore_handle_save_debug(){
-    if (!current_user_can('manage_woocommerce')) wp_die('Not allowed');
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die('Unauthorized', 'Error', ['response'=>403]);
+    }
+
+    if (!isset($_POST['gstore_save_debug_nonce']) || !wp_verify_nonce($_POST['gstore_save_debug_nonce'], 'gstore_save_debug')) {
+        wp_die('Nonce verification failed', 'Error', ['response'=>403]);
+    }
+
     try{
-        check_admin_referer('gstore_save_debug');
         gstore_epp_update_opt([
-            'debug_full'   => isset($_POST['debug_full'])?1:0,
-            'debug_errors' => isset($_POST['debug_errors'])?1:0,
+                'debug_full'   => isset($_POST['debug_full'])?1:0,
+                'debug_errors' => isset($_POST['debug_errors'])?1:0,
         ]);
-        wp_safe_redirect( admin_url('admin.php?page=gstore_debug&updated=1') ); exit;
+
+        wp_safe_redirect( admin_url('admin.php?page=gstore_debug&updated=1') );
+        exit;
+
     } catch(\Throwable $e){
         gstore_log_error('debug_save_failed', ['err'=>$e->getMessage()]);
-        wp_safe_redirect( admin_url('admin.php?page=gstore_debug&err=1') ); exit;
+        wp_safe_redirect( admin_url('admin.php?page=gstore_debug&err=1') );
+        exit;
     }
 }
 
@@ -390,14 +515,17 @@ function gstore_maint_page(){
     ?>
     <div class="wrap">
         <h1 class="wp-heading-inline">Maintenance</h1>
-        <?php if (!empty($_GET['updated'])) echo '<div class="notice notice-success"><p>Done.</p></div>'; ?>
-        <?php if (!empty($_GET['err'])) echo '<div class="notice notice-error"><p>Error. Check logs.</p></div>'; ?>
+        <?php if (!empty($_GET['updated'])) echo '<div class="notice notice-success is-dismissible"><p>Operation completed.</p></div>'; ?>
+        <?php if (!empty($_GET['err'])) echo '<div class="notice notice-error is-dismissible"><p>Error occurred. Check logs.</p></div>'; ?>
         <hr class="wp-header-end" />
-        <p>Use with care.</p>
-        <form method="post" action="<?php echo esc_url( admin_url('admin-post.php') ); ?>">
+
+        <h2>Danger Zone</h2>
+        <p class="description">Use with caution. These actions cannot be undone.</p>
+
+        <form method="post" action="<?php echo esc_url( admin_url('admin-post.php') ); ?>" style="margin-top:20px;">
             <?php wp_nonce_field('gstore_clear_rules'); ?>
             <input type="hidden" name="action" value="gstore_clear_rules">
-            <button class="button button-secondary" onclick="return confirm('Are you sure? This deletes ALL pricing rules.');">Clear ALL rules</button>
+            <button type="submit" class="button button-secondary" onclick="return confirm('Are you sure? This deletes ALL pricing rules and cannot be undone.');">Clear ALL Pricing Rules</button>
         </form>
     </div>
     <?php
