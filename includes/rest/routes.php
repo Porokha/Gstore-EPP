@@ -33,7 +33,7 @@ class GStore_EPP_REST {
 			]
 		]);
 
-		// Pricing
+		// Pricing - NOW STORAGE-SPECIFIC
 		register_rest_route(self::NS, '/pricing', [
 			'methods'=>'GET',
 			'permission_callback'=>'__return_true',
@@ -43,7 +43,7 @@ class GStore_EPP_REST {
 			]
 		]);
 
-		// Siblings (OPTIMIZED)
+		// Siblings (OPTIMIZED WITH PROPER CACHING)
 		register_rest_route(self::NS, '/siblings', [
 			'methods'=>'GET',
 			'permission_callback'=>'__return_true',
@@ -75,45 +75,98 @@ class GStore_EPP_REST {
 	}
 
 	/* -------------------------
-		PRICING
+		PRICING - NOW STORAGE-SPECIFIC
 	--------------------------*/
 	public function get_pricing(WP_REST_Request $r){
 		$pid = absint($r->get_param('product_id'));
 		if (!$pid)
 			return new WP_REST_Response(['ok'=>false,'error'=>'MISSING_PRODUCT_ID'], 400);
 
+		// Check cache first
+		$cache_key = 'gstore_pricing_' . $pid;
+		$cached = get_transient($cache_key);
+		if ($cached !== false) {
+			gstore_log_debug('pricing_cache_hit', ['pid'=>$pid]);
+			return new WP_REST_Response($cached, 200);
+		}
+
 		$ctx = gstore_epp_parse_by_product_id($pid);
 
+		// NEW: Include storage in the key
+		$storage = $ctx['storage'] ?: '';
+		$storage_normalized = strtolower(preg_replace('/[^a-z0-9]/', '', $storage));
+
+		// Build storage-specific group key
+		$group_key = $ctx['group_key']; // e.g., "apple iphone-14-pro"
+
+		if ($storage_normalized) {
+			$group_key_with_storage = $group_key . ' ' . $storage_normalized; // e.g., "apple iphone-14-pro 128gb"
+		} else {
+			$group_key_with_storage = $group_key;
+		}
+
 		global $wpdb;
-		$row = $wpdb->get_row(
-			$wpdb->prepare("SELECT * FROM ".gstore_epp_table_rules()." WHERE group_key=%s LIMIT 1", $ctx['group_key']),
-			ARRAY_A
-		);
+
+		// Try to find storage-specific rule first
+		$row = null;
+		if ($storage_normalized) {
+			$row = $wpdb->get_row(
+				$wpdb->prepare("SELECT * FROM ".gstore_epp_table_rules()." WHERE group_key=%s LIMIT 1", $group_key_with_storage),
+				ARRAY_A
+			);
+		}
+
+		// Fallback to model-level rule if no storage-specific rule found
+		if (!$row) {
+			$row = $wpdb->get_row(
+				$wpdb->prepare("SELECT * FROM ".gstore_epp_table_rules()." WHERE group_key=%s LIMIT 1", $group_key),
+				ARRAY_A
+			);
+		}
 
 		if (!$row){
-			return new WP_REST_Response([
+			$result = [
 				'ok'=>true,
 				'exists'=>false,
 				'device_type'=>$ctx['device_type'],
-				'group_key'=>$ctx['group_key'],
+				'group_key'=>$group_key,
+				'storage'=>$storage,
 				'pricing'=>[]
-			], 200);
+			];
+
+			// Cache for 1 hour
+			set_transient($cache_key, $result, HOUR_IN_SECONDS);
+
+			return new WP_REST_Response($result, 200);
 		}
 
 		$pricing = $row['pricing_json'] ? json_decode($row['pricing_json'], true) : [];
 
-		return new WP_REST_Response([
+		$result = [
 			'ok'=>true,
 			'exists'=>true,
 			'device_type'=>$row['device_type'],
 			'group_key'=>$row['group_key'],
+			'storage'=>$storage,
 			'default_condition'=>$row['default_condition'],
 			'pricing'=>$pricing
-		], 200);
+		];
+
+		// Cache for 1 hour
+		set_transient($cache_key, $result, HOUR_IN_SECONDS);
+
+		gstore_log_debug('pricing_resolved', [
+			'pid'=>$pid,
+			'group_key'=>$row['group_key'],
+			'storage'=>$storage,
+			'has_pricing'=>!empty($pricing)
+		]);
+
+		return new WP_REST_Response($result, 200);
 	}
 
 	/* -------------------------
-		SIBLINGS (OPTIMIZED WITH CACHING)
+		SIBLINGS - FULLY OPTIMIZED WITH PROPER CONDITION MATCHING
 	--------------------------*/
 	public function get_siblings_optimized(WP_REST_Request $r){
 		$pid = absint($r->get_param('product_id'));
@@ -133,55 +186,64 @@ class GStore_EPP_REST {
 
 		$brand = $ctx['brand'];
 		$model = $ctx['model'];
+		$group_key = $ctx['group_key'];
 
 		// If no model, can't find siblings
 		if (!$model){
 			gstore_log_error('siblings_no_model', ['pid'=>$pid,'ctx'=>$ctx]);
-			return new WP_REST_Response(['ok'=>false,'error'=>'MODEL_REQUIRED','debug'=>$ctx], 200);
+			$result = ['ok'=>false,'error'=>'MODEL_REQUIRED','debug'=>$ctx];
+			set_transient($cache_key, $result, HOUR_IN_SECONDS);
+			return new WP_REST_Response($result, 200);
 		}
-
-		// OPTIMIZED QUERY: Use group_key from context
-		// This is MUCH faster than querying all products
-		$group_key = $ctx['group_key'];
 
 		if (!$group_key) {
 			gstore_log_error('siblings_no_group_key', ['pid'=>$pid,'ctx'=>$ctx]);
-			return new WP_REST_Response(['ok'=>false,'error'=>'GROUP_KEY_REQUIRED'], 200);
+			$result = ['ok'=>false,'error'=>'GROUP_KEY_REQUIRED'];
+			set_transient($cache_key, $result, HOUR_IN_SECONDS);
+			return new WP_REST_Response($result, 200);
 		}
 
-		// Query products with matching model attribute
-		// Limit to 100 for safety
-		$q = new WP_Query([
-			'post_type'=>'product',
-			'posts_per_page'=>100,
-			'post_status'=>'publish',
-			'fields'=>'ids',
-			'meta_query' => [
-				[
-					'key' => 'attribute_pa_model',
-					'value' => sanitize_title($model),
-					'compare' => '='
-				]
-			]
-		]);
+		// OPTIMIZED: Use direct database query instead of WP_Query
+		global $wpdb;
+
+		// Get all products with matching model attribute (limit 200 for safety)
+		$model_slug = sanitize_title($model);
+
+		$sql = "
+			SELECT DISTINCT p.ID 
+			FROM {$wpdb->posts} p
+			INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+			INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+			INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
+			WHERE p.post_type = 'product'
+			AND p.post_status = 'publish'
+			AND tt.taxonomy = 'pa_model'
+			AND t.slug = %s
+			LIMIT 200
+		";
+
+		$product_ids = $wpdb->get_col($wpdb->prepare($sql, $model_slug));
+
+		// If no results from taxonomy, try meta query (fallback)
+		if (empty($product_ids)) {
+			$sql = "
+				SELECT DISTINCT p.ID
+				FROM {$wpdb->posts} p
+				INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+				WHERE p.post_type = 'product'
+				AND p.post_status = 'publish'
+				AND pm.meta_key = 'attribute_pa_model'
+				AND pm.meta_value = %s
+				LIMIT 200
+			";
+
+			$product_ids = $wpdb->get_col($wpdb->prepare($sql, $model_slug));
+		}
 
 		$items = [];
 
-		// If meta query finds nothing, fall back to checking all products
-		// but limit to recently published ones
-		if (!$q->have_posts()) {
-			$q = new WP_Query([
-				'post_type'=>'product',
-				'posts_per_page'=>200,
-				'post_status'=>'publish',
-				'fields'=>'ids',
-				'orderby'=>'date',
-				'order'=>'DESC'
-			]);
-		}
-
-		if ($q->have_posts()){
-			foreach($q->posts as $id){
+		if (!empty($product_ids)){
+			foreach($product_ids as $id){
 				$p_model = gstore_epp_attr($id, 'model');
 
 				// Match by model (case-insensitive)
@@ -192,6 +254,24 @@ class GStore_EPP_REST {
 					$img_id = $ip->get_image_id();
 					$hero = $img_id ? wp_get_attachment_image_url($img_id, 'large') : wc_placeholder_img_src('large');
 
+					// CRITICAL: Get raw condition attribute and normalize it
+					$raw_condition = gstore_epp_attr($ip->get_id(),'condition');
+
+					// Normalize condition for comparison
+					// "USED (A)" or "used_a" or "used-a" → "used"
+					// "NEW" → "new"
+					// "OPEN BOX" or "open_box" → "openbox"
+					$normalized_condition = strtolower(str_replace([' ', '(', ')', '-', '_'], '', $raw_condition));
+
+					// Map variations to standard names
+					if (strpos($normalized_condition, 'used') !== false) {
+						$normalized_condition = 'used';
+					} elseif (strpos($normalized_condition, 'new') !== false) {
+						$normalized_condition = 'new';
+					} elseif (strpos($normalized_condition, 'open') !== false) {
+						$normalized_condition = 'openbox';
+					}
+
 					$items[] = [
 						'id'=>$ip->get_id(),
 						'title'=>$ip->get_title(),
@@ -199,7 +279,8 @@ class GStore_EPP_REST {
 						'price'=>$ip->get_price(),
 						'regular'=>$ip->get_regular_price(),
 						'sale'=>$ip->get_sale_price(),
-						'condition'=>gstore_epp_attr($ip->get_id(),'condition'),
+						'condition'=>$normalized_condition, // Store normalized condition
+						'condition_raw'=>$raw_condition, // Keep original for display
 						'brand'=>gstore_epp_attr($ip->get_id(),'brand'),
 						'model'=>$p_model,
 						'storage'=>gstore_epp_attr($ip->get_id(),'storage'),
@@ -210,9 +291,13 @@ class GStore_EPP_REST {
 			}
 		}
 
-		wp_reset_postdata();
-
-		$result = ['ok'=>true,'brand'=>$brand,'model'=>$model,'siblings'=>$items,'count'=>count($items)];
+		$result = [
+			'ok'=>true,
+			'brand'=>$brand,
+			'model'=>$model,
+			'siblings'=>$items,
+			'count'=>count($items)
+		];
 
 		// CACHE FOR 1 HOUR
 		set_transient($cache_key, $result, HOUR_IN_SECONDS);
@@ -234,6 +319,13 @@ class GStore_EPP_REST {
 		$pid = absint($r->get_param('product_id'));
 		if (!$pid)
 			return new WP_REST_Response(['ok'=>false,'error'=>'MISSING_PRODUCT_ID'], 400);
+
+		// Check cache
+		$cache_key = 'gstore_compare_specs_' . $pid;
+		$cached = get_transient($cache_key);
+		if ($cached !== false) {
+			return new WP_REST_Response($cached, 200);
+		}
 
 		$specs = get_post_meta($pid, '_gstore_compare_specs', true);
 
@@ -257,12 +349,17 @@ class GStore_EPP_REST {
 		$product = wc_get_product($pid);
 		$title = $product ? $product->get_title() : 'Product';
 
-		return new WP_REST_Response([
+		$result = [
 			'ok'=>true,
 			'product_id'=>$pid,
 			'title'=>$title,
 			'specs'=>$specs
-		], 200);
+		];
+
+		// Cache for 1 hour
+		set_transient($cache_key, $result, HOUR_IN_SECONDS);
+
+		return new WP_REST_Response($result, 200);
 	}
 
 	/* -------------------------
@@ -271,6 +368,13 @@ class GStore_EPP_REST {
 	public function search_products(WP_REST_Request $r){
 		$search = sanitize_text_field($r->get_param('search') ?: '');
 		$limit  = absint($r->get_param('limit') ?: 20);
+
+		// Cache search results
+		$cache_key = 'gstore_search_' . md5($search . $limit);
+		$cached = get_transient($cache_key);
+		if ($cached !== false) {
+			return new WP_REST_Response($cached, 200);
+		}
 
 		$args = [
 			'post_type'=>'product',
@@ -302,16 +406,29 @@ class GStore_EPP_REST {
 
 		wp_reset_postdata();
 
-		return new WP_REST_Response(['ok'=>true,'products'=>$products], 200);
+		$result = ['ok'=>true,'products'=>$products];
+
+		// Cache for 30 minutes
+		set_transient($cache_key, $result, 30 * MINUTE_IN_SECONDS);
+
+		return new WP_REST_Response($result, 200);
 	}
 
 	/* -------------------------
-		FBT
+		FBT (WITH CACHING)
 	--------------------------*/
 	public function get_fbt(WP_REST_Request $r){
 		$pid = absint($r->get_param('product_id'));
 		if (!$pid)
 			return new WP_REST_Response(['ok'=>false,'error'=>'MISSING_PRODUCT_ID'], 400);
+
+		// Check cache
+		$cache_key = 'gstore_fbt_' . $pid;
+		$cached = get_transient($cache_key);
+		if ($cached !== false) {
+			gstore_log_debug('fbt_cache_hit', ['pid'=>$pid]);
+			return new WP_REST_Response($cached, 200);
+		}
 
 		$ids = get_post_meta($pid, '_gstore_fbt_ids', true);
 		if (!is_array($ids)) $ids = [];
@@ -384,31 +501,63 @@ class GStore_EPP_REST {
 
 		gstore_log_debug('fbt_resolved', ['pid'=>$pid,'count'=>count($products)]);
 
-		return new WP_REST_Response(['ok'=>true,'products'=>$products], 200);
+		$result = ['ok'=>true,'products'=>$products];
+
+		// Cache for 1 hour
+		set_transient($cache_key, $result, HOUR_IN_SECONDS);
+
+		return new WP_REST_Response($result, 200);
 	}
 
 	/* -------------------------
-		WARRANTY
+		WARRANTY (WITH CACHING)
 	--------------------------*/
 	public function get_warranty(WP_REST_Request $r){
 		$pid = absint($r->get_param('product_id'));
 		if (!$pid)
 			return new WP_REST_Response(['ok'=>false,'error'=>'MISSING_PRODUCT_ID'], 400);
 
+		// Check cache
+		$cache_key = 'gstore_warranty_' . $pid;
+		$cached = get_transient($cache_key);
+		if ($cached !== false) {
+			return new WP_REST_Response($cached, 200);
+		}
+
 		$ctx = gstore_epp_parse_by_product_id($pid);
 		global $wpdb;
 
 		$warranty_text = '';
 
-		// Check model rules
+		// Check model rules (with storage-specific key first)
 		if ($ctx && $ctx['group_key']) {
-			$row = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT warranty_text FROM ".gstore_epp_table_rules()." WHERE group_key=%s LIMIT 1",
-					$ctx['group_key']
-				),
-				ARRAY_A
-			);
+			$storage = $ctx['storage'] ?: '';
+			$storage_normalized = strtolower(preg_replace('/[^a-z0-9]/', '', $storage));
+
+			$row = null;
+
+			// Try storage-specific first
+			if ($storage_normalized) {
+				$group_key_with_storage = $ctx['group_key'] . ' ' . $storage_normalized;
+				$row = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT warranty_text FROM ".gstore_epp_table_rules()." WHERE group_key=%s LIMIT 1",
+						$group_key_with_storage
+					),
+					ARRAY_A
+				);
+			}
+
+			// Fallback to model-level
+			if (!$row) {
+				$row = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT warranty_text FROM ".gstore_epp_table_rules()." WHERE group_key=%s LIMIT 1",
+						$ctx['group_key']
+					),
+					ARRAY_A
+				);
+			}
 
 			if ($row && !empty($row['warranty_text'])) {
 				$warranty_text = $row['warranty_text'];
@@ -422,42 +571,61 @@ class GStore_EPP_REST {
 			                 ?? '1 year limited hardware warranty. Extended warranty options available at checkout.';
 		}
 
-		return new WP_REST_Response([
+		$result = [
 			'ok'=>true,
 			'warranty_text'=>$warranty_text
-		], 200);
+		];
+
+		// Cache for 1 hour
+		set_transient($cache_key, $result, HOUR_IN_SECONDS);
+
+		return new WP_REST_Response($result, 200);
 	}
 }
 
 new GStore_EPP_REST();
 
-// CRITICAL: Clear siblings cache when product is updated
+// CRITICAL: Clear ALL caches when product is updated
 add_action('save_post_product', function($post_id){
-	// Clear this product's cache
+	// Clear this product's caches
 	delete_transient('gstore_siblings_' . $post_id);
+	delete_transient('gstore_pricing_' . $post_id);
+	delete_transient('gstore_fbt_' . $post_id);
+	delete_transient('gstore_warranty_' . $post_id);
+	delete_transient('gstore_compare_specs_' . $post_id);
 
 	// Also clear cache for products in same model
 	$ctx = gstore_epp_parse_by_product_id($post_id);
 	if ($ctx && $ctx['model']) {
-		// Find all products with same model and clear their cache
-		$q = new WP_Query([
-			'post_type'=>'product',
-			'posts_per_page'=>100,
-			'fields'=>'ids',
-			'meta_query' => [
-				[
-					'key' => 'attribute_pa_model',
-					'value' => sanitize_title($ctx['model']),
-					'compare' => '='
-				]
-			]
-		]);
+		// Use direct query for performance
+		global $wpdb;
+		$model_slug = sanitize_title($ctx['model']);
 
-		if ($q->have_posts()) {
-			foreach($q->posts as $id) {
-				delete_transient('gstore_siblings_' . $id);
-			}
+		$sql = "
+			SELECT DISTINCT p.ID 
+			FROM {$wpdb->posts} p
+			INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+			INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+			INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
+			WHERE p.post_type = 'product'
+			AND tt.taxonomy = 'pa_model'
+			AND t.slug = %s
+			LIMIT 200
+		";
+
+		$sibling_ids = $wpdb->get_col($wpdb->prepare($sql, $model_slug));
+
+		foreach($sibling_ids as $id) {
+			delete_transient('gstore_siblings_' . $id);
+			delete_transient('gstore_pricing_' . $id);
+			delete_transient('gstore_fbt_' . $id);
+			delete_transient('gstore_warranty_' . $id);
 		}
-		wp_reset_postdata();
 	}
 }, 10, 1);
+
+// Clear search cache when any product is updated
+add_action('save_post_product', function(){
+	global $wpdb;
+	$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gstore_search_%'");
+}, 20);

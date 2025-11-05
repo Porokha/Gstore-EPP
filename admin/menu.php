@@ -44,10 +44,27 @@ function gstore_fetch_models_without_rule(){
         foreach ($q->posts as $pid){
             $ctx = gstore_epp_parse_by_product_id($pid);
             if (!$ctx || !$ctx['group_key']) continue;
-            $all[$ctx['group_key']] = [
-                    'group_key'=>$ctx['group_key'],
-                    'device_type'=>$ctx['device_type']
-            ];
+
+            // NEW: Include storage in the key
+            $storage = $ctx['storage'] ?: '';
+            $storage_normalized = strtolower(preg_replace('/[^a-z0-9]/', '', $storage));
+
+            if ($storage_normalized) {
+                $full_key = $ctx['group_key'] . ' ' . $storage_normalized;
+                $display_key = $ctx['group_key'] . ' - ' . strtoupper($storage);
+            } else {
+                $full_key = $ctx['group_key'];
+                $display_key = $ctx['group_key'];
+            }
+
+            if (!isset($all[$full_key])) {
+                $all[$full_key] = [
+                        'group_key'=>$full_key,
+                        'display_key'=>$display_key,
+                        'device_type'=>$ctx['device_type'],
+                        'storage'=>$storage
+                ];
+            }
         }
     }
     wp_reset_postdata();
@@ -79,13 +96,24 @@ function gstore_rule_list_page(){
         <?php if (!empty($_GET['err'])) echo '<div class="notice notice-error is-dismissible"><p>Error occurred. Check logs/error.log</p></div>'; ?>
         <hr class="wp-header-end" />
 
+        <div class="notice notice-info">
+            <p><strong>Important:</strong> Pricing rules are now storage-specific. Each storage size needs its own rule.</p>
+            <p>Example: Create separate rules for "iPhone 14 Pro 128GB", "iPhone 14 Pro 256GB", etc.</p>
+        </div>
+
         <h2>Existing Rules</h2>
         <table class="widefat fixed striped">
-            <thead><tr><th>Group Key</th><th>Device</th><th>Default Tier</th><th>Updated</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Group Key (Model + Storage)</th><th>Device</th><th>Default Tier</th><th>Updated</th><th>Actions</th></tr></thead>
             <tbody>
-            <?php if ($rows): foreach($rows as $r): ?>
+            <?php if ($rows): foreach($rows as $r):
+                // Parse group key to show it nicely
+                $display_key = $r['group_key'];
+                if (preg_match('/(\d+gb)$/', $display_key, $matches)) {
+                    $display_key = str_replace($matches[1], ' - ' . strtoupper($matches[1]), $display_key);
+                }
+                ?>
                 <tr>
-                    <td><?php echo esc_html($r['group_key']); ?></td>
+                    <td><?php echo esc_html($display_key); ?></td>
                     <td><?php echo esc_html($r['device_type']); ?></td>
                     <td><?php echo esc_html($r['default_condition']); ?></td>
                     <td><?php echo esc_html($r['updated_at']); ?></td>
@@ -100,18 +128,18 @@ function gstore_rule_list_page(){
             </tbody>
         </table>
 
-        <h2 style="margin-top:24px;">Models Without Rule</h2>
+        <h2 style="margin-top:24px;">Models + Storage Combinations Without Rules</h2>
         <table class="widefat fixed striped">
-            <thead><tr><th>Group Key</th><th>Device</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Model + Storage</th><th>Device</th><th>Actions</th></tr></thead>
             <tbody>
             <?php if ($cands): foreach($cands as $c): ?>
                 <tr>
-                    <td><?php echo esc_html($c['group_key']); ?></td>
+                    <td><?php echo esc_html($c['display_key']); ?></td>
                     <td><?php echo esc_html($c['device_type']); ?></td>
-                    <td><a class="button button-primary button-small" href="<?php echo esc_url( admin_url('admin.php?page=gstore_rules&action=edit&group_key='.urlencode($c['group_key']).'&device_type='.urlencode($c['device_type'])) ); ?>">Create Rule</a></td>
+                    <td><a class="button button-primary button-small" href="<?php echo esc_url( admin_url('admin.php?page=gstore_rules&action=edit&group_key='.urlencode($c['group_key']).'&device_type='.urlencode($c['device_type']).'&storage='.urlencode($c['storage'])) ); ?>">Create Rule</a></td>
                 </tr>
             <?php endforeach; else: ?>
-                <tr><td colspan="3">All models have rules or no products found.</td></tr>
+                <tr><td colspan="3">All model+storage combinations have rules or no products found.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
@@ -125,6 +153,7 @@ function gstore_rule_edit_page(){
 
     $group_key  = isset($_GET['group_key']) ? sanitize_text_field($_GET['group_key']) : '';
     $device_type= isset($_GET['device_type']) ? sanitize_text_field($_GET['device_type']) : 'phone';
+    $storage    = isset($_GET['storage']) ? sanitize_text_field($_GET['storage']) : '';
 
     $row = null;
     if ($group_key){
@@ -132,16 +161,35 @@ function gstore_rule_edit_page(){
     }
     if ($row){
         $device_type = $row['device_type'];
+
+        // Extract storage from group key if present
+        if (preg_match('/(\d+gb)$/', $row['group_key'], $matches)) {
+            $storage = strtoupper($matches[1]);
+        }
     }
 
     $default_condition = $row ? ($row['default_condition'] ?: '') : '';
     $pricing = $row && $row['pricing_json'] ? json_decode($row['pricing_json'], true) : [];
 
     $tiers = ['80-85','85-90','90-95','95-100'];
+
+    // Parse display name
+    $display_key = $group_key;
+    if (preg_match('/(.+?)(\d+gb)$/', $group_key, $matches)) {
+        $base_model = trim($matches[1]);
+        $storage_part = strtoupper($matches[2]);
+        $display_key = $base_model . ' - ' . $storage_part;
+    }
     ?>
     <div class="wrap">
         <h1 class="wp-heading-inline"><?php echo $row?'Edit Rule':'Add Rule'; ?></h1>
         <hr class="wp-header-end" />
+
+        <?php if ($storage): ?>
+            <div class="notice notice-info">
+                <p><strong>Storage-Specific Rule:</strong> This rule applies only to <?php echo esc_html($storage); ?> variants.</p>
+            </div>
+        <?php endif; ?>
 
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
             <?php wp_nonce_field('gstore_save_rule','gstore_save_rule_nonce'); ?>
@@ -149,8 +197,15 @@ function gstore_rule_edit_page(){
 
             <table class="form-table">
                 <tr>
-                    <th><label for="group_key">Group Key</label></th>
-                    <td><input type="text" id="group_key" name="group_key" class="regular-text" required value="<?php echo esc_attr($group_key); ?>" <?php echo $row?'readonly':''; ?>></td>
+                    <th><label for="group_key">Group Key (Model + Storage)</label></th>
+                    <td>
+                        <input type="text" id="group_key" name="group_key" class="regular-text" required value="<?php echo esc_attr($group_key); ?>" <?php echo $row?'readonly':''; ?>>
+                        <p class="description">
+                            Format: "brand model storage" (lowercase, no special chars)<br>
+                            Example: "apple iphone-14-pro 128gb" or "samsung galaxy-s23 256gb"<br>
+                            <strong>Display:</strong> <?php echo esc_html($display_key); ?>
+                        </p>
+                    </td>
                 </tr>
                 <tr>
                     <th><label for="device_type">Device Type</label></th>
@@ -178,7 +233,7 @@ function gstore_rule_edit_page(){
                 </tr>
             </table>
 
-            <h2>Pricing (GEL)</h2>
+            <h2>Pricing (GEL) for <?php echo $storage ? esc_html($storage) : 'this model'; ?></h2>
             <p class="description">Leave empty to disable that tier. Empty tiers will be greyed out on product page.</p>
             <table class="widefat striped" style="max-width:720px;">
                 <thead><tr><th>Tier</th><th>Regular Price</th><th>Sale Price</th></tr></thead>
@@ -206,13 +261,13 @@ function gstore_rule_edit_page(){
             </table>
 
             <h2 style="margin-top:24px;">Warranty Information</h2>
-            <p class="description">Set warranty text for this model. All products in this model will share this warranty information.</p>
+            <p class="description">Set warranty text for this specific model+storage combination.</p>
             <table class="form-table">
                 <tr>
                     <th><label for="warranty_text">Warranty Text</label></th>
                     <td>
                         <textarea id="warranty_text" name="warranty_text" rows="4" class="large-text"><?php echo esc_textarea($row['warranty_text'] ?? ''); ?></textarea>
-                        <p class="description">This text will appear in the Warranty tab on product pages for this model.</p>
+                        <p class="description">This text will appear in the Warranty tab on product pages for this model+storage.</p>
                     </td>
                 </tr>
             </table>
@@ -278,6 +333,26 @@ function gstore_handle_save_rule(){
             ], ['%s','%s','%s','%s','%s']);
         }
 
+        // Clear pricing cache for all products with this model+storage
+        // Extract storage from group key
+        if (preg_match('/(\d+gb)$/', $group_key, $matches)) {
+            $storage = $matches[1];
+            // Clear cache for all products with this storage
+            global $wpdb;
+            $sql = "SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+                    INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+                    WHERE p.post_type = 'product'
+                    AND pm.meta_key LIKE '%storage%'
+                    AND LOWER(pm.meta_value) LIKE %s
+                    LIMIT 100";
+
+            $pids = $wpdb->get_col($wpdb->prepare($sql, '%' . $storage . '%'));
+            foreach($pids as $pid) {
+                delete_transient('gstore_pricing_' . $pid);
+                delete_transient('gstore_warranty_' . $pid);
+            }
+        }
+
         gstore_log_debug('rule_saved', compact('group_key','device_type'));
 
         wp_safe_redirect( admin_url('admin.php?page=gstore_rules&updated=1') );
@@ -305,6 +380,10 @@ function gstore_handle_delete_rule(){
         if ($group_key){
             $wpdb->delete($table, ['group_key'=>$group_key], ['%s']);
             gstore_log_debug('rule_deleted', ['group_key'=>$group_key]);
+
+            // Clear related caches
+            delete_transient('gstore_pricing_*');
+            delete_transient('gstore_warranty_*');
         }
 
         wp_safe_redirect( admin_url('admin.php?page=gstore_rules&updated=1') );
@@ -329,6 +408,10 @@ function gstore_handle_clear_rules(){
         $table = gstore_epp_table_rules();
         $cnt = $wpdb->query("TRUNCATE TABLE {$table}");
         gstore_log_debug('rules_cleared', ['count'=>$cnt]);
+
+        // Clear all pricing caches
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gstore_pricing_%'");
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gstore_warranty_%'");
 
         wp_safe_redirect( admin_url('admin.php?page=gstore_maint&updated=1') );
         exit;
@@ -541,6 +624,41 @@ function gstore_maint_page(){
             <input type="hidden" name="action" value="gstore_clear_rules">
             <button type="submit" class="button button-secondary" onclick="return confirm('Are you sure? This deletes ALL pricing rules and cannot be undone.');">Clear ALL Pricing Rules</button>
         </form>
+
+        <h2 style="margin-top:24px;">Clear Caches</h2>
+        <p class="description">Clear all cached data to force fresh queries.</p>
+        <form method="post" action="<?php echo esc_url( admin_url('admin-post.php') ); ?>" style="margin-top:12px;">
+            <?php wp_nonce_field('gstore_clear_caches'); ?>
+            <input type="hidden" name="action" value="gstore_clear_caches">
+            <button type="submit" class="button" onclick="return confirm('Clear all plugin caches?');">Clear All Caches</button>
+        </form>
     </div>
     <?php
 }
+
+// Cache clearing handler
+add_action('admin_post_gstore_clear_caches', function(){
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die('Unauthorized', 'Error', ['response'=>403]);
+    }
+
+    check_admin_referer('gstore_clear_caches');
+
+    try {
+        global $wpdb;
+
+        // Clear all Gstore transients
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gstore_%'");
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_gstore_%'");
+
+        gstore_log_debug('caches_cleared', ['timestamp'=>current_time('mysql')]);
+
+        wp_safe_redirect( admin_url('admin.php?page=gstore_maint&updated=1') );
+        exit;
+
+    } catch(\Throwable $e){
+        gstore_log_error('cache_clear_failed', ['err'=>$e->getMessage()]);
+        wp_safe_redirect( admin_url('admin.php?page=gstore_maint&err=1') );
+        exit;
+    }
+});
