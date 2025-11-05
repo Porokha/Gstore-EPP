@@ -11,6 +11,25 @@ class GStore_EPP_REST {
 	}
 
 	public function routes(){
+		register_rest_route(self::NS, '/compare-specs', [
+			'methods'=>'GET',
+			'permission_callback'=>'__return_true',
+			'callback'=>[$this,'get_compare_specs'],
+			'args'=>[
+				'product_id'=>['required'=>true,'type'=>'integer']
+			]
+		]);
+
+		register_rest_route(self::NS, '/products-search', [
+			'methods'=>'GET',
+			'permission_callback'=>'__return_true',
+			'callback'=>[$this,'search_products'],
+			'args'=>[
+				'search'=>['required'=>false,'type'=>'string'],
+				'limit'=>['required'=>false,'type'=>'integer','default'=>20]
+			]
+		]);
+
 		register_rest_route(self::NS, '/pricing', [
 			'methods'=>'GET',
 			'permission_callback'=>'__return_true',
@@ -116,6 +135,82 @@ class GStore_EPP_REST {
 		gstore_log_debug('siblings_found', ['pid'=>$pid,'brand'=>$brand,'model'=>$model,'count'=>count($items)]);
 		return new WP_REST_Response(['ok'=>true,'brand'=>$brand,'model'=>$model,'siblings'=>$items], 200);
 	}
+
+public function get_compare_specs(WP_REST_Request $r){
+	$pid = absint($r->get_param('product_id'));
+	if (!$pid) return new WP_REST_Response(['ok'=>false,'error'=>'MISSING_PRODUCT_ID'], 400);
+
+	$specs = get_post_meta($pid, '_gstore_compare_specs', true);
+	if (!is_array($specs)) {
+		$specs = [
+			'CPU' => 0,
+			'GPU' => 0,
+			'Camera' => 0,
+			'Battery' => 0,
+			'Display' => 0,
+			'Build' => 0,
+			'Connectivity' => 0,
+			'Charging' => 0,
+			'Weight' => 0,
+			'Durability' => 0,
+			'Storage Speed' => 0,
+			'Thermals' => 0
+		];
+	}
+
+	$product = wc_get_product($pid);
+	$title = $product ? $product->get_title() : 'Product';
+
+	return new WP_REST_Response([
+		'ok'=>true,
+		'product_id'=>$pid,
+		'title'=>$title,
+		'specs'=>$specs
+	], 200);
+}
+
+public function search_products(WP_REST_Request $r){
+	$search = sanitize_text_field($r->get_param('search') ?: '');
+	$limit = absint($r->get_param('limit') ?: 20);
+
+	$args = [
+		'post_type'=>'product',
+		'posts_per_page'=>$limit,
+		'post_status'=>'publish',
+		'orderby'=>'title',
+		'order'=>'ASC',
+		'fields'=>'ids'
+	];
+
+	if ($search) {
+		$args['s'] = $search;
+	}
+
+	$q = new WP_Query($args);
+	$products = [];
+
+	if ($q->have_posts()){
+		foreach($q->posts as $id){
+			$p = wc_get_product($id);
+			if (!$p) continue;
+
+			$img_id = $p->get_image_id();
+			$thumb = $img_id ? wp_get_attachment_image_url($img_id, 'thumbnail') : wc_placeholder_img_src('thumbnail');
+
+			$products[] = [
+				'id'=>$p->get_id(),
+				'title'=>$p->get_title(),
+				'image'=>$thumb
+			];
+		}
+	}
+	wp_reset_postdata();
+
+	return new WP_REST_Response([
+		'ok'=>true,
+		'products'=>$products
+	], 200);
+}
 
 	public function get_fbt(WP_REST_Request $r){
 		$pid = absint($r->get_param('product_id'));
