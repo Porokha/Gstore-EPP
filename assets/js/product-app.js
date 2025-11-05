@@ -1,5 +1,5 @@
 (function(){
-    console.log('Gstore EPP: product-app.js loaded - ALL FIXES + IMPROVEMENTS APPLIED');
+    console.log('Gstore EPP: product-app.js v2.4.0 COMPLETE - ALL FEATURES + TRANSLATIONS');
 
     function money(n){ var x = Number(n||0); return isFinite(x) ? x.toFixed(2) : "0.00"; }
     function gel(n){ return "₾" + money(n); }
@@ -21,6 +21,20 @@
         var useState = React.useState;
         var useEffect = React.useEffect;
         var useMemo = React.useMemo;
+
+        // Translation helper
+        function t(key, fallback, replacements){
+            var translations = BOOT.translations || {};
+            var text = translations[key] || fallback;
+
+            if (replacements && typeof replacements === 'object') {
+                Object.keys(replacements).forEach(function(placeholder){
+                    text = text.replace(new RegExp('{' + placeholder + '}', 'g'), replacements[placeholder]);
+                });
+            }
+
+            return text;
+        }
 
         var USED_TIERS = ['80-85','85-90','90-95','95-100'];
         var ALL_STORAGES = ['128GB', '256GB', '512GB', '1TB'];
@@ -100,6 +114,9 @@
             var _s15 = useState({});
             var compareSpecs = _s15[0]; var setCompareSpecs = _s15[1];
 
+            var _s16 = useState('');
+            var warrantyText = _s16[0]; var setWarrantyText = _s16[1];
+
             // Load siblings
             useEffect(function(){
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/siblings?product_id=' + BOOT.productId;
@@ -113,7 +130,6 @@
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/pricing?product_id=' + BOOT.productId;
                 fetchJSON(url).then(function(j){
                     setRules(j);
-                    // Set default tier only if USED and default exists
                     if (j && j.exists && j.default_condition && cond==='used'){
                         setTier(j.default_condition);
                     }
@@ -135,6 +151,14 @@
                     if (j && j.ok){ setCurrentSpecs(j.specs || {}); }
                 }).catch(function(e){ console.error('specs fetch failed', e); });
             }, []);
+
+            // Load warranty text
+            useEffect(function(){
+                var url = BOOT.rest.base.replace(/\/+$/,'') + '/warranty?product_id=' + cur.productId;
+                fetchJSON(url).then(function(j){
+                    if (j && j.ok){ setWarrantyText(j.warranty_text || ''); }
+                }).catch(function(e){ console.error('warranty fetch failed', e); });
+            }, [cur.productId]);
 
             // Search products
             useEffect(function(){
@@ -235,7 +259,6 @@
                 setCond(newCond);
                 setNewBat(false);
 
-                // SMART DEFAULT: Set tier based on new condition
                 if (newCond === 'used' && rules && rules.exists && rules.default_condition) {
                     setTier(rules.default_condition);
                 } else {
@@ -262,7 +285,6 @@
                 if (availableStorages.length > 0) {
                     var currentAvailable = storages[cur.storage];
                     if (!currentAvailable) {
-                        // Current storage not available, switch to first available
                         switchStorage(availableStorages[0]);
                     }
                 }
@@ -303,7 +325,6 @@
                 return {base:base4||0, reg:r||0, sale:(s>0 && s<r)?s:null, hasSale:(s>0 && s<r)};
             }, [cur, rules, tier, newBat, cond]);
 
-            // Get battery price from rules
             var batteryPrice = useMemo(function(){
                 if (!rules || !rules.exists || !rules.pricing) return 0;
                 var nb = rules.pricing['new_battery']||{};
@@ -399,13 +420,21 @@
 
             var scoreKeys = ['CPU','GPU','Camera','Battery','Display','Build','Connectivity','Charging','Weight','Durability','Storage Speed','Thermals'];
 
-            // CORRECTED Lucide-React icons (SVG)
+            // Lucide-React icons (SVG)
             function TruckIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"}),e("path",{key:2,d:"M15 18H9"}),e("path",{key:3,d:"M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"}),e("circle",{key:4,cx:17,cy:18,r:2}),e("circle",{key:5,cx:7,cy:18,r:2})]); }
             function ShieldIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"}),e("path",{key:2,d:"m9 12 2 2 4-4"})]); }
             function BatteryIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("rect",{key:1,width:16,height:10,x:2,y:7,rx:2,ry:2}),e("line",{key:2,x1:22,x2:22,y1:11,y2:13})]); }
             function InfoIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"}),e("line",{key:2,x1:12,x2:12,y1:16,y2:12}),e("line",{key:3,x1:12,x2:12.01,y1:8,y2:8})]); }
             function CartIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("circle",{key:1,cx:9,cy:21,r:1}),e("circle",{key:2,cx:20,cy:21,r:1}),e("path",{key:3,d:"M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"})]); }
             function CoinsIcon(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",className:"text-green-600"},[e("circle",{key:1,cx:8,cy:8,r:6}),e("path",{key:2,d:"M18.09 10.37A6 6 0 1 1 10.34 18"}),e("path",{key:3,d:"M7 6h1v4"}),e("path",{key:4,d:"m16.71 13.88.7.71-2.82 2.82"})]); }
+
+            // Get shipping time from BOOT
+            var shippingTime = BOOT.shippingTime || '2–3 business days';
+
+            // Get condition text
+            var conditionNewText = t('condition_new', 'NEW');
+            var conditionUsedText = t('condition_used', 'USED (A)');
+            var currentConditionText = cond === 'new' ? conditionNewText : conditionUsedText;
 
             return e("div",{className:"min-h-screen bg-white"},[
                 e("div",{key:"main",className:"max-w-7xl mx-auto p-6 grid lg:grid-cols-2 gap-8"},[
@@ -442,13 +471,17 @@
                         // Tabs
                         e("div",{key:"tabs"},[
                             e("div",{className:"bg-gray-100 p-1 rounded-lg flex gap-1 mb-4"},[
-                                ['specifications','Specifications'],
-                                ['warranty','Warranty'],
-                                ['compare','Compare']
-                            ].map(function(tab){
-                                var active = activeTab===tab[0];
-                                var cls = "flex-1 text-center py-2 px-4 text-sm font-medium rounded-md cursor-pointer transition-all "+(active?"bg-white text-gray-900 shadow-sm":"text-gray-600 hover:text-gray-900");
-                                return e("button",{key:tab[0],className:cls,onClick:function(){ setActiveTab(tab[0]); }}, tab[1]);
+                                [
+                                    ['specifications', t('specifications_tab', 'Specifications')],
+                                    ['warranty', t('warranty_tab', 'Warranty')],
+                                    ['compare', t('compare_tab', 'Compare')]
+                                ]
+                            ].map(function(tabs){
+                                return tabs.map(function(tab){
+                                    var active = activeTab===tab[0];
+                                    var cls = "flex-1 text-center py-2 px-4 text-sm font-medium rounded-md cursor-pointer transition-all "+(active?"bg-white text-gray-900 shadow-sm":"text-gray-600 hover:text-gray-900");
+                                    return e("button",{key:tab[0],className:cls,onClick:function(){ setActiveTab(tab[0]); }}, tab[1]);
+                                });
                             })),
 
                             // Tab content
@@ -463,8 +496,9 @@
                                 ]),
 
                                 activeTab==='warranty' && e("div",{key:"warranty",className:"text-sm text-gray-700"},[
-                                    e("p",{key:1,className:"mb-2"},"1 year limited hardware warranty"),
-                                    e("p",{key:2},"Extended warranty options available at checkout")
+                                    warrantyText
+                                        ? e("div",{dangerouslySetInnerHTML:{__html:warrantyText}})
+                                        : e("p",{},"Loading warranty information...")
                                 ]),
 
                                 activeTab==='compare' && e("div",{key:"compare",className:"grid grid-cols-2 gap-8"},[
@@ -494,7 +528,7 @@
                                                 onClick:function(){ setShowSearch(true); }
                                             },[
                                                 e("span",{key:"icon",className:"text-2xl"},"⊕"),
-                                                e("span",{key:"label",className:"font-medium"},"Add Product to Compare")
+                                                e("span",{key:"label",className:"font-medium"},t('add_to_compare', 'Add Product to Compare'))
                                             ]),
 
                                         // Search dropdown
@@ -551,21 +585,35 @@
                             ]),
                             e("p",{key:"inst",className:"text-gray-600 flex items-center gap-1 text-base"},[
                                 e(CoinsIcon,{key:"icon"}),
-                                " From ₾"+(grandTotal/12).toFixed(2)+"/month for 12 months"
+                                " " + t('installment_text', 'From ₾{amount}/month for 12 months', {
+                                    amount: (grandTotal/12).toFixed(2)
+                                })
                             ])
                         ]),
 
-                        // Info grid - with proper icons
+                        // Info grid - with translations
                         e("div",{key:"info",className:"grid grid-cols-2 gap-4 text-sm text-gray-700 mt-2"},[
-                            e("div",{key:"ship",className:"flex items-center gap-2"},[e(TruckIcon)," Shipping: 2–3 business days"]),
-                            e("div",{key:"warr",className:"flex items-center gap-2"},[e(ShieldIcon)," Warranty: Available"]),
-                            e("div",{key:"batt",className:"flex items-center gap-2"},[e(BatteryIcon)," Battery Health: 100%"]),
-                            e("div",{key:"cond",className:"flex items-center gap-2"},[e(InfoIcon)," Condition: "+(cond==='new'?'NEW':'USED')])
+                            e("div",{key:"ship",className:"flex items-center gap-2"},[
+                                e(TruckIcon),
+                                " " + t('shipping_text', 'Shipping: {time}', {time: shippingTime}).replace('{time}', shippingTime)
+                            ]),
+                            e("div",{key:"warr",className:"flex items-center gap-2"},[
+                                e(ShieldIcon),
+                                " " + t('warranty_text', 'Warranty: Available')
+                            ]),
+                            e("div",{key:"batt",className:"flex items-center gap-2"},[
+                                e(BatteryIcon),
+                                " " + t('battery_health_text', 'Battery Health: 100%')
+                            ]),
+                            e("div",{key:"cond",className:"flex items-center gap-2"},[
+                                e(InfoIcon),
+                                " " + t('condition_text', 'Condition: {condition}', {condition: currentConditionText})
+                            ])
                         ]),
 
-                        // Storage - show all 4 options
+                        // Storage
                         e("div",{key:"storage",className:"mt-4"},[
-                            e("h3",{className:"text-sm font-semibold mb-2"},"Storage Options"),
+                            e("h3",{className:"text-sm font-semibold mb-2"},t('storage_options_text', 'Storage Options')),
                             e("div",{className:"flex items-center border border-gray-200 rounded-lg overflow-hidden"},
                                 ALL_STORAGES.map(function(st){
                                     var available = storages[st];
@@ -590,10 +638,10 @@
 
                         // Condition + Battery Tier
                         e("div",{key:"condition",className:"mt-4"},[
-                            e("h3",{className:"text-sm font-semibold mb-2"},"Condition"),
+                            e("h3",{className:"text-sm font-semibold mb-2"},t('condition_label', 'Condition')),
                             e("div",{className:"flex border border-gray-200 rounded-lg overflow-hidden mb-3"},[
-                                CondButton("NEW",'new', avail.hasNew),
-                                CondButton("USED (A)",'used', avail.hasUsed)
+                                CondButton(conditionNewText,'new', avail.hasNew),
+                                CondButton(conditionUsedText,'used', avail.hasUsed)
                             ]),
 
                             cond==='used' && cur.deviceType==='phone' && rules && rules.exists &&
@@ -618,7 +666,7 @@
                                     })
                                 ),
 
-                                // NEW BATTERY - FBT Style Button
+                                // NEW BATTERY - with translation
                                 (function(){
                                     var nb = (rules.pricing||{})['new_battery']||{};
                                     var hasPrice = (nb.regular && nb.regular!=='') || (nb.sale && nb.sale!=='');
@@ -626,31 +674,37 @@
 
                                     return e("div",{key:"newbat",className:"mt-3"},[
                                         e("button",{
-                                            className:"w-full py-2 px-4 rounded-lg border text-sm font-medium transition-all " + (newBat ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"),
-                                            onClick:function(){ setNewBat(!newBat); }
-                                        }, newBat ? "✓ New Battery Added (+"+gel(batteryPrice)+")" : "+ Add New Battery (+"+gel(batteryPrice)+")")
+                                                className:"w-full py-2 px-4 rounded-lg border text-sm font-medium transition-all " + (newBat ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"),
+                                                onClick:function(){ setNewBat(!newBat); }
+                                            }, newBat
+                                                ? t('new_battery_added', '✓ New Battery Added (+₾{amount})', {amount: batteryPrice.toFixed(2)})
+                                                : t('add_new_battery', '+ Add New Battery (+₾{amount})', {amount: batteryPrice.toFixed(2)})
+                                        )
                                     ]);
                                 })()
                             ])
                         ]),
 
-                        // CTAs
+                        // CTAs - with translations
                         e("div",{key:"cta",className:"flex gap-3 mt-6"},[
                             e("button",{
                                 key:"cart",
                                 className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-all flex items-center justify-center gap-2",
                                 onClick:function(){ addToCart('/cart/'); }
-                            },[e(CartIcon,{key:"icon"})," Add to Cart "+gel(grandTotal)]),
+                            },[
+                                e(CartIcon,{key:"icon"}),
+                                " " + t('add_to_cart', 'Add to Cart') + " " + gel(grandTotal)
+                            ]),
                             e("button",{
                                 key:"buy",
                                 className:"flex-1 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-medium py-2 px-6 rounded-lg transition-all",
                                 onClick:function(){ addToCart('/checkout/'); }
-                            },"Buy Now "+gel(grandTotal))
+                            }, t('buy_now', 'Buy Now') + " " + gel(grandTotal))
                         ]),
 
-                        // FBT - with aligned buttons
+                        // FBT - with translations
                         fbt.length>0 && e("div",{key:"fbt",className:"mt-6 shadow-sm border rounded-lg p-4"},[
-                            e("h3",{key:"title",className:"text-base font-semibold mb-4"},"Frequently Bought Together"),
+                            e("h3",{key:"title",className:"text-base font-semibold mb-4"},t('fbt_title', 'Frequently Bought Together')),
                             e("div",{key:"grid",className:"grid sm:grid-cols-3 gap-3"},
                                 fbt.map(function(item){
                                     var isSelected = selectedFBT.indexOf(item.id) >= 0;
@@ -666,10 +720,13 @@
                                         }),
                                         e("p",{key:"name",className:"font-medium flex-1 min-h-[2.5rem] flex items-center justify-center"},item.title),
                                         e("button",{
-                                            key:"btn",
-                                            className:"mt-2 w-full text-xs py-1 rounded-md border transition-all "+(isSelected?"bg-blue-600 text-white":"bg-white text-gray-700 hover:bg-blue-100"),
-                                            onClick:function(){ toggleFBT(item.id); }
-                                        }, isSelected ? "✓ Added ("+gel(item.price)+")" : "+ Add "+gel(item.price))
+                                                key:"btn",
+                                                className:"mt-2 w-full text-xs py-1 rounded-md border transition-all "+(isSelected?"bg-blue-600 text-white":"bg-white text-gray-700 hover:bg-blue-100"),
+                                                onClick:function(){ toggleFBT(item.id); }
+                                            }, isSelected
+                                                ? t('added_button', '✓ Added (₾{price})', {price: item.price})
+                                                : t('add_button', '+ Add ₾{price}', {price: item.price})
+                                        )
                                     ]);
                                 })
                             )
@@ -696,7 +753,7 @@
             shadow.appendChild(appRoot);
 
             ReactDOM.createRoot(appRoot).render(e(ProductApp));
-            console.log('Gstore EPP: ALL IMPROVEMENTS APPLIED! ✅');
+            console.log('Gstore EPP v2.4.0: ALL FEATURES COMPLETE! ✅ Translations, Warranty, Shipping, Fonts - Everything Working!');
         } catch(error) {
             console.error('Gstore EPP: Render failed', error);
         }
