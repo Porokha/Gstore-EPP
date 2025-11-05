@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: Gstore — Enhanced Product Page
+Plugin Name: Gstore — Enhanced Product Page Reach Based
 Plugin URI: https://gstore.ge
 Description: React-powered WooCommerce product page with unified pricing rules, add-ons, typography settings, translations, and debug tools.
 Version: 2.4.1

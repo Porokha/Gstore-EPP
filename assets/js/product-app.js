@@ -125,7 +125,7 @@
                 }).catch(function(e){ console.error('siblings fetch failed', e); });
             }, []);
 
-            // Load pricing and set default tier
+            // Load the pricing and set default tier
             useEffect(function(){
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/pricing?product_id=' + BOOT.productId;
                 fetchJSON(url).then(function(j){
