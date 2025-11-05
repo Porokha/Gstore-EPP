@@ -205,6 +205,18 @@ function gstore_rule_edit_page(){
                 </tbody>
             </table>
 
+            <h2 style="margin-top:24px;">Warranty Information</h2>
+            <p class="description">Set warranty text for this model. All products in this model will share this warranty information.</p>
+            <table class="form-table">
+                <tr>
+                    <th><label for="warranty_text">Warranty Text</label></th>
+                    <td>
+                        <textarea id="warranty_text" name="warranty_text" rows="4" class="large-text"><?php echo esc_textarea($row['warranty_text'] ?? ''); ?></textarea>
+                        <p class="description">This text will appear in the Warranty tab on product pages for this model.</p>
+                    </td>
+                </tr>
+            </table>
+
             <p class="submit">
                 <button type="submit" class="button button-primary button-large">Save Rule</button>
                 <a class="button button-large" href="<?php echo esc_url(admin_url('admin.php?page=gstore_rules')); ?>">Cancel</a>
@@ -220,7 +232,6 @@ function gstore_handle_save_rule(){
         wp_die('Unauthorized', 'Error', ['response'=>403]);
     }
 
-    // Check nonce
     if (!isset($_POST['gstore_save_rule_nonce']) || !wp_verify_nonce($_POST['gstore_save_rule_nonce'], 'gstore_save_rule')) {
         wp_die('Nonce verification failed', 'Error', ['response'=>403]);
     }
@@ -232,6 +243,7 @@ function gstore_handle_save_rule(){
         $group_key = sanitize_text_field($_POST['group_key'] ?? '');
         $device_type = sanitize_text_field($_POST['device_type'] ?? 'phone');
         $default_condition = isset($_POST['default_condition']) ? sanitize_text_field($_POST['default_condition']) : '';
+        $warranty_text = isset($_POST['warranty_text']) ? wp_kses_post($_POST['warranty_text']) : '';
 
         if (!$group_key) {
             throw new Exception('Group key is required');
@@ -253,15 +265,17 @@ function gstore_handle_save_rule(){
                     'device_type'=>$device_type,
                     'default_condition'=>$default_condition,
                     'pricing_json'=>$json,
+                    'warranty_text'=>$warranty_text,
                     'updated_at'=>current_time('mysql')
-            ], ['id'=>$exists], ['%s','%s','%s','%s'], ['%d']);
+            ], ['id'=>$exists], ['%s','%s','%s','%s','%s'], ['%d']);
         } else {
             $wpdb->insert($table, [
                     'group_key'=>$group_key,
                     'device_type'=>$device_type,
                     'default_condition'=>$default_condition,
                     'pricing_json'=>$json,
-            ], ['%s','%s','%s','%s']);
+                    'warranty_text'=>$warranty_text,
+            ], ['%s','%s','%s','%s','%s']);
         }
 
         gstore_log_debug('rule_saved', compact('group_key','device_type'));

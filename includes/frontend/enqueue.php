@@ -35,12 +35,15 @@ add_action('woocommerce_before_single_product', function(){
             padding: 0 !important;
         }
         
-        /* Shadow host styling */
+        /* Shadow host styling - CENTERED */
         #gstore-epp-shadow-host { 
             min-height: 500px;
             width: 100%;
+            max-width: 1400px;
             display: block;
             background: #fff;
+            margin: 0 auto !important;
+            padding: 0 20px;
         }
     </style>';
 
@@ -104,6 +107,14 @@ add_action('wp_enqueue_scripts', function(){
 	$img_id = $product->get_image_id();
 	$hero = $img_id ? wp_get_attachment_image_url($img_id, 'large') : wc_placeholder_img_src('large');
 
+	// Get translations
+	$translations = get_option('gstore_epp_translations', []);
+
+	// Get shipping time
+	$shipping_time = function_exists('gstore_epp_get_shipping')
+		? gstore_epp_get_shipping($pid)
+		: ($translations['default_shipping'] ?? '2–3 business days');
+
 	// Build boot data
 	$boot = [
 		'productId'  => $pid,
@@ -120,6 +131,8 @@ add_action('wp_enqueue_scripts', function(){
 		'deviceType' => $ctx['device_type'] ?? 'phone',
 		'groupKey'   => $ctx['group_key'] ?? '',
 		'image'      => $hero,
+		'shippingTime' => $shipping_time,
+		'translations' => $translations,
 		'rest'       => [
 			'base'  => esc_url_raw( rest_url( 'gstore/v1' ) ),
 			'nonce' => wp_create_nonce('wp_rest')

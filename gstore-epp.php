@@ -2,8 +2,8 @@
 /*
 Plugin Name: Gstore — Enhanced Product Page
 Plugin URI: https://gstore.ge
-Description: React-powered WooCommerce product page with unified pricing rules, add-ons, and debug tools.
-Version: 2.2.4
+Description: React-powered WooCommerce product page with unified pricing rules, add-ons, typography settings, translations, and debug tools.
+Version: 2.4.0
 Author: Porokha
 Author URI: https://gstore.ge
 Update URI: https://github.com/Porokha/gstore-epp
@@ -57,7 +57,7 @@ add_filter('pre_set_site_transient_update_plugins', function($transient){
 
 if (!defined('ABSPATH')) { exit; }
 
-define('GSTORE_EPP_VER', '1.1.0');
+define('GSTORE_EPP_VER', '2.4.0');
 define('GSTORE_EPP_DIR', plugin_dir_path(__FILE__));
 define('GSTORE_EPP_URL', plugin_dir_url(__FILE__));
 
@@ -70,9 +70,12 @@ require_once GSTORE_EPP_DIR.'includes/rest/routes.php';
 require_once GSTORE_EPP_DIR.'includes/frontend/ajax.php';
 require_once GSTORE_EPP_DIR.'admin/menu.php';
 require_once GSTORE_EPP_DIR.'admin/metabox-fbt.php';
+require_once GSTORE_EPP_DIR.'admin/metabox-compare.php';
+require_once GSTORE_EPP_DIR.'admin/typography.php';
+require_once GSTORE_EPP_DIR.'admin/translations.php';
 
 // --- Activation: tables + logs dir ---
 register_activation_hook(__FILE__, function(){
-    gstore_epp_create_tables();
-    gstore_epp_ensure_logs_dir();
+	gstore_epp_create_tables();
+	gstore_epp_ensure_logs_dir();
 });
