@@ -1,5 +1,5 @@
 (function(){
-    console.log('Gstore EPP: product-app.js loaded - EXACT MATCH');
+    console.log('Gstore EPP: product-app.js loaded - ALL FIXES APPLIED');
 
     function money(n){ var x = Number(n||0); return isFinite(x) ? x.toFixed(2) : "0.00"; }
     function gel(n){ return "₾" + money(n); }
@@ -23,6 +23,7 @@
         var useMemo = React.useMemo;
 
         var USED_TIERS = ['80-85','85-90','90-95','95-100'];
+        var ALL_STORAGES = ['128GB', '256GB', '512GB', '1TB'];
 
         function Button(props){
             var base = "inline-flex items-center justify-center rounded-lg px-6 py-2.5 text-sm font-medium transition-all";
@@ -118,7 +119,7 @@
                 }).catch(function(e){ console.error('pricing fetch failed', e); });
             }, []);
 
-            // Load FBT - NO pre-selection
+            // Load FBT
             useEffect(function(){
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/fbt?product_id=' + BOOT.productId;
                 fetchJSON(url).then(function(j){
@@ -170,19 +171,17 @@
             }, [siblings]);
 
             var storages = useMemo(function(){
-                var seen = {};
-                var list = [];
+                var available = {};
                 siblings.forEach(function(p){
                     var pc = String(p.condition||'').toLowerCase();
                     var match = (cond==='new' && pc==='new') ||
                         (cond==='used' && pc==='used') ||
                         (cond==='openbox' && pc.replace(/\s+/g,'')==='openbox');
                     if (match && p.storage){
-                        var key = String(p.storage).toLowerCase();
-                        if (!seen[key]){ seen[key]=true; list.push(p.storage); }
+                        available[p.storage] = true;
                     }
                 });
-                return list;
+                return available;
             }, [siblings, cond]);
 
             var colors = useMemo(function(){
@@ -246,19 +245,19 @@
 
                 if (!rules || !rules.exists || cond==='new'){
                     var base = showSale!=null ? sale : reg;
-                    return {base:base||0, reg:reg||0, sale:showSale};
+                    return {base:base||0, reg:reg||0, sale:showSale, hasSale:!!showSale};
                 }
 
                 var pr = rules.pricing||{};
                 if (!tier){
                     var base2 = showSale!=null ? sale : reg;
-                    return {base:base2||0, reg:reg||0, sale:showSale};
+                    return {base:base2||0, reg:reg||0, sale:showSale, hasSale:!!showSale};
                 }
 
                 var chosen = pr[tier] || {};
                 if (!chosen.regular && !chosen.sale){
                     var base3 = showSale!=null ? sale : reg;
-                    return {base:base3||0, reg:reg||0, sale:showSale};
+                    return {base:base3||0, reg:reg||0, sale:showSale, hasSale:!!showSale};
                 }
 
                 var r = parseFloat(chosen.regular||0);
@@ -271,8 +270,15 @@
                     if (isFinite(add)) base4 += add;
                 }
 
-                return {base:base4||0, reg:r||0, sale:(s>0 && s<r)?s:null};
+                return {base:base4||0, reg:r||0, sale:(s>0 && s<r)?s:null, hasSale:(s>0 && s<r)};
             }, [cur, rules, tier, newBat, cond]);
+
+            // Get battery price from rules
+            var batteryPrice = useMemo(function(){
+                if (!rules || !rules.exists || !rules.pricing) return 0;
+                var nb = rules.pricing['new_battery']||{};
+                return parseFloat((nb.sale && nb.sale!=='') ? nb.sale : (nb.regular||0));
+            }, [rules]);
 
             var fbtTotal = useMemo(function(){
                 var total = 0;
@@ -303,8 +309,13 @@
             function CondButton(lbl, key, enabled){
                 var active = (cond===key);
                 var cls = "flex-1 text-center py-2 text-sm font-medium transition-all ";
-                cls += active ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-blue-50";
-                if (!enabled) cls += " opacity-40 cursor-not-allowed";
+                if (!enabled) {
+                    cls += "bg-gray-100 text-gray-400 cursor-not-allowed";
+                } else if (active) {
+                    cls += "bg-blue-600 text-white";
+                } else {
+                    cls += "bg-white text-gray-700 hover:bg-blue-50";
+                }
                 return e("button",{
                     className:cls,
                     disabled:!enabled,
@@ -358,263 +369,285 @@
 
             var scoreKeys = ['CPU','GPU','Camera','Battery','Display','Build','Connectivity','Charging','Weight','Durability','Storage Speed','Thermals'];
 
-            return e("div",{className:"max-w-7xl mx-auto p-6 grid lg:grid-cols-2 gap-8"},[
-                // LEFT: Photos + Description + Tabs
-                e("div",{key:"left",className:"space-y-6"},[
-                    // Hero image
-                    e("img",{
-                        key:"hero",
-                        src:cur.image || BOOT.image,
-                        alt:cur.title||"Product",
-                        className:"w-full rounded-2xl shadow-md object-cover"
-                    }),
+            // Lucide-React style icons (SVG)
+            function TruckIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M16 3h5v13h-5"}),e("path",{key:2,d:"M3 3h13v13H3z"}),e("circle",{key:3,cx:5.5,cy:18.5,r:2.5}),e("circle",{key:4,cx:18.5,cy:18.5,r:2.5})]); }
+            function ShieldIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{d:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"})]); }
+            function BatteryIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("rect",{x:1,y:6,width:18,height:12,rx:2,ry:2}),e("line",{x1:23,y1:13,x2:23,y2:11})]); }
+            function InfoIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("circle",{cx:12,cy:12,r:10}),e("line",{x1:12,y1:16,x2:12,y2:12}),e("line",{x1:12,y1:8,x2:12.01,y2:8})]); }
+            function CartIcon(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("circle",{cx:9,cy:21,r:1}),e("circle",{cx:20,cy:21,r:1}),e("path",{d:"M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"})]); }
+            function CoinsIcon(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("circle",{cx:8,cy:8,r:6}),e("path",{d:"M18.09 10.37A6 6 0 1 1 10.34 18"}),e("path",{d:"M7 6h1v4"})]); }
 
-                    // Thumbnail row
-                    e("div",{key:"thumbs",className:"flex gap-3 overflow-x-auto"},
-                        colors.map(function(c){
-                            var active = (String(c.id)===String(cur.productId));
-                            var cls = "h-16 w-16 rounded-lg object-cover cursor-pointer border-2 "+(active?"border-blue-600":"border-gray-200");
-                            return e("img",{
-                                key:c.id,
-                                src:c.image,
-                                alt:c.color||'color',
-                                className:cls,
-                                onClick:function(){ switchToProductId(c.id); }
-                            });
-                        })
-                    ),
+            return e("div",{className:"min-h-screen bg-white"},[
+                e("div",{key:"main",className:"max-w-7xl mx-auto p-6 grid lg:grid-cols-2 gap-8"},[
+                    // LEFT: Photos + Description + Tabs
+                    e("div",{key:"left",className:"space-y-6"},[
+                        // Hero image
+                        e("img",{
+                            key:"hero",
+                            src:cur.image || BOOT.image,
+                            alt:cur.title||"Product",
+                            className:"w-full rounded-2xl shadow-md object-cover"
+                        }),
 
-                    // Description
-                    e("div",{key:"desc",className:"text-gray-700 text-sm leading-relaxed bg-gray-50 border border-gray-100 rounded-lg p-4"},[
-                        e("p",{},"Experience next-level performance, breathtaking photography, and cutting-edge design with iPhone 14 Pro. A16 Bionic, Dynamic Island, ProMotion 120Hz, and a 48MP camera system.")
-                    ]),
+                        // Thumbnail row
+                        e("div",{key:"thumbs",className:"flex gap-3 overflow-x-auto"},
+                            colors.map(function(c){
+                                var active = (String(c.id)===String(cur.productId));
+                                var cls = "h-16 w-16 rounded-lg object-cover cursor-pointer border-2 "+(active?"border-blue-600":"border-gray-200");
+                                return e("img",{
+                                    key:c.id,
+                                    src:c.image,
+                                    alt:c.color||'color',
+                                    className:cls,
+                                    onClick:function(){ switchToProductId(c.id); }
+                                });
+                            })
+                        ),
 
-                    // Tabs
-                    e("div",{key:"tabs"},[
-                        e("div",{className:"bg-gray-100 p-1 rounded-lg flex gap-1 mb-4"},[
-                            ['specifications','Specifications'],
-                            ['warranty','Warranty'],
-                            ['compare','Compare']
-                        ].map(function(tab){
-                            var active = activeTab===tab[0];
-                            var cls = "flex-1 text-center py-2 px-4 text-sm font-medium rounded-md cursor-pointer transition-all "+(active?"bg-white text-gray-900 shadow-sm":"text-gray-600 hover:text-gray-900");
-                            return e("button",{key:tab[0],className:cls,onClick:function(){ setActiveTab(tab[0]); }}, tab[1]);
-                        })),
+                        // Description
+                        e("div",{key:"desc",className:"text-gray-700 text-sm leading-relaxed bg-gray-50 border border-gray-100 rounded-lg p-4"},[
+                            e("p",{},"Experience next-level performance, breathtaking photography, and cutting-edge design with iPhone 14 Pro. A16 Bionic, Dynamic Island, ProMotion 120Hz, and a 48MP camera system.")
+                        ]),
 
-                        // Tab content
-                        e("div",{className:"pt-4"},[
-                            activeTab==='specifications' && e("ul",{key:"specs",className:"list-disc pl-5 space-y-1 text-gray-700"},[
-                                e("li",{key:1},"Display: 6.1\" Super Retina XDR OLED, 2556×1179, ProMotion 120Hz, Always-On"),
-                                e("li",{key:2},"Chip: A16 Bionic (6-core CPU, 5-core GPU, 16-core Neural Engine)"),
-                                e("li",{key:3},"Memory: 6GB; Storage: 128GB / 256GB / 512GB / 1TB"),
-                                e("li",{key:4},"Cameras: 48MP main, 12MP ultra-wide, 12MP telephoto; 12MP TrueDepth front"),
-                                e("li",{key:5},"Connectivity: 5G, Wi-Fi 6, Bluetooth 5.3, UWB, NFC"),
-                                e("li",{key:6},"Charging: MagSafe up to 15W, Qi up to 7.5W")
-                            ]),
+                        // Tabs
+                        e("div",{key:"tabs"},[
+                            e("div",{className:"bg-gray-100 p-1 rounded-lg flex gap-1 mb-4"},[
+                                ['specifications','Specifications'],
+                                ['warranty','Warranty'],
+                                ['compare','Compare']
+                            ].map(function(tab){
+                                var active = activeTab===tab[0];
+                                var cls = "flex-1 text-center py-2 px-4 text-sm font-medium rounded-md cursor-pointer transition-all "+(active?"bg-white text-gray-900 shadow-sm":"text-gray-600 hover:text-gray-900");
+                                return e("button",{key:tab[0],className:cls,onClick:function(){ setActiveTab(tab[0]); }}, tab[1]);
+                            })),
 
-                            activeTab==='warranty' && e("div",{key:"warranty",className:"text-sm text-gray-700"},[
-                                e("p",{key:1,className:"mb-2"},"1 year limited hardware warranty"),
-                                e("p",{key:2},"Extended warranty options available at checkout")
-                            ]),
-
-                            activeTab==='compare' && e("div",{key:"compare",className:"grid grid-cols-2 gap-8"},[
-                                // Left: Current product
-                                e("div",{key:"left"},[
-                                    e("h3",{className:"font-semibold mb-2"},"iPhone 14 Pro"),
-                                    scoreKeys.map(function(k){ return CompareRow(k, !!compareProduct); })
+                            // Tab content
+                            e("div",{className:"pt-4"},[
+                                activeTab==='specifications' && e("ul",{key:"specs",className:"list-disc pl-5 space-y-1 text-gray-700"},[
+                                    e("li",{key:1},"Display: 6.1\" Super Retina XDR OLED, 2556×1179, ProMotion 120Hz, Always-On"),
+                                    e("li",{key:2},"Chip: A16 Bionic (6-core CPU, 5-core GPU, 16-core Neural Engine)"),
+                                    e("li",{key:3},"Memory: 6GB; Storage: 128GB / 256GB / 512GB / 1TB"),
+                                    e("li",{key:4},"Cameras: 48MP main, 12MP ultra-wide, 12MP telephoto; 12MP TrueDepth front"),
+                                    e("li",{key:5},"Connectivity: 5G, Wi-Fi 6, Bluetooth 5.3, UWB, NFC"),
+                                    e("li",{key:6},"Charging: MagSafe up to 15W, Qi up to 7.5W")
                                 ]),
 
-                                // Right: Compare selector
-                                e("div",{key:"right",className:"relative"},[
-                                    compareProduct ?
-                                        e("div",{},[
-                                            e("div",{className:"flex items-center justify-between mb-2"},[
-                                                e("h3",{key:"title",className:"font-semibold"},"Product #"+compareProduct),
-                                                e("button",{
-                                                    key:"change",
-                                                    className:"px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50",
-                                                    onClick:function(){ setCompareProduct(null); }
-                                                },"Change")
-                                            ]),
-                                            scoreKeys.map(function(k){ return CompareRow(k, true); })
-                                        ])
-                                        :
-                                        e("button",{
-                                            className:"w-full border-2 border-dashed border-gray-300 rounded-xl p-10 text-center text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-all flex flex-col items-center gap-2",
-                                            onClick:function(){ setShowSearch(true); }
-                                        },[
-                                            e("span",{key:"icon",className:"text-2xl"},"⊕"),
-                                            e("span",{key:"label",className:"font-medium"},"Add Product to Compare")
-                                        ]),
+                                activeTab==='warranty' && e("div",{key:"warranty",className:"text-sm text-gray-700"},[
+                                    e("p",{key:1,className:"mb-2"},"1 year limited hardware warranty"),
+                                    e("p",{key:2},"Extended warranty options available at checkout")
+                                ]),
 
-                                    // Search dropdown
-                                    showSearch && e("div",{
-                                        className:"absolute right-0 top-0 bg-white shadow-lg border rounded-lg p-4 w-64 z-50"
-                                    },[
-                                        e("div",{key:"search",className:"flex items-center border rounded-lg px-2 mb-2"},[
-                                            e("span",{key:"icon",className:"text-gray-400"},"🔍"),
-                                            e("input",{
-                                                key:"input",
-                                                type:"text",
-                                                className:"flex-1 text-sm p-1 outline-none",
-                                                placeholder:"Search products...",
-                                                value:searchQuery,
-                                                onChange:function(ev){ setSearchQuery(ev.target.value); }
-                                            })
-                                        ]),
-                                        e("ul",{key:"results",className:"max-h-56 overflow-y-auto"},
-                                            searchResults.length > 0 ?
-                                                searchResults.map(function(p){
-                                                    return e("li",{
-                                                        key:p.id,
-                                                        className:"p-2 hover:bg-blue-50 cursor-pointer rounded-md",
-                                                        onClick:function(){
-                                                            setCompareProduct(p.id);
-                                                            setShowSearch(false);
-                                                            setSearchQuery('');
-                                                        }
-                                                    }, p.title);
+                                activeTab==='compare' && e("div",{key:"compare",className:"grid grid-cols-2 gap-8"},[
+                                    // Left: Current product
+                                    e("div",{key:"left"},[
+                                        e("h3",{className:"font-semibold mb-2"},"iPhone 14 Pro"),
+                                        scoreKeys.map(function(k){ return CompareRow(k, !!compareProduct); })
+                                    ]),
+
+                                    // Right: Compare selector
+                                    e("div",{key:"right",className:"relative"},[
+                                        compareProduct ?
+                                            e("div",{},[
+                                                e("div",{className:"flex items-center justify-between mb-2"},[
+                                                    e("h3",{key:"title",className:"font-semibold"},"Product #"+compareProduct),
+                                                    e("button",{
+                                                        key:"change",
+                                                        className:"px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50",
+                                                        onClick:function(){ setCompareProduct(null); }
+                                                    },"Change")
+                                                ]),
+                                                scoreKeys.map(function(k){ return CompareRow(k, true); })
+                                            ])
+                                            :
+                                            e("button",{
+                                                className:"w-full border-2 border-dashed border-gray-300 rounded-xl p-10 text-center text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-all flex flex-col items-center gap-2",
+                                                onClick:function(){ setShowSearch(true); }
+                                            },[
+                                                e("span",{key:"icon",className:"text-2xl"},"⊕"),
+                                                e("span",{key:"label",className:"font-medium"},"Add Product to Compare")
+                                            ]),
+
+                                        // Search dropdown
+                                        showSearch && e("div",{
+                                            className:"absolute right-0 top-0 bg-white shadow-lg border rounded-lg p-4 w-64 z-50"
+                                        },[
+                                            e("div",{key:"search",className:"flex items-center border rounded-lg px-2 mb-2"},[
+                                                e("span",{key:"icon",className:"text-gray-400"},"🔍"),
+                                                e("input",{
+                                                    key:"input",
+                                                    type:"text",
+                                                    className:"flex-1 text-sm p-1 outline-none",
+                                                    placeholder:"Search products...",
+                                                    value:searchQuery,
+                                                    onChange:function(ev){ setSearchQuery(ev.target.value); }
                                                 })
-                                                :
-                                                e("li",{className:"p-2 text-xs text-gray-400 text-center"},"No products found")
-                                        )
+                                            ]),
+                                            e("ul",{key:"results",className:"max-h-56 overflow-y-auto"},
+                                                searchResults.length > 0 ?
+                                                    searchResults.map(function(p){
+                                                        return e("li",{
+                                                            key:p.id,
+                                                            className:"p-2 hover:bg-blue-50 cursor-pointer rounded-md",
+                                                            onClick:function(){
+                                                                setCompareProduct(p.id);
+                                                                setShowSearch(false);
+                                                                setSearchQuery('');
+                                                            }
+                                                        }, p.title);
+                                                    })
+                                                    :
+                                                    e("li",{className:"p-2 text-xs text-gray-400 text-center"},"No products found")
+                                            )
+                                        ])
                                     ])
                                 ])
                             ])
                         ])
-                    ])
-                ]),
-
-                // RIGHT: Price + Info + Selectors + FBT
-                e("div",{key:"right",className:"space-y-5"},[
-                    // Title
-                    e("h1",{key:"title",className:"text-2xl font-semibold"},
-                        cur.title || BOOT.title || "Product"),
-                    e("hr",{key:"hr",className:"my-4 border-gray-200"}),
-
-                    // Price
-                    e("div",{key:"price",className:"flex items-start gap-4 flex-wrap"},[
-                        e("div",{key:"prices",className:"flex flex-col leading-none"},[
-                            priceBlock.reg>0 && e("span",{key:"reg",className:"text-[12px] text-gray-400 line-through"}, gel(priceBlock.reg)),
-                            e("span",{key:"sale",className:"text-3xl font-bold text-red-600"},
-                                gel(priceBlock.sale!=null ? priceBlock.sale : priceBlock.base))
-                        ]),
-                        e("p",{key:"inst",className:"text-gray-600 flex items-center gap-1 text-base mt-1"},[
-                            e("span",{key:"icon"},"💳"),
-                            " From ₾"+(grandTotal/12).toFixed(2)+"/month for 12 months"
-                        ])
                     ]),
 
-                    // Info grid
-                    e("div",{key:"info",className:"grid grid-cols-2 gap-4 text-sm text-gray-700 mt-2"},[
-                        e("div",{key:"ship",className:"flex items-center gap-2"},["📦 Shipping: 2–3 business days"]),
-                        e("div",{key:"warr",className:"flex items-center gap-2"},["🛡️ Warranty: Available"]),
-                        e("div",{key:"batt",className:"flex items-center gap-2"},["🔋 Battery Health: 100%"]),
-                        e("div",{key:"cond",className:"flex items-center gap-2"},["ℹ️ Condition: "+(cond==='new'?'NEW':'USED')])
-                    ]),
+                    // RIGHT: Price + Info + Selectors + FBT
+                    e("div",{key:"right",className:"space-y-5"},[
+                        // Title
+                        e("h1",{key:"title",className:"text-2xl font-semibold"},
+                            cur.title || BOOT.title || "Product"),
+                        e("hr",{key:"hr",className:"my-4 border-gray-200"}),
 
-                    // Storage
-                    storages.length>0 && e("div",{key:"storage",className:"mt-4"},[
-                        e("h3",{className:"text-sm font-semibold mb-2"},"Storage Options"),
-                        e("div",{className:"flex items-center border border-gray-200 rounded-lg overflow-hidden"},
-                            storages.map(function(st){
-                                var active = String(st).toLowerCase()===String(cur.storage).toLowerCase();
-                                var cls = "flex-1 text-center py-2 text-sm font-medium transition-all "+(active?"bg-blue-600 text-white":"bg-white text-gray-700 hover:bg-blue-50");
-                                return e("button",{key:st,className:cls,onClick:function(){ switchStorage(st); }}, st);
-                            })
-                        )
-                    ]),
-
-                    // Condition
-                    e("div",{key:"condition",className:"mt-4"},[
-                        e("h3",{className:"text-sm font-semibold mb-2"},"Condition"),
-                        e("div",{className:"flex border border-gray-200 rounded-lg overflow-hidden mb-3"},[
-                            CondButton("NEW",'new', avail.hasNew),
-                            CondButton("USED (A)",'used', avail.hasUsed)
+                        // Price - FIX: Only show strikethrough if there's actual discount
+                        e("div",{key:"price",className:"flex items-center gap-3 flex-wrap"},[
+                            e("div",{key:"prices",className:"flex flex-col"},[
+                                priceBlock.hasSale && e("span",{key:"reg",className:"text-[12px] text-gray-400 line-through"}, gel(priceBlock.reg)),
+                                e("span",{key:"sale",className:"text-3xl font-bold text-red-600"},
+                                    gel(priceBlock.hasSale ? priceBlock.sale : priceBlock.base))
+                            ]),
+                            e("p",{key:"inst",className:"text-gray-600 flex items-center gap-1 text-base"},[
+                                e(CoinsIcon,{key:"icon"}),
+                                " From ₾"+(grandTotal/12).toFixed(2)+"/month for 12 months"
+                            ])
                         ]),
 
-                        cond==='used' && cur.deviceType==='phone' && rules && rules.exists &&
-                        e("div",{},[
-                            e("div",{key:"tiers",className:"flex border border-gray-200 rounded-lg overflow-hidden"},
-                                USED_TIERS.map(function(t){
-                                    var pr = rules.pricing || {};
-                                    var row = pr[t] || {};
-                                    var enabled = !!((row.regular && row.regular!=='') || (row.sale && row.sale!==''));
-                                    var active = (tier===t);
+                        // Info grid - with proper icons
+                        e("div",{key:"info",className:"grid grid-cols-2 gap-4 text-sm text-gray-700 mt-2"},[
+                            e("div",{key:"ship",className:"flex items-center gap-2"},[e(TruckIcon)," Shipping: 2–3 business days"]),
+                            e("div",{key:"warr",className:"flex items-center gap-2"},[e(ShieldIcon)," Warranty: Available"]),
+                            e("div",{key:"batt",className:"flex items-center gap-2"},[e(BatteryIcon)," Battery Health: 100%"]),
+                            e("div",{key:"cond",className:"flex items-center gap-2"},[e(InfoIcon)," Condition: "+(cond==='new'?'NEW':'USED')])
+                        ]),
+
+                        // Storage - show all 4 options
+                        e("div",{key:"storage",className:"mt-4"},[
+                            e("h3",{className:"text-sm font-semibold mb-2"},"Storage Options"),
+                            e("div",{className:"flex items-center border border-gray-200 rounded-lg overflow-hidden"},
+                                ALL_STORAGES.map(function(st){
+                                    var available = storages[st];
+                                    var active = String(st).toLowerCase()===String(cur.storage).toLowerCase();
                                     var cls = "flex-1 text-center py-2 text-sm font-medium transition-all ";
-                                    if (active) cls += "bg-green-600 text-white";
-                                    else if (enabled) cls += "bg-white text-gray-700 hover:bg-green-50 cursor-pointer";
-                                    else cls += "bg-gray-100 text-gray-400 cursor-not-allowed";
-
+                                    if (!available) {
+                                        cls += "bg-gray-100 text-gray-400 cursor-not-allowed";
+                                    } else if (active) {
+                                        cls += "bg-blue-600 text-white";
+                                    } else {
+                                        cls += "bg-white text-gray-700 hover:bg-blue-50";
+                                    }
                                     return e("button",{
-                                        key:t,
+                                        key:st,
                                         className:cls,
-                                        disabled:!enabled,
-                                        onClick:function(){ if(enabled) setTier(t); }
-                                    }, t);
+                                        disabled:!available,
+                                        onClick:function(){ if(available) switchStorage(st); }
+                                    }, st);
                                 })
-                            ),
+                            )
+                        ]),
 
-                            (function(){
-                                var nb = (rules.pricing||{})['new_battery']||{};
-                                var hasPrice = (nb.regular && nb.regular!=='') || (nb.sale && nb.sale!=='');
-                                if (!hasPrice) return null;
-                                return e("div",{key:"newbat",className:"mt-3 flex items-center justify-between bg-gray-50 border rounded-lg p-3"},[
-                                    e("label",{className:"flex items-center gap-2 text-sm font-medium text-gray-700"},[
-                                        e("input",{
-                                            key:"check",
-                                            type:"checkbox",
-                                            checked:newBat,
-                                            onChange:function(ev){ setNewBat(ev.target.checked); },
-                                            className:"h-4 w-4 accent-green-600"
+                        // Condition - show grayed out if not available
+                        e("div",{key:"condition",className:"mt-4"},[
+                            e("h3",{className:"text-sm font-semibold mb-2"},"Condition"),
+                            e("div",{className:"flex border border-gray-200 rounded-lg overflow-hidden mb-3"},[
+                                CondButton("NEW",'new', avail.hasNew),
+                                CondButton("USED (A)",'used', avail.hasUsed)
+                            ]),
+
+                            cond==='used' && cur.deviceType==='phone' && rules && rules.exists &&
+                            e("div",{},[
+                                e("div",{key:"tiers",className:"flex border border-gray-200 rounded-lg overflow-hidden"},
+                                    USED_TIERS.map(function(t){
+                                        var pr = rules.pricing || {};
+                                        var row = pr[t] || {};
+                                        var enabled = !!((row.regular && row.regular!=='') || (row.sale && row.sale!==''));
+                                        var active = (tier===t);
+                                        var cls = "flex-1 text-center py-2 text-sm font-medium transition-all ";
+                                        if (active) cls += "bg-green-600 text-white";
+                                        else if (enabled) cls += "bg-white text-gray-700 hover:bg-green-50 cursor-pointer";
+                                        else cls += "bg-gray-100 text-gray-400 cursor-not-allowed";
+
+                                        return e("button",{
+                                            key:t,
+                                            className:cls,
+                                            disabled:!enabled,
+                                            onClick:function(){ if(enabled) setTier(t); }
+                                        }, t+'%');  // Add % symbol
+                                    })
+                                ),
+
+                                (function(){
+                                    var nb = (rules.pricing||{})['new_battery']||{};
+                                    var hasPrice = (nb.regular && nb.regular!=='') || (nb.sale && nb.sale!=='');
+                                    if (!hasPrice) return null;
+                                    return e("div",{key:"newbat",className:"mt-3 flex items-center justify-between bg-gray-50 border rounded-lg p-3"},[
+                                        e("label",{className:"flex items-center gap-2 text-sm font-medium text-gray-700"},[
+                                            e("input",{
+                                                key:"check",
+                                                type:"checkbox",
+                                                checked:newBat,
+                                                onChange:function(ev){ setNewBat(ev.target.checked); },
+                                                className:"h-4 w-4 accent-green-600"
+                                            }),
+                                            "Add New Battery (+"+gel(batteryPrice)+")"  // Use actual battery price
+                                        ])
+                                    ]);
+                                })()
+                            ])
+                        ]),
+
+                        // CTAs - same size as storage/condition buttons
+                        e("div",{key:"cta",className:"flex gap-3 mt-6"},[
+                            e("button",{
+                                key:"cart",
+                                className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-all flex items-center justify-center gap-2",
+                                onClick:function(){ addToCart('/cart/'); }
+                            },[e(CartIcon,{key:"icon"})," Add to Cart "+gel(grandTotal)]),
+                            e("button",{
+                                key:"buy",
+                                className:"flex-1 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-medium py-2 px-6 rounded-lg transition-all",
+                                onClick:function(){ addToCart('/checkout/'); }
+                            },"Buy Now "+gel(grandTotal))
+                        ]),
+
+                        // FBT - with aligned buttons
+                        fbt.length>0 && e("div",{key:"fbt",className:"mt-6 shadow-sm border rounded-lg p-4"},[
+                            e("h3",{key:"title",className:"text-base font-semibold mb-4"},"Frequently Bought Together"),
+                            e("div",{key:"grid",className:"grid sm:grid-cols-3 gap-3"},
+                                fbt.map(function(item){
+                                    var isSelected = selectedFBT.indexOf(item.id) >= 0;
+                                    return e("div",{
+                                        key:item.id,
+                                        className:"shadow-sm border rounded-lg p-2 text-center text-sm flex flex-col "+(isSelected?"border-blue-500 bg-blue-50":"border-gray-200")
+                                    },[
+                                        e("img",{
+                                            key:"img",
+                                            src:item.image,
+                                            alt:item.title,
+                                            className:"w-full h-24 object-cover rounded-md mb-1"
                                         }),
-                                        "Add New Battery (+₾29)"
-                                    ])
-                                ]);
-                            })()
+                                        e("p",{key:"name",className:"font-medium flex-1 min-h-[2.5rem] flex items-center justify-center"},item.title),
+                                        e("button",{
+                                            key:"btn",
+                                            className:"mt-2 w-full text-xs py-1 rounded-md border transition-all "+(isSelected?"bg-blue-600 text-white":"bg-white text-gray-700 hover:bg-blue-100"),
+                                            onClick:function(){ toggleFBT(item.id); }
+                                        }, isSelected ? "✓ Added ("+gel(item.price)+")" : "+ Add "+gel(item.price))
+                                    ]);
+                                })
+                            )
                         ])
-                    ]),
-
-                    // CTAs
-                    e("div",{key:"cta",className:"flex gap-3 mt-6"},[
-                        e(Button,{
-                            key:"cart",
-                            className:"flex-1",
-                            onClick:function(){ addToCart('/cart/'); }
-                        },"🛒 Add to Cart "+gel(grandTotal)),
-                        e(Button,{
-                            key:"buy",
-                            variant:"outline",
-                            className:"flex-1",
-                            onClick:function(){ addToCart('/checkout/'); }
-                        },"Buy Now "+gel(grandTotal))
-                    ]),
-
-                    // FBT - EXACT structure from React
-                    fbt.length>0 && e("div",{key:"fbt",className:"mt-6 shadow-sm border rounded-lg p-4"},[
-                        e("h3",{key:"title",className:"text-base font-semibold mb-4"},"Frequently Bought Together"),
-                        e("div",{key:"grid",className:"grid sm:grid-cols-3 gap-3"},
-                            fbt.map(function(item){
-                                var isSelected = selectedFBT.indexOf(item.id) >= 0;
-                                return e("div",{
-                                    key:item.id,
-                                    className:"shadow-sm border rounded-lg p-2 text-center text-sm "+(isSelected?"border-blue-500 bg-blue-50":"border-gray-200")
-                                },[
-                                    e("img",{
-                                        key:"img",
-                                        src:item.image,
-                                        alt:item.title,
-                                        className:"w-full h-24 object-cover rounded-md mb-1"
-                                    }),
-                                    e("p",{key:"name",className:"font-medium"},item.title),
-                                    e("button",{
-                                        key:"btn",
-                                        className:"mt-2 w-full text-xs py-1 rounded-md border transition-all "+(isSelected?"bg-blue-600 text-white":"bg-white text-gray-700 hover:bg-blue-100"),
-                                        onClick:function(){ toggleFBT(item.id); }
-                                    }, isSelected ? "✓ Added ("+gel(item.price)+")" : "+ Add "+gel(item.price))
-                                ]);
-                            })
-                        )
                     ])
                 ])
             ]);
@@ -630,14 +663,14 @@
             var shadow = host.shadowRoot || host.attachShadow({mode:'open'});
 
             var style = document.createElement('style');
-            style.textContent = `*,:before,:after{box-sizing:border-box;border:0 solid #e5e7eb}:before,:after{--tw-content:""}html,:host{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif}body{margin:0;line-height:inherit}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}button,input,optgroup,select,textarea{font-family:inherit;font-size:100%;font-weight:inherit;line-height:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,[type=button],[type=reset],[type=submit]{-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dl,dd,h1,h2,h3,h4,h5,h6,hr,figure,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}ol,ul,menu{list-style:none;margin:0;padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}button,[role=button]{cursor:pointer}:disabled{cursor:default}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]{display:none}*,:before,:after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000}::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:.25rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.ml-2{margin-left:.5rem}.mt-1{margin-top:.25rem}.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}.my-4{margin-top:1rem;margin-bottom:1rem}.flex{display:flex}.grid{display:grid}.h-1{height:.25rem}.h-16{height:4rem}.h-24{height:6rem}.h-4{height:1rem}.w-16{width:4rem}.w-4{width:1rem}.w-64{width:16rem}.w-full{width:100%}.max-w-7xl{max-width:80rem}.flex-1{flex:1 1 0%}.cursor-not-allowed{cursor:not-allowed}.cursor-pointer{cursor:pointer}.list-disc{list-style-type:disc}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-center{align-items:center}.items-start{align-items:flex-start}.justify-between{justify-content:space-between}.gap-1{gap:.25rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.gap-8{gap:2rem}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem * var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem * var(--tw-space-y-reverse))}.space-y-6>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.rounded-2xl{border-radius:1rem}.border{border-width:1px}.border-2{border-width:2px}.border-dashed{border-style:dashed}.border-blue-500{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity))}.border-blue-600{--tw-border-opacity:1;border-color:rgb(37 99 235/var(--tw-border-opacity))}.border-gray-100{--tw-border-opacity:1;border-color:rgb(243 244 246/var(--tw-border-opacity))}.border-gray-200{--tw-border-opacity:1;border-color:rgb(229 231 235/var(--tw-border-opacity))}.border-gray-300{--tw-border-opacity:1;border-color:rgb(209 213 219/var(--tw-border-opacity))}.bg-blue-100{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity))}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity))}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246/var(--tw-bg-opacity))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity))}.bg-green-50{--tw-bg-opacity:1;background-color:rgb(240 253 244/var(--tw-bg-opacity))}.bg-green-600{--tw-bg-opacity:1;background-color:rgb(22 163 74/var(--tw-bg-opacity))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity))}.object-contain{object-fit:contain}.object-cover{object-fit:cover}.p-1{padding:.25rem}.p-10{padding:2.5rem}.p-2{padding:.5rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-4{padding-left:1rem;padding-right:1rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.pl-5{padding-left:1.25rem}.pt-4{padding-top:1rem}.text-center{text-align:center}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-\\[10px\\]{font-size:10px}.text-\\[12px\\]{font-size:12px}.text-base{font-size:1rem;line-height:1.5rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xs{font-size:.75rem;line-height:1rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.leading-none{line-height:1}.leading-relaxed{line-height:1.625}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity))}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175/var(--tw-text-opacity))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128/var(--tw-text-opacity))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99/var(--tw-text-opacity))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81/var(--tw-text-opacity))}.text-gray-900{--tw-text-opacity:1;color:rgb(17 24 39/var(--tw-text-opacity))}.text-red-400{--tw-text-opacity:1;color:rgb(248 113 113/var(--tw-text-opacity))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38/var(--tw-text-opacity))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity))}.line-through{text-decoration-line:line-through}.shadow{--tw-shadow:0 1px 3px 0 rgb(0 0 0/.1),0 1px 2px -1px rgb(0 0 0/.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color),0 1px 2px -1px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color),0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0/.1),0 2px 4px -2px rgb(0 0 0/.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0/.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.outline-none{outline:2px solid transparent;outline-offset:2px}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.accent-green-600{accent-color:#16a34a}.hover\\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity))}.hover\\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.hover\\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity))}.hover\\:bg-gray-50:hover{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity))}.hover\\:bg-green-50:hover{--tw-bg-opacity:1;background-color:rgb(240 253 244/var(--tw-bg-opacity))}.hover\\:border-blue-400:hover{--tw-border-opacity:1;border-color:rgb(96 165 250/var(--tw-border-opacity))}.hover\\:text-blue-600:hover{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity))}.hover\\:text-gray-900:hover{--tw-text-opacity:1;color:rgb(17 24 39/var(--tw-text-opacity))}@media(min-width:640px){.sm\\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(min-width:1024px){.lg\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}`;
+            style.textContent = `*,:before,:after{box-sizing:border-box;border:0 solid #e5e7eb}:before,:after{--tw-content:""}html,:host{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif}body{margin:0;line-height:inherit}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}button,input,optgroup,select,textarea{font-family:inherit;font-size:100%;font-weight:inherit;line-height:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,[type=button],[type=reset],[type=submit]{-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dl,dd,h1,h2,h3,h4,h5,h6,hr,figure,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}ol,ul,menu{list-style:none;margin:0;padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}button,[role=button]{cursor:pointer}:disabled{cursor:default}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]{display:none}*,:before,:after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000}::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:.25rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.ml-2{margin-left:.5rem}.mt-1{margin-top:.25rem}.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}.my-4{margin-top:1rem;margin-bottom:1rem}.flex{display:flex}.grid{display:grid}.h-1{height:.25rem}.h-16{height:4rem}.h-24{height:6rem}.h-4{height:1rem}.min-h-\\[2\\.5rem\\]{min-height:2.5rem}.min-h-screen{min-height:100vh}.w-16{width:4rem}.w-4{width:1rem}.w-64{width:16rem}.w-full{width:100%}.max-w-7xl{max-width:80rem}.flex-1{flex:1 1 0%}.cursor-not-allowed{cursor:not-allowed}.cursor-pointer{cursor:pointer}.list-disc{list-style-type:disc}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-center{align-items:center}.justify-between{justify-between}.justify-center{justify-content:center}.gap-1{gap:.25rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.gap-8{gap:2rem}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem * var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem * var(--tw-space-y-reverse))}.space-y-6>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.rounded-2xl{border-radius:1rem}.border{border-width:1px}.border-2{border-width:2px}.border-dashed{border-style:dashed}.border-blue-500{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity))}.border-blue-600{--tw-border-opacity:1;border-color:rgb(37 99 235/var(--tw-border-opacity))}.border-gray-100{--tw-border-opacity:1;border-color:rgb(243 244 246/var(--tw-border-opacity))}.border-gray-200{--tw-border-opacity:1;border-color:rgb(229 231 235/var(--tw-border-opacity))}.border-gray-300{--tw-border-opacity:1;border-color:rgb(209 213 219/var(--tw-border-opacity))}.bg-blue-100{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity))}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity))}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246/var(--tw-bg-opacity))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity))}.bg-green-50{--tw-bg-opacity:1;background-color:rgb(240 253 244/var(--tw-bg-opacity))}.bg-green-600{--tw-bg-opacity:1;background-color:rgb(22 163 74/var(--tw-bg-opacity))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity))}.object-contain{object-fit:contain}.object-cover{object-fit:cover}.p-1{padding:.25rem}.p-10{padding:2.5rem}.p-2{padding:.5rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.pl-5{padding-left:1.25rem}.pt-4{padding-top:1rem}.text-center{text-align:center}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-\\[10px\\]{font-size:10px}.text-\\[12px\\]{font-size:12px}.text-base{font-size:1rem;line-height:1.5rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xs{font-size:.75rem;line-height:1rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.leading-relaxed{line-height:1.625}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity))}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175/var(--tw-text-opacity))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128/var(--tw-text-opacity))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99/var(--tw-text-opacity))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81/var(--tw-text-opacity))}.text-gray-900{--tw-text-opacity:1;color:rgb(17 24 39/var(--tw-text-opacity))}.text-red-400{--tw-text-opacity:1;color:rgb(248 113 113/var(--tw-text-opacity))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38/var(--tw-text-opacity))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity))}.line-through{text-decoration-line:line-through}.shadow{--tw-shadow:0 1px 3px 0 rgb(0 0 0/.1),0 1px 2px -1px rgb(0 0 0/.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color),0 1px 2px -1px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color),0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0/.1),0 2px 4px -2px rgb(0 0 0/.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0/.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.outline-none{outline:2px solid transparent;outline-offset:2px}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.accent-green-600{accent-color:#16a34a}.hover\\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity))}.hover\\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.hover\\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity))}.hover\\:bg-gray-50:hover{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity))}.hover\\:bg-green-50:hover{--tw-bg-opacity:1;background-color:rgb(240 253 244/var(--tw-bg-opacity))}.hover\\:border-blue-400:hover{--tw-border-opacity:1;border-color:rgb(96 165 250/var(--tw-border-opacity))}.hover\\:text-blue-600:hover{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity))}.hover\\:text-gray-900:hover{--tw-text-opacity:1;color:rgb(17 24 39/var(--tw-text-opacity))}@media(min-width:640px){.sm\\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(min-width:1024px){.lg\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}`;
             shadow.appendChild(style);
 
             var appRoot = document.createElement('div');
             shadow.appendChild(appRoot);
 
             ReactDOM.createRoot(appRoot).render(e(ProductApp));
-            console.log('Gstore EPP: EXACT MATCH rendered! ✅');
+            console.log('Gstore EPP: ALL FIXES APPLIED! ✅');
         } catch(error) {
             console.error('Gstore EPP: Render failed', error);
         }
