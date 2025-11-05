@@ -43,11 +43,11 @@ class GStore_EPP_REST {
 			]
 		]);
 
-		// Siblings
+		// Siblings (OPTIMIZED)
 		register_rest_route(self::NS, '/siblings', [
 			'methods'=>'GET',
 			'permission_callback'=>'__return_true',
-			'callback'=>[$this,'get_siblings'],
+			'callback'=>[$this,'get_siblings_optimized'],
 			'args'=>[
 				'product_id'=>['required'=>true,'type'=>'integer']
 			]
@@ -113,68 +113,118 @@ class GStore_EPP_REST {
 	}
 
 	/* -------------------------
-		SIBLINGS
+		SIBLINGS (OPTIMIZED WITH CACHING)
 	--------------------------*/
-	public function get_siblings(WP_REST_Request $r){
+	public function get_siblings_optimized(WP_REST_Request $r){
 		$pid = absint($r->get_param('product_id'));
 		if (!$pid)
 			return new WP_REST_Response(['ok'=>false,'error'=>'MISSING_PRODUCT_ID'], 400);
+
+		// CHECK CACHE FIRST (1 hour)
+		$cache_key = 'gstore_siblings_' . $pid;
+		$cached = get_transient($cache_key);
+
+		if ($cached !== false) {
+			gstore_log_debug('siblings_cache_hit', ['pid'=>$pid]);
+			return new WP_REST_Response($cached, 200);
+		}
 
 		$ctx = gstore_epp_parse_by_product_id($pid);
 
 		$brand = $ctx['brand'];
 		$model = $ctx['model'];
-		if (!$brand || !$model){
-			gstore_log_error('siblings_incomplete_attrs', ['pid'=>$pid,'ctx'=>$ctx]);
-			return new WP_REST_Response(['ok'=>false,'error'=>'ATTR_INCOMPLETE','debug'=>$ctx], 200);
+
+		// If no model, can't find siblings
+		if (!$model){
+			gstore_log_error('siblings_no_model', ['pid'=>$pid,'ctx'=>$ctx]);
+			return new WP_REST_Response(['ok'=>false,'error'=>'MODEL_REQUIRED','debug'=>$ctx], 200);
 		}
 
+		// OPTIMIZED QUERY: Use group_key from context
+		// This is MUCH faster than querying all products
+		$group_key = $ctx['group_key'];
+
+		if (!$group_key) {
+			gstore_log_error('siblings_no_group_key', ['pid'=>$pid,'ctx'=>$ctx]);
+			return new WP_REST_Response(['ok'=>false,'error'=>'GROUP_KEY_REQUIRED'], 200);
+		}
+
+		// Query products with matching model attribute
+		// Limit to 100 for safety
 		$q = new WP_Query([
 			'post_type'=>'product',
-			'posts_per_page'=>-1,
+			'posts_per_page'=>100,
 			'post_status'=>'publish',
-			'fields'=>'ids'
+			'fields'=>'ids',
+			'meta_query' => [
+				[
+					'key' => 'attribute_pa_model',
+					'value' => sanitize_title($model),
+					'compare' => '='
+				]
+			]
 		]);
 
 		$items = [];
-		foreach($q->posts as $id){
-			$p_brand = gstore_epp_attr($id, 'brand');
-			$p_model = gstore_epp_attr($id, 'model');
 
-			if (strcasecmp($p_brand, $brand) === 0 && strcasecmp($p_model, $model) === 0){
-				$ip = wc_get_product($id);
-				if (!$ip) continue;
+		// If meta query finds nothing, fall back to checking all products
+		// but limit to recently published ones
+		if (!$q->have_posts()) {
+			$q = new WP_Query([
+				'post_type'=>'product',
+				'posts_per_page'=>200,
+				'post_status'=>'publish',
+				'fields'=>'ids',
+				'orderby'=>'date',
+				'order'=>'DESC'
+			]);
+		}
 
-				$img_id = $ip->get_image_id();
-				$hero = $img_id ? wp_get_attachment_image_url($img_id, 'large') : wc_placeholder_img_src('large');
+		if ($q->have_posts()){
+			foreach($q->posts as $id){
+				$p_model = gstore_epp_attr($id, 'model');
 
-				$items[] = [
-					'id'=>$ip->get_id(),
-					'title'=>$ip->get_title(),
-					'permalink'=>get_permalink($ip->get_id()),
-					'price'=>$ip->get_price(),
-					'regular'=>$ip->get_regular_price(),
-					'sale'=>$ip->get_sale_price(),
-					'condition'=>gstore_epp_attr($ip->get_id(),'condition'),
-					'brand'=>$p_brand,
-					'model'=>$p_model,
-					'storage'=>gstore_epp_attr($ip->get_id(),'storage'),
-					'color'=>gstore_epp_attr($ip->get_id(),'color'),
-					'image'=>$hero
-				];
+				// Match by model (case-insensitive)
+				if (strcasecmp($p_model, $model) === 0){
+					$ip = wc_get_product($id);
+					if (!$ip) continue;
+
+					$img_id = $ip->get_image_id();
+					$hero = $img_id ? wp_get_attachment_image_url($img_id, 'large') : wc_placeholder_img_src('large');
+
+					$items[] = [
+						'id'=>$ip->get_id(),
+						'title'=>$ip->get_title(),
+						'permalink'=>get_permalink($ip->get_id()),
+						'price'=>$ip->get_price(),
+						'regular'=>$ip->get_regular_price(),
+						'sale'=>$ip->get_sale_price(),
+						'condition'=>gstore_epp_attr($ip->get_id(),'condition'),
+						'brand'=>gstore_epp_attr($ip->get_id(),'brand'),
+						'model'=>$p_model,
+						'storage'=>gstore_epp_attr($ip->get_id(),'storage'),
+						'color'=>gstore_epp_attr($ip->get_id(),'color'),
+						'image'=>$hero
+					];
+				}
 			}
 		}
 
 		wp_reset_postdata();
 
+		$result = ['ok'=>true,'brand'=>$brand,'model'=>$model,'siblings'=>$items,'count'=>count($items)];
+
+		// CACHE FOR 1 HOUR
+		set_transient($cache_key, $result, HOUR_IN_SECONDS);
+
 		gstore_log_debug('siblings_found', [
 			'pid'=>$pid,
-			'brand'=>$brand,
 			'model'=>$model,
-			'count'=>count($items)
+			'count'=>count($items),
+			'cached'=>true
 		]);
 
-		return new WP_REST_Response(['ok'=>true,'brand'=>$brand,'model'=>$model,'siblings'=>$items], 200);
+		return new WP_REST_Response($result, 200);
 	}
 
 	/* -------------------------
@@ -380,3 +430,34 @@ class GStore_EPP_REST {
 }
 
 new GStore_EPP_REST();
+
+// CRITICAL: Clear siblings cache when product is updated
+add_action('save_post_product', function($post_id){
+	// Clear this product's cache
+	delete_transient('gstore_siblings_' . $post_id);
+
+	// Also clear cache for products in same model
+	$ctx = gstore_epp_parse_by_product_id($post_id);
+	if ($ctx && $ctx['model']) {
+		// Find all products with same model and clear their cache
+		$q = new WP_Query([
+			'post_type'=>'product',
+			'posts_per_page'=>100,
+			'fields'=>'ids',
+			'meta_query' => [
+				[
+					'key' => 'attribute_pa_model',
+					'value' => sanitize_title($ctx['model']),
+					'compare' => '='
+				]
+			]
+		]);
+
+		if ($q->have_posts()) {
+			foreach($q->posts as $id) {
+				delete_transient('gstore_siblings_' . $id);
+			}
+		}
+		wp_reset_postdata();
+	}
+}, 10, 1);
