@@ -585,10 +585,6 @@ class GStore_EPP_REST {
 
 new GStore_EPP_REST();
 
-// ============================================
-// CACHE CLEARING ON PRODUCT UPDATES
-// ============================================
-
 // CRITICAL: Clear ALL caches when product is updated
 add_action('save_post_product', function($post_id){
 	// Clear this product's caches
@@ -633,75 +629,3 @@ add_action('save_post_product', function(){
 	global $wpdb;
 	$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gstore_search_%'");
 }, 20);
-
-// ============================================
-// LAPTOP ADD-ONS ENDPOINT (v4.2.0)
-// ============================================
-
-add_action('rest_api_init', function() {
-	register_rest_route('gstore/v1', '/laptop-addons', [
-		'methods' => 'GET',
-		'callback' => 'gstore_epp_rest_laptop_addons',
-		'permission_callback' => '__return_true'
-	]);
-});
-
-function gstore_epp_rest_laptop_addons() {
-	global $wpdb;
-	$table = $wpdb->prefix . 'gstore_laptop_addons';
-
-	// Check cache
-	$cache_key = 'gstore_laptop_addons';
-	$cached = get_transient($cache_key);
-	if ($cached !== false) {
-		return rest_ensure_response($cached);
-	}
-
-	// Get RAM add-ons
-	$ram_row = $wpdb->get_row(
-		"SELECT data_json FROM {$table} WHERE scope = 'laptop_ram' LIMIT 1",
-		ARRAY_A
-	);
-	$ram_addons = [];
-	if ($ram_row && !empty($ram_row['data_json'])) {
-		$ram_addons = json_decode($ram_row['data_json'], true);
-	}
-
-	// Get Storage add-ons
-	$storage_row = $wpdb->get_row(
-		"SELECT data_json FROM {$table} WHERE scope = 'laptop_storage' LIMIT 1",
-		ARRAY_A
-	);
-	$storage_addons = [];
-	if ($storage_row && !empty($storage_row['data_json'])) {
-		$storage_addons = json_decode($storage_row['data_json'], true);
-	}
-
-	$result = [
-		'ok' => true,
-		'ram' => $ram_addons,
-		'storage' => $storage_addons
-	];
-
-	// Cache for 1 hour
-	set_transient($cache_key, $result, HOUR_IN_SECONDS);
-
-	return rest_ensure_response($result);
-}
-
-// Clear laptop add-ons cache when updated
-function gstore_epp_invalidate_laptop_cache() {
-	global $wpdb;
-
-	// Clear laptop add-ons cache
-	delete_transient('gstore_laptop_addons');
-
-	// Clear all pricing caches (they may include laptop add-ons)
-	$wpdb->query(
-		"DELETE FROM {$wpdb->options} 
-		WHERE option_name LIKE '_transient_gstore_pricing_%' 
-		OR option_name LIKE '_transient_timeout_gstore_pricing_%'"
-	);
-}
-
-add_action('gstore_epp_after_save_laptop_addons', 'gstore_epp_invalidate_laptop_cache');
