@@ -49,40 +49,11 @@ add_action('woocommerce_before_single_product', function(){
 	$heading_weight = $typo_opts['heading_weight'] ?? '600';
 	$body_weight = $typo_opts['body_weight'] ?? '400';
 
-	// CRITICAL: Fixed z-index hierarchy and proper centering
+	// Hide default WooCommerce product display + theme sidebar + OVERLAYS
 	echo '<style>
 		' . $font_css . '
 		
-        /* ========================================
-           CRITICAL: Z-INDEX HIERARCHY
-           ======================================== */
-        
-        /* Theme header - ensure it stays on top */
-        .site-header,
-        header.header,
-        #masthead,
-        .whb-header,
-        .header-banner {
-            position: relative !important;
-            z-index: 1000 !important;
-        }
-        
-        /* WOODMART FOOTER TOOLBAR - Right below sticky bar */
-        .wd-toolbar.wd-toolbar-label-show {
-            position: fixed !important;
-            bottom: 0 !important;
-            z-index: 999998 !important; /* Below sticky bar (999999) but above everything else */
-        }
-        
-        /* Theme footer - keep it above content but below header */
-        .site-footer,
-        footer.footer,
-        #colophon {
-            position: relative !important;
-            z-index: 100 !important;
-        }
-        
-        /* Hide any overlays */
+        /* CRITICAL: Hide any overlays that might block content */
         .cdp-copy-loader-overlay,
         .loading-overlay,
         .loader-overlay,
@@ -95,29 +66,21 @@ add_action('woocommerce_before_single_product', function(){
             z-index: -1 !important;
         }
         
-        /* ========================================
-           PRODUCT PAGE LAYOUT
-           ======================================== */
-        
         /* Hide WooCommerce default product */
-        .single-product div.product { 
-            display: none !important; 
-        }
+        .single-product div.product { display: none !important; }
         
         /* Hide theme sidebar on product pages */
         .single-product #secondary,
         .single-product .sidebar,
-        .single-product aside { 
-            display: none !important; 
-        }
+        .single-product aside { display: none !important; }
         
-        /* Make content area full width and properly centered */
+        /* Make content area full width */
         .single-product #primary,
         .single-product .content-area,
         .single-product main { 
             width: 100% !important; 
             max-width: 100% !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
             padding: 0 !important;
         }
         
@@ -127,55 +90,22 @@ add_action('woocommerce_before_single_product', function(){
             max-width: 100% !important;
             width: 100% !important;
             padding: 0 !important;
-            margin: 0 auto !important;
         }
         
-        /* ========================================
-           SHADOW HOST & STICKY BAR
-           ======================================== */
-        
-        /* Shadow host with proper z-index and centering */
+        /* Shadow host styling - CENTERED with VERY HIGH Z-INDEX */
         #gstore-epp-shadow-host { 
             min-height: 500px;
             width: 100%;
-            max-width: 100%;
+            max-width: 1400px;
             display: block !important;
             background: #fff;
             margin: 0 auto !important;
-            padding: 0 !important;
+            padding: 0 20px;
             position: relative !important;
-            z-index: 1 !important; /* Below header, above everything else */
+            z-index: 999999 !important;
             visibility: visible !important;
             opacity: 1 !important;
-            /* Add bottom padding to prevent content from being hidden behind sticky bar */
-            padding-bottom: 80px !important;
         }
-        
-        /* Ensure content stays below header */
-        #gstore-epp-shadow-host * {
-            position: relative;
-            z-index: 1;
-        }
-        
-        /* ========================================
-           STICKY BOTTOM BAR POSITIONING
-           ======================================== */
-        
-        /* CRITICAL: Sticky bar positioning to appear ABOVE Woodmart footer toolbar */
-        .single-product #gstore-epp-shadow-host > div {
-            /* This targets the shadow root container */
-        }
-        
-        /* Ensure sticky bar appears above Woodmart toolbar */
-        body.single-product {
-            /* Calculate proper spacing for sticky elements */
-            --sticky-bar-height: 70px;
-            --woodmart-toolbar-height: 60px;
-        }
-        
-        /* ========================================
-           CUSTOM FONTS
-           ======================================== */
         
         /* Apply custom fonts globally (will also work in Shadow DOM) */
         #gstore-epp-shadow-host h1,
@@ -196,48 +126,12 @@ add_action('woocommerce_before_single_product', function(){
             font-family: "' . esc_attr($body_font) . '", sans-serif !important;
             font-weight: ' . esc_attr($body_weight) . ' !important;
         }
-        
-        /* ========================================
-           RESPONSIVE ADJUSTMENTS
-           ======================================== */
-        
-        /* Mobile-specific fixes */
-        @media (max-width: 768px) {
-            /* Ensure proper padding on mobile */
-            .single-product #primary,
-            .single-product .content-area {
-                padding: 0 !important;
-            }
-            
-            /* Center content on mobile */
-            #gstore-epp-shadow-host {
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-            }
-            
-            /* MOBILE: Sticky bar bottom spacing above Woodmart toolbar */
-            #gstore-epp-shadow-host {
-                /* Add bottom padding equal to Woodmart toolbar + sticky bar height */
-                padding-bottom: calc(60px + 70px) !important; /* Woodmart 60px + Sticky 70px */
-            }
-        }
-        
-        /* Desktop-specific */
-        @media (min-width: 769px) {
-            #gstore-epp-shadow-host {
-                max-width: 1400px;
-                padding-left: 20px;
-                padding-right: 20px;
-                /* Desktop needs less bottom padding */
-                padding-bottom: 100px !important;
-            }
-        }
     </style>';
 
 	// Insert Shadow host
 	echo '<div id="gstore-epp-shadow-host"></div>';
 
-	// CRITICAL: JavaScript to dynamically position sticky bar above Woodmart toolbar
+	// Remove any overlay scripts that might execute
 	echo '<script>
         // Force remove overlays on page load
         document.addEventListener("DOMContentLoaded", function(){
@@ -259,41 +153,8 @@ add_action('woocommerce_before_single_product', function(){
                 shadowHost.style.display = "block";
                 shadowHost.style.visibility = "visible";
                 shadowHost.style.opacity = "1";
-                shadowHost.style.zIndex = "1";
+                shadowHost.style.zIndex = "999999";
             }
-            
-            // CRITICAL: Position sticky bar above Woodmart footer toolbar
-            function positionStickyBar() {
-                var woodmartToolbar = document.querySelector(".wd-toolbar.wd-toolbar-label-show");
-                
-                if (woodmartToolbar) {
-                    var toolbarHeight = woodmartToolbar.offsetHeight || 60; // Default 60px if not found
-                    
-                    // Find sticky bar in shadow DOM
-                    var shadowHost = document.getElementById("gstore-epp-shadow-host");
-                    if (shadowHost && shadowHost.shadowRoot) {
-                        var stickyBar = shadowHost.shadowRoot.querySelector("[class*=\'sticky-bar\'], .fixed.bottom-0");
-                        
-                        if (stickyBar) {
-                            // Position sticky bar above Woodmart toolbar
-                            stickyBar.style.bottom = toolbarHeight + "px";
-                            stickyBar.style.zIndex = "999999"; // Above toolbar (999998)
-                            
-                            console.log("Gstore EPP: Sticky bar positioned " + toolbarHeight + "px above Woodmart toolbar");
-                        }
-                    }
-                }
-            }
-            
-            // Position on load
-            setTimeout(positionStickyBar, 500);
-            
-            // Reposition on window resize
-            window.addEventListener("resize", positionStickyBar);
-            
-            // Observe for dynamic changes
-            var observer = new MutationObserver(positionStickyBar);
-            observer.observe(document.body, { childList: true, subtree: true });
         });
         
         // Also try immediately
@@ -408,7 +269,7 @@ add_action('wp_enqueue_scripts', function(){
 	wp_register_script('gstore-epp-app',
 		GSTORE_EPP_URL.'assets/js/product-app.js',
 		['react','react-dom'],
-		'4.1.0', // Updated version
+		GSTORE_EPP_VER,
 		true
 	);
 
@@ -473,3 +334,9 @@ add_action('wp_enqueue_scripts', function(){
 		wp_add_inline_style('gstore-epp-app', $options['custom_css']);
 	}
 }, 25);
+
+
+
+
+
+
