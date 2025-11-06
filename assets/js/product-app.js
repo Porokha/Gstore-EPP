@@ -1,5 +1,5 @@
 (function(){
-    console.log('Gstore EPP: product-app.js v4.1.0 - DESKTOP PRESERVED + MOBILE ORDER FIXED');
+    console.log('Gstore EPP: product-app.js v4.2.0 - ORIGINAL DESKTOP + NEW MOBILE ORDER');
 
     function money(n){ var x = Number(n||0); return isFinite(x) ? x.toFixed(2) : "0.00"; }
     function gel(n){ return "₾" + money(n); }
@@ -90,7 +90,7 @@
             var _s7 = useState([]);
             var selectedFBT = _s7[0]; var setSelectedFBT = _s7[1];
 
-            var _s8 = useState(null);
+            var _s8 = useState(null); // Changed: tabs closed by default on mobile
             var activeTab = _s8[0]; var setActiveTab = _s8[1];
 
             var _s9 = useState((cur.condition==='new')?'new':'used');
@@ -425,6 +425,7 @@
             function BatteryIcon(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[e("rect",{key:1,width:16,height:10,x:2,y:7,rx:2,ry:2}),e("line",{key:2,x1:22,x2:22,y1:11,y2:13})]); }
             function InfoIcon(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[e("path",{key:1,d:"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"}),e("line",{key:2,x1:12,x2:12,y1:16,y2:12}),e("line",{key:3,x1:12,x2:12.01,y1:8,y2:8})]); }
             function CartIcon(){ return e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[e("circle",{key:1,cx:9,cy:21,r:1}),e("circle",{key:2,cx:20,cy:21,r:1}),e("path",{key:3,d:"M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"})]); }
+            function CoinsIcon(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[e("circle",{key:1,cx:8,cy:8,r:6}),e("path",{key:2,d:"M18.09 10.37A6 6 0 1 1 10.34 18"}),e("path",{key:3,d:"M7 6h1v4"}),e("path",{key:4,d:"m16.71 13.88.7.71-2.82 2.82"})]); }
             function ChevronDownIcon(){ return e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[e("path",{d:"m6 9 6 6 6-6"})]); }
             function ChevronUpIcon(){ return e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[e("path",{d:"m18 15-6-6-6 6"})]); }
 
@@ -433,7 +434,7 @@
             var conditionUsedText = t('condition_used', 'USED (A)');
             var currentConditionText = cond === 'new' ? conditionNewText : conditionUsedText;
 
-            // Collapsible Tab Component
+            // Collapsible Tab Component (for mobile)
             function CollapsibleTab(props){
                 var isOpen = activeTab === props.tabKey;
                 var toggle = function(){ setActiveTab(isOpen ? null : props.tabKey); };
@@ -451,7 +452,7 @@
                 ]);
             }
 
-            // RESPONSIVE LAYOUT WITH PRESERVED DESKTOP VIEW
+            // ORIGINAL DESKTOP LAYOUT + NEW MOBILE ORDER
             return e("div",{className:"min-h-screen bg-white pb-32"},[
                 e("div",{key:"main",className:"max-w-7xl mx-auto"},[
                     // MOBILE ONLY: Title first
@@ -459,10 +460,10 @@
                         e("h1",{className:"text-xl font-semibold mb-2"}, cur.title || BOOT.title || "Product")
                     ]),
 
-                    // RESPONSIVE GRID: mobile vertical, desktop 2-column
-                    e("div",{className:"lg:grid lg:grid-cols-2 lg:gap-8 lg:p-6"},[
-                        // LEFT COLUMN: Photos + Description + Tabs
-                        e("div",{key:"left",className:"space-y-4 px-4 lg:px-0"},[
+                    // DESKTOP: Original 2-column grid | MOBILE: Stacked
+                    e("div",{className:"p-6 grid lg:grid-cols-2 gap-8"},[
+                        // LEFT COLUMN (Desktop) / Top section (Mobile)
+                        e("div",{key:"left",className:"space-y-6"},[
                             // Hero image
                             e("img",{
                                 key:"hero",
@@ -471,11 +472,11 @@
                                 className:"w-full rounded-2xl shadow-md object-cover"
                             }),
 
-                            // Color swatches (thumbnails)
-                            e("div",{key:"thumbs",className:"flex gap-3 overflow-x-auto pb-2"},
+                            // Color swatches
+                            e("div",{key:"thumbs",className:"flex gap-3 overflow-x-auto"},
                                 colors.map(function(c){
                                     var active = (String(c.id)===String(cur.productId));
-                                    var cls = "h-16 w-16 rounded-lg object-cover cursor-pointer border-2 flex-shrink-0 "+(active?"border-blue-600":"border-gray-200");
+                                    var cls = "h-16 w-16 rounded-lg object-cover cursor-pointer border-2 "+(active?"border-blue-600":"border-gray-200");
                                     return e("img",{
                                         key:c.id,
                                         src:c.image,
@@ -486,130 +487,299 @@
                                 })
                             ),
 
-                            // MOBILE ONLY: Info grid (shipping/battery/warranty/condition) - RIGHT AFTER SWATCHES
-                            e("div",{key:"mobile-info",className:"lg:hidden grid grid-cols-2 gap-3 text-xs text-gray-700 bg-gray-50 p-3 rounded-lg"},[
-                                e("div",{key:"ship",className:"flex items-center gap-1.5"},[
+                            // MOBILE ONLY: Info grid RIGHT AFTER swatches
+                            e("div",{key:"mobile-info",className:"lg:hidden grid grid-cols-2 gap-4 text-sm text-gray-700"},[
+                                e("div",{key:"ship",className:"flex items-center gap-2"},[
                                     e(TruckIcon),
                                     " " + shippingTime
                                 ]),
-                                e("div",{key:"warr",className:"flex items-center gap-1.5"},[
+                                e("div",{key:"warr",className:"flex items-center gap-2"},[
                                     e(ShieldIcon),
                                     " " + t('warranty_text', 'Warranty')
                                 ]),
-                                e("div",{key:"batt",className:"flex items-center gap-1.5"},[
+                                e("div",{key:"batt",className:"flex items-center gap-2"},[
                                     e(BatteryIcon),
                                     " 100%"
                                 ]),
-                                e("div",{key:"cond",className:"flex items-center gap-1.5"},[
+                                e("div",{key:"cond",className:"flex items-center gap-2"},[
                                     e(InfoIcon),
                                     " " + currentConditionText
                                 ])
                             ]),
 
-                            // DESKTOP ONLY: Title + Description
-                            e("div",{key:"desktop-content",className:"hidden lg:block space-y-4"},[
-                                e("h1",{key:"title",className:"text-2xl font-semibold"}, cur.title || BOOT.title || "Product"),
-                                e("div",{key:"desc",className:"text-gray-700 text-sm leading-relaxed bg-gray-50 border border-gray-100 rounded-lg p-4"},[
-                                    e("p",{},"Experience next-level performance, breathtaking photography, and cutting-edge design with iPhone 14 Pro. A16 Bionic, Dynamic Island, ProMotion 120Hz, and a 48MP camera system.")
-                                ])
-                            ]),
-
-                            // MOBILE ONLY: Short description - AFTER INFO GRID
-                            e("div",{key:"mobile-desc",className:"lg:hidden text-gray-700 text-sm leading-relaxed bg-gray-50 border border-gray-100 rounded-lg p-4"},[
-                                e("p",{},"Experience next-level performance, breathtaking photography, and cutting-edge design.")
-                            ]),
-
-                            // Collapsible Tabs (mobile + desktop)
-                            e("div",{key:"tabs",className:"space-y-3 mt-6"},[
-                                e(CollapsibleTab,{
-                                    key:"specs",
-                                    tabKey:"specifications",
-                                    title:t('specifications_tab', 'Specifications')
-                                },[
-                                    e("ul",{key:"specs",className:"list-disc pl-5 space-y-1 text-gray-700 text-sm"},[
-                                        e("li",{key:1},"Display: 6.1\" Super Retina XDR OLED, 2556×1179, ProMotion 120Hz, Always-On"),
-                                        e("li",{key:2},"Chip: A16 Bionic (6-core CPU, 5-core GPU, 16-core Neural Engine)"),
-                                        e("li",{key:3},"Memory: 6GB; Storage: 128GB / 256GB / 512GB / 1TB"),
-                                        e("li",{key:4},"Cameras: 48MP main, 12MP ultra-wide, 12MP telephoto; 12MP TrueDepth front"),
-                                        e("li",{key:5},"Connectivity: 5G, Wi-Fi 6, Bluetooth 5.3, UWB, NFC"),
-                                        e("li",{key:6},"Charging: MagSafe up to 15W, Qi up to 7.5W")
-                                    ])
-                                ]),
-
-                                e(CollapsibleTab,{
-                                    key:"warranty",
-                                    tabKey:"warranty",
-                                    title:t('warranty_tab', 'Warranty')
-                                },[
-                                    e("div",{key:"warranty",className:"text-sm text-gray-700"},
-                                        warrantyText
-                                            ? e("div",{dangerouslySetInnerHTML:{__html:warrantyText}})
-                                            : e("p",{},"Loading warranty information...")
+                            // MOBILE ONLY: Storage + Condition RIGHT AFTER info grid
+                            e("div",{key:"mobile-selectors",className:"lg:hidden space-y-4"},[
+                                // Storage
+                                e("div",{key:"storage"},[
+                                    e("h3",{className:"text-sm font-semibold mb-2"},t('storage_options_text', 'Storage Options')),
+                                    e("div",{className:"flex items-center border border-gray-200 rounded-lg overflow-hidden"},
+                                        ALL_STORAGES.map(function(st){
+                                            var available = storages[st];
+                                            var active = String(st).toLowerCase()===String(cur.storage).toLowerCase();
+                                            var cls = "flex-1 text-center py-2 text-sm font-medium transition-all ";
+                                            if (!available) {
+                                                cls += "bg-gray-100 text-gray-400 cursor-not-allowed";
+                                            } else if (active) {
+                                                cls += "bg-blue-600 text-white";
+                                            } else {
+                                                cls += "bg-white text-gray-700 hover:bg-blue-50";
+                                            }
+                                            return e("button",{
+                                                key:st,
+                                                className:cls,
+                                                disabled:!available,
+                                                onClick:function(){ if(available) switchStorage(st); }
+                                            }, st);
+                                        })
                                     )
                                 ]),
 
-                                e(CollapsibleTab,{
-                                    key:"compare",
-                                    tabKey:"compare",
-                                    title:t('compare_tab', 'Compare')
-                                },[
-                                    e("div",{key:"compare",className:"grid grid-cols-2 gap-8"},[
-                                        e("div",{key:"left"},[
-                                            e("h3",{className:"font-semibold mb-2 text-sm"},"iPhone 14 Pro"),
-                                            scoreKeys.map(function(k){ return CompareRow(k, !!compareProduct); })
-                                        ]),
-                                        e("div",{key:"right",className:"relative"},[
-                                            compareProduct ?
-                                                e("div",{},[
-                                                    e("div",{className:"flex items-center justify-between mb-2"},[
-                                                        e("h3",{key:"title",className:"font-semibold text-sm"},"Product #"+compareProduct),
-                                                        e("button",{
-                                                            key:"change",
-                                                            className:"px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50",
-                                                            onClick:function(){ setCompareProduct(null); }
-                                                        },"Change")
-                                                    ]),
-                                                    scoreKeys.map(function(k){ return CompareRow(k, true); })
-                                                ])
-                                                :
-                                                e("button",{
-                                                    className:"w-full border-2 border-dashed border-gray-300 rounded-xl p-10 text-center text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-all flex flex-col items-center gap-2",
-                                                    onClick:function(){ setShowSearch(true); }
-                                                },[
-                                                    e("span",{key:"icon",className:"text-2xl"},"⊕"),
-                                                    e("span",{key:"label",className:"font-medium text-xs"},t('add_to_compare', 'Add Product to Compare'))
-                                                ]),
+                                // Condition
+                                e("div",{key:"condition"},[
+                                    e("h3",{className:"text-sm font-semibold mb-2"},t('condition_label', 'Condition')),
+                                    e("div",{className:"flex border border-gray-200 rounded-lg overflow-hidden mb-3"},[
+                                        CondButton(conditionNewText,'new', avail.hasNew),
+                                        CondButton(conditionUsedText,'used', avail.hasUsed)
+                                    ]),
 
-                                            showSearch && e("div",{
-                                                className:"absolute right-0 top-0 bg-white shadow-lg border rounded-lg p-4 w-64 z-50"
-                                            },[
-                                                e("div",{key:"search",className:"flex items-center border rounded-lg px-2 mb-2"},[
-                                                    e("span",{key:"icon",className:"text-gray-400"},"🔍"),
-                                                    e("input",{
-                                                        key:"input",
-                                                        type:"text",
-                                                        className:"flex-1 text-sm p-1 outline-none",
-                                                        placeholder:"Search products...",
-                                                        value:searchQuery,
-                                                        onChange:function(ev){ setSearchQuery(ev.target.value); }
-                                                    })
-                                                ]),
-                                                e("ul",{key:"results",className:"max-h-56 overflow-y-auto"},
-                                                    searchResults.length > 0 ?
-                                                        searchResults.map(function(p){
-                                                            return e("li",{
-                                                                key:p.id,
-                                                                className:"p-2 hover:bg-blue-50 cursor-pointer rounded-md text-sm",
-                                                                onClick:function(){
-                                                                    setCompareProduct(p.id);
-                                                                    setShowSearch(false);
-                                                                    setSearchQuery('');
-                                                                }
-                                                            }, p.title);
+                                    // Battery tiers (if USED)
+                                    cond==='used' && cur.deviceType==='phone' && rules && rules.exists &&
+                                    e("div",{},[
+                                        e("div",{key:"tiers",className:"flex border border-gray-200 rounded-lg overflow-hidden mb-3"},
+                                            USED_TIERS.map(function(t){
+                                                var pr = rules.pricing || {};
+                                                var row = pr[t] || {};
+                                                var enabled = !!((row.regular && row.regular!=='') || (row.sale && row.sale!==''));
+                                                var active = (tier===t);
+                                                var cls = "flex-1 text-center py-2 text-xs font-medium transition-all ";
+                                                if (active) cls += "bg-green-600 text-white";
+                                                else if (enabled) cls += "bg-white text-gray-700 hover:bg-green-50 cursor-pointer";
+                                                else cls += "bg-gray-100 text-gray-400 cursor-not-allowed";
+
+                                                return e("button",{
+                                                    key:t,
+                                                    className:cls,
+                                                    disabled:!enabled,
+                                                    onClick:function(){ if(enabled) setTier(t); }
+                                                }, t+'%');
+                                            })
+                                        ),
+
+                                        // New battery add-on
+                                        (function(){
+                                            var nb = (rules.pricing||{})['new_battery']||{};
+                                            var hasPrice = (nb.regular && nb.regular!=='') || (nb.sale && nb.sale!=='');
+                                            if (!hasPrice) return null;
+
+                                            return e("button",{
+                                                    key:"newbat",
+                                                    className:"w-full py-2 px-4 rounded-lg border text-sm font-medium transition-all " + (newBat ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"),
+                                                    onClick:function(){ setNewBat(!newBat); }
+                                                }, newBat
+                                                    ? t('new_battery_added', '✓ New Battery Added (+₾{amount})', {amount: batteryPrice.toFixed(2)})
+                                                    : t('add_new_battery', '+ Add New Battery (+₾{amount})', {amount: batteryPrice.toFixed(2)})
+                                            );
+                                        })()
+                                    ])
+                                ])
+                            ]),
+
+                            // Description (both mobile + desktop)
+                            e("div",{key:"desc",className:"text-gray-700 text-sm leading-relaxed bg-gray-50 border border-gray-100 rounded-lg p-4"},[
+                                e("p",{},"Experience next-level performance, breathtaking photography, and cutting-edge design with iPhone 14 Pro. A16 Bionic, Dynamic Island, ProMotion 120Hz, and a 48MP camera system.")
+                            ]),
+
+                            // DESKTOP: Original tab design | MOBILE: Collapsible tabs
+                            e("div",{key:"tabs",className:"space-y-3"},[
+                                // Desktop tabs (original design)
+                                e("div",{className:"hidden lg:block"},[
+                                    e("div",{className:"bg-gray-100 p-1 rounded-lg flex gap-1 mb-4"},[
+                                        [
+                                            ['specifications', t('specifications_tab', 'Specifications')],
+                                            ['warranty', t('warranty_tab', 'Warranty')],
+                                            ['compare', t('compare_tab', 'Compare')]
+                                        ]
+                                    ].map(function(tabs){
+                                        return tabs.map(function(tab){
+                                            var active = activeTab===tab[0];
+                                            var cls = "flex-1 text-center py-2 px-4 text-sm font-medium rounded-md cursor-pointer transition-all "+(active?"bg-white text-gray-900 shadow-sm":"text-gray-600 hover:text-gray-900");
+                                            return e("button",{key:tab[0],className:cls,onClick:function(){ setActiveTab(tab[0]); }}, tab[1]);
+                                        });
+                                    })),
+
+                                    // Desktop tab content
+                                    e("div",{className:"pt-4"},[
+                                        activeTab==='specifications' && e("ul",{key:"specs",className:"list-disc pl-5 space-y-1 text-gray-700"},[
+                                            e("li",{key:1},"Display: 6.1\" Super Retina XDR OLED, 2556×1179, ProMotion 120Hz, Always-On"),
+                                            e("li",{key:2},"Chip: A16 Bionic (6-core CPU, 5-core GPU, 16-core Neural Engine)"),
+                                            e("li",{key:3},"Memory: 6GB; Storage: 128GB / 256GB / 512GB / 1TB"),
+                                            e("li",{key:4},"Cameras: 48MP main, 12MP ultra-wide, 12MP telephoto; 12MP TrueDepth front"),
+                                            e("li",{key:5},"Connectivity: 5G, Wi-Fi 6, Bluetooth 5.3, UWB, NFC"),
+                                            e("li",{key:6},"Charging: MagSafe up to 15W, Qi up to 7.5W")
+                                        ]),
+
+                                        activeTab==='warranty' && e("div",{key:"warranty",className:"text-sm text-gray-700"},[
+                                            warrantyText
+                                                ? e("div",{dangerouslySetInnerHTML:{__html:warrantyText}})
+                                                : e("p",{},"Loading warranty information...")
+                                        ]),
+
+                                        activeTab==='compare' && e("div",{key:"compare",className:"grid grid-cols-2 gap-8"},[
+                                            e("div",{key:"left"},[
+                                                e("h3",{className:"font-semibold mb-2"},"iPhone 14 Pro"),
+                                                scoreKeys.map(function(k){ return CompareRow(k, !!compareProduct); })
+                                            ]),
+
+                                            e("div",{key:"right",className:"relative"},[
+                                                compareProduct ?
+                                                    e("div",{},[
+                                                        e("div",{className:"flex items-center justify-between mb-2"},[
+                                                            e("h3",{key:"title",className:"font-semibold"},"Product #"+compareProduct),
+                                                            e("button",{
+                                                                key:"change",
+                                                                className:"px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50",
+                                                                onClick:function(){ setCompareProduct(null); }
+                                                            },"Change")
+                                                        ]),
+                                                        scoreKeys.map(function(k){ return CompareRow(k, true); })
+                                                    ])
+                                                    :
+                                                    e("button",{
+                                                        className:"w-full border-2 border-dashed border-gray-300 rounded-xl p-10 text-center text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-all flex flex-col items-center gap-2",
+                                                        onClick:function(){ setShowSearch(true); }
+                                                    },[
+                                                        e("span",{key:"icon",className:"text-2xl"},"⊕"),
+                                                        e("span",{key:"label",className:"font-medium"},t('add_to_compare', 'Add Product to Compare'))
+                                                    ]),
+
+                                                showSearch && e("div",{
+                                                    className:"absolute right-0 top-0 bg-white shadow-lg border rounded-lg p-4 w-64 z-50"
+                                                },[
+                                                    e("div",{key:"search",className:"flex items-center border rounded-lg px-2 mb-2"},[
+                                                        e("span",{key:"icon",className:"text-gray-400"},"🔍"),
+                                                        e("input",{
+                                                            key:"input",
+                                                            type:"text",
+                                                            className:"flex-1 text-sm p-1 outline-none",
+                                                            placeholder:"Search products...",
+                                                            value:searchQuery,
+                                                            onChange:function(ev){ setSearchQuery(ev.target.value); }
                                                         })
-                                                        :
-                                                        e("li",{className:"p-2 text-xs text-gray-400 text-center"},"No products found")
-                                                )
+                                                    ]),
+                                                    e("ul",{key:"results",className:"max-h-56 overflow-y-auto"},
+                                                        searchResults.length > 0 ?
+                                                            searchResults.map(function(p){
+                                                                return e("li",{
+                                                                    key:p.id,
+                                                                    className:"p-2 hover:bg-blue-50 cursor-pointer rounded-md",
+                                                                    onClick:function(){
+                                                                        setCompareProduct(p.id);
+                                                                        setShowSearch(false);
+                                                                        setSearchQuery('');
+                                                                    }
+                                                                }, p.title);
+                                                            })
+                                                            :
+                                                            e("li",{className:"p-2 text-xs text-gray-400 text-center"},"No products found")
+                                                    )
+                                                ])
+                                            ])
+                                        ])
+                                    ])
+                                ]),
+
+                                // Mobile collapsible tabs
+                                e("div",{className:"lg:hidden"},[
+                                    e(CollapsibleTab,{
+                                        key:"specs",
+                                        tabKey:"specifications",
+                                        title:t('specifications_tab', 'Specifications')
+                                    },[
+                                        e("ul",{key:"specs",className:"list-disc pl-5 space-y-1 text-gray-700 text-sm"},[
+                                            e("li",{key:1},"Display: 6.1\" Super Retina XDR OLED, 2556×1179, ProMotion 120Hz, Always-On"),
+                                            e("li",{key:2},"Chip: A16 Bionic (6-core CPU, 5-core GPU, 16-core Neural Engine)"),
+                                            e("li",{key:3},"Memory: 6GB; Storage: 128GB / 256GB / 512GB / 1TB"),
+                                            e("li",{key:4},"Cameras: 48MP main, 12MP ultra-wide, 12MP telephoto; 12MP TrueDepth front"),
+                                            e("li",{key:5},"Connectivity: 5G, Wi-Fi 6, Bluetooth 5.3, UWB, NFC"),
+                                            e("li",{key:6},"Charging: MagSafe up to 15W, Qi up to 7.5W")
+                                        ])
+                                    ]),
+
+                                    e(CollapsibleTab,{
+                                        key:"warranty",
+                                        tabKey:"warranty",
+                                        title:t('warranty_tab', 'Warranty')
+                                    },[
+                                        e("div",{key:"warranty",className:"text-sm text-gray-700"},
+                                            warrantyText
+                                                ? e("div",{dangerouslySetInnerHTML:{__html:warrantyText}})
+                                                : e("p",{},"Loading warranty information...")
+                                        )
+                                    ]),
+
+                                    e(CollapsibleTab,{
+                                        key:"compare",
+                                        tabKey:"compare",
+                                        title:t('compare_tab', 'Compare')
+                                    },[
+                                        e("div",{key:"compare",className:"grid grid-cols-2 gap-8"},[
+                                            e("div",{key:"left"},[
+                                                e("h3",{className:"font-semibold mb-2 text-sm"},"iPhone 14 Pro"),
+                                                scoreKeys.map(function(k){ return CompareRow(k, !!compareProduct); })
+                                            ]),
+                                            e("div",{key:"right",className:"relative"},[
+                                                compareProduct ?
+                                                    e("div",{},[
+                                                        e("div",{className:"flex items-center justify-between mb-2"},[
+                                                            e("h3",{key:"title",className:"font-semibold text-sm"},"Product #"+compareProduct),
+                                                            e("button",{
+                                                                key:"change",
+                                                                className:"px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50",
+                                                                onClick:function(){ setCompareProduct(null); }
+                                                            },"Change")
+                                                        ]),
+                                                        scoreKeys.map(function(k){ return CompareRow(k, true); })
+                                                    ])
+                                                    :
+                                                    e("button",{
+                                                        className:"w-full border-2 border-dashed border-gray-300 rounded-xl p-10 text-center text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-all flex flex-col items-center gap-2",
+                                                        onClick:function(){ setShowSearch(true); }
+                                                    },[
+                                                        e("span",{key:"icon",className:"text-2xl"},"⊕"),
+                                                        e("span",{key:"label",className:"font-medium text-xs"},t('add_to_compare', 'Add Product to Compare'))
+                                                    ]),
+
+                                                showSearch && e("div",{
+                                                    className:"absolute right-0 top-0 bg-white shadow-lg border rounded-lg p-4 w-64 z-50"
+                                                },[
+                                                    e("div",{key:"search",className:"flex items-center border rounded-lg px-2 mb-2"},[
+                                                        e("span",{key:"icon",className:"text-gray-400"},"🔍"),
+                                                        e("input",{
+                                                            key:"input",
+                                                            type:"text",
+                                                            className:"flex-1 text-sm p-1 outline-none",
+                                                            placeholder:"Search products...",
+                                                            value:searchQuery,
+                                                            onChange:function(ev){ setSearchQuery(ev.target.value); }
+                                                        })
+                                                    ]),
+                                                    e("ul",{key:"results",className:"max-h-56 overflow-y-auto"},
+                                                        searchResults.length > 0 ?
+                                                            searchResults.map(function(p){
+                                                                return e("li",{
+                                                                    key:p.id,
+                                                                    className:"p-2 hover:bg-blue-50 cursor-pointer rounded-md text-sm",
+                                                                    onClick:function(){
+                                                                        setCompareProduct(p.id);
+                                                                        setShowSearch(false);
+                                                                        setSearchQuery('');
+                                                                    }
+                                                                }, p.title);
+                                                            })
+                                                            :
+                                                            e("li",{className:"p-2 text-xs text-gray-400 text-center"},"No products found")
+                                                    )
+                                                ])
                                             ])
                                         ])
                                     ])
@@ -617,13 +787,50 @@
                             ])
                         ]),
 
-                        // RIGHT COLUMN: Selectors + Info + FBT
-                        e("div",{key:"right",className:"space-y-4 px-4 lg:px-0 mt-6 lg:mt-0"},[
-                            // DESKTOP ONLY: Title
-                            e("h1",{key:"title-desktop",className:"hidden lg:block text-2xl font-semibold"}, cur.title || BOOT.title || "Product"),
+                        // RIGHT COLUMN (Desktop) - Original layout
+                        e("div",{key:"right",className:"space-y-5"},[
+                            // Title (desktop only)
+                            e("h1",{key:"title",className:"hidden lg:block text-2xl font-semibold"},
+                                cur.title || BOOT.title || "Product"),
+                            e("hr",{key:"hr",className:"hidden lg:block my-4 border-gray-200"}),
 
-                            // Storage Options
-                            e("div",{key:"storage"},[
+                            // Price (desktop only)
+                            e("div",{key:"price",className:"hidden lg:flex items-center gap-3 flex-wrap"},[
+                                e("div",{key:"prices",className:"flex flex-col"},[
+                                    priceBlock.hasSale && e("span",{key:"reg",className:"text-[12px] text-gray-400 line-through"}, gel(priceBlock.reg)),
+                                    e("span",{key:"sale",className:"text-3xl font-bold " + (priceBlock.hasSale ? "text-red-600" : "text-gray-900")},
+                                        gel(priceBlock.hasSale ? priceBlock.sale : priceBlock.base))
+                                ]),
+                                e("p",{key:"inst",className:"text-gray-600 flex items-center gap-1 text-base"},[
+                                    e(CoinsIcon,{key:"icon"}),
+                                    " " + t('installment_text', 'From ₾{amount}/month for 12 months', {
+                                        amount: (grandTotal/12).toFixed(2)
+                                    })
+                                ])
+                            ]),
+
+                            // Info grid (desktop only)
+                            e("div",{key:"info",className:"hidden lg:grid grid-cols-2 gap-4 text-sm text-gray-700 mt-2"},[
+                                e("div",{key:"ship",className:"flex items-center gap-2"},[
+                                    e(TruckIcon),
+                                    " " + shippingTime
+                                ]),
+                                e("div",{key:"warr",className:"flex items-center gap-2"},[
+                                    e(ShieldIcon),
+                                    " " + t('warranty_text', 'Warranty')
+                                ]),
+                                e("div",{key:"batt",className:"flex items-center gap-2"},[
+                                    e(BatteryIcon),
+                                    " 100%"
+                                ]),
+                                e("div",{key:"cond",className:"flex items-center gap-2"},[
+                                    e(InfoIcon),
+                                    " " + currentConditionText
+                                ])
+                            ]),
+
+                            // Storage (desktop only)
+                            e("div",{key:"storage",className:"hidden lg:block mt-4"},[
                                 e("h3",{className:"text-sm font-semibold mb-2"},t('storage_options_text', 'Storage Options')),
                                 e("div",{className:"flex items-center border border-gray-200 rounded-lg overflow-hidden"},
                                     ALL_STORAGES.map(function(st){
@@ -647,24 +854,23 @@
                                 )
                             ]),
 
-                            // Condition Selector
-                            e("div",{key:"condition"},[
+                            // Condition (desktop only)
+                            e("div",{key:"condition",className:"hidden lg:block mt-4"},[
                                 e("h3",{className:"text-sm font-semibold mb-2"},t('condition_label', 'Condition')),
                                 e("div",{className:"flex border border-gray-200 rounded-lg overflow-hidden mb-3"},[
                                     CondButton(conditionNewText,'new', avail.hasNew),
                                     CondButton(conditionUsedText,'used', avail.hasUsed)
                                 ]),
 
-                                // Battery tiers and new battery (if USED + phone)
                                 cond==='used' && cur.deviceType==='phone' && rules && rules.exists &&
                                 e("div",{},[
-                                    e("div",{key:"tiers",className:"flex border border-gray-200 rounded-lg overflow-hidden mb-3"},
+                                    e("div",{key:"tiers",className:"flex border border-gray-200 rounded-lg overflow-hidden"},
                                         USED_TIERS.map(function(t){
                                             var pr = rules.pricing || {};
                                             var row = pr[t] || {};
                                             var enabled = !!((row.regular && row.regular!=='') || (row.sale && row.sale!==''));
                                             var active = (tier===t);
-                                            var cls = "flex-1 text-center py-2 text-xs font-medium transition-all ";
+                                            var cls = "flex-1 text-center py-2 text-sm font-medium transition-all ";
                                             if (active) cls += "bg-green-600 text-white";
                                             else if (enabled) cls += "bg-white text-gray-700 hover:bg-green-50 cursor-pointer";
                                             else cls += "bg-gray-100 text-gray-400 cursor-not-allowed";
@@ -685,7 +891,7 @@
 
                                         return e("button",{
                                                 key:"newbat",
-                                                className:"w-full py-2 px-4 rounded-lg border text-sm font-medium transition-all " + (newBat ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"),
+                                                className:"w-full mt-3 py-2 px-4 rounded-lg border text-sm font-medium transition-all " + (newBat ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"),
                                                 onClick:function(){ setNewBat(!newBat); }
                                             }, newBat
                                                 ? t('new_battery_added', '✓ New Battery Added (+₾{amount})', {amount: batteryPrice.toFixed(2)})
@@ -695,46 +901,41 @@
                                 ])
                             ]),
 
-                            // DESKTOP ONLY: Info grid
-                            e("div",{key:"desktop-info",className:"hidden lg:grid grid-cols-2 gap-3 text-xs text-gray-700 bg-gray-50 p-3 rounded-lg"},[
-                                e("div",{key:"ship",className:"flex items-center gap-1.5"},[
-                                    e(TruckIcon),
-                                    " " + shippingTime
-                                ]),
-                                e("div",{key:"warr",className:"flex items-center gap-1.5"},[
-                                    e(ShieldIcon),
-                                    " " + t('warranty_text', 'Warranty')
-                                ]),
-                                e("div",{key:"batt",className:"flex items-center gap-1.5"},[
-                                    e(BatteryIcon),
-                                    " 100%"
-                                ]),
-                                e("div",{key:"cond",className:"flex items-center gap-1.5"},[
-                                    e(InfoIcon),
-                                    " " + currentConditionText
-                                ])
+                            // Buttons (desktop only)
+                            e("div",{key:"buttons",className:"hidden lg:flex gap-3 mt-6"},[
+                                e(Button,{
+                                    key:"cart",
+                                    className:"flex-1",
+                                    onClick:function(){ addToCart('/cart/'); }
+                                }, t('add_to_cart', 'Add to Cart')),
+                                e(Button,{
+                                    key:"buy",
+                                    variant:"outline",
+                                    className:"flex-1",
+                                    onClick:function(){ addToCart('/checkout/'); }
+                                }, t('buy_now', 'Buy Now'))
                             ]),
 
                             // FBT
                             fbt.length>0 && e("div",{key:"fbt",className:"shadow-sm border rounded-lg p-4"},[
                                 e("h3",{key:"title",className:"text-base font-semibold mb-4"},t('fbt_title', 'Frequently Bought Together')),
-                                e("div",{key:"grid",className:"grid grid-cols-3 gap-3"},
+                                e("div",{key:"grid",className:"grid grid-cols-3 sm:grid-cols-3 gap-3"},
                                     fbt.map(function(item){
                                         var isSelected = selectedFBT.indexOf(item.id) >= 0;
                                         return e("div",{
                                             key:item.id,
-                                            className:"shadow-sm border rounded-lg p-2 text-center text-xs flex flex-col "+(isSelected?"border-blue-500 bg-blue-50":"border-gray-200")
+                                            className:"shadow-sm border rounded-lg p-2 text-center text-sm flex flex-col "+(isSelected?"border-blue-500 bg-blue-50":"border-gray-200")
                                         },[
                                             e("img",{
                                                 key:"img",
                                                 src:item.image,
                                                 alt:item.title,
-                                                className:"w-full h-20 object-cover rounded-md mb-1"
+                                                className:"w-full h-24 object-cover rounded-md mb-1"
                                             }),
-                                            e("p",{key:"name",className:"font-medium flex-1 min-h-[2rem] flex items-center justify-center text-[10px]"},item.title),
+                                            e("p",{key:"name",className:"font-medium flex-1 min-h-[2.5rem] flex items-center justify-center text-xs"},item.title),
                                             e("button",{
                                                     key:"btn",
-                                                    className:"mt-2 w-full text-[10px] py-1 rounded-md border transition-all "+(isSelected?"bg-blue-600 text-white":"bg-white text-gray-700 hover:bg-blue-100"),
+                                                    className:"mt-2 w-full text-xs py-1 rounded-md border transition-all "+(isSelected?"bg-blue-600 text-white":"bg-white text-gray-700 hover:bg-blue-100"),
                                                     onClick:function(){ toggleFBT(item.id); }
                                                 }, isSelected
                                                     ? t('added_button', '✓ Added', {price: item.price})
@@ -759,7 +960,7 @@
                 },[
                     e("div",{className:"max-w-7xl mx-auto px-4 py-3"},[
                         e("div",{className:"flex items-center gap-3"},[
-                            // Price section (left)
+                            // Price
                             e("div",{key:"price",className:"flex flex-col flex-1"},[
                                 priceBlock.hasSale && e("span",{key:"reg",className:"text-xs text-gray-400 line-through"}, gel(priceBlock.reg)),
                                 e("span",{
@@ -768,7 +969,7 @@
                                 }, gel(priceBlock.hasSale ? priceBlock.sale : priceBlock.base))
                             ]),
 
-                            // Cart button (icon only on mobile, with text on desktop)
+                            // Cart button
                             e("button",{
                                 key:"cart",
                                 className:"bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 lg:min-w-[140px]",
@@ -800,14 +1001,14 @@
             var shadow = host.shadowRoot || host.attachShadow({mode:'open'});
 
             var style = document.createElement('style');
-            style.textContent = `*,:before,:after{box-sizing:border-box;border:0 solid #e5e7eb}:before,:after{--tw-content:""}html,:host{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif}body{margin:0;line-height:inherit}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}button,input,optgroup,select,textarea{font-family:inherit;font-size:100%;font-weight:inherit;line-height:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,[type=button],[type=reset],[type=submit]{-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dl,dd,h1,h2,h3,h4,h5,h6,hr,figure,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}ol,ul,menu{list-style:none;margin:0;padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}button,[role=button]{cursor:pointer}:disabled{cursor:default}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]{display:none}*,:before,:after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000}::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000}.fixed{position:fixed}.relative{position:relative}.bottom-0{bottom:0}.left-0{left:0}.right-0{right:0}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:.25rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.ml-2{margin-left:.5rem}.mt-2{margin-top:.5rem}.mt-6{margin-top:1.5rem}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-1{height:.25rem}.h-16{height:4rem}.h-20{height:5rem}.min-h-\\[2rem\\]{min-height:2rem}.min-h-screen{min-height:100vh}.w-16{width:4rem}.w-64{width:16rem}.w-full{width:100%}.max-w-7xl{max-width:80rem}.flex-1{flex:1 1 0%}.flex-shrink-0{flex-shrink:0}.cursor-not-allowed{cursor:not-allowed}.cursor-pointer{cursor:pointer}.list-disc{list-style-type:disc}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-between{justify-content:space-between}.justify-center{justify-content:center}.gap-1{gap:.25rem}.gap-1\\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-8{gap:2rem}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem * var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.75rem * var(--tw-space-y-reverse))}.space-y-4>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.rounded-2xl{border-radius:1rem}.border{border-width:1px}.border-2{border-width:2px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-blue-500{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity))}.border-blue-600{--tw-border-opacity:1;border-color:rgb(37 99 235/var(--tw-border-opacity))}.border-gray-100{--tw-border-opacity:1;border-color:rgb(243 244 246/var(--tw-border-opacity))}.border-gray-200{--tw-border-opacity:1;border-color:rgb(229 231 235/var(--tw-border-opacity))}.border-gray-300{--tw-border-opacity:1;border-color:rgb(209 213 219/var(--tw-border-opacity))}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity))}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246/var(--tw-bg-opacity))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity))}.bg-green-500{--tw-bg-opacity:1;background-color:rgb(34 197 94/var(--tw-bg-opacity))}.bg-green-600{--tw-bg-opacity:1;background-color:rgb(22 163 74/var(--tw-bg-opacity))}.bg-red-400{--tw-bg-opacity:1;background-color:rgb(248 113 113/var(--tw-bg-opacity))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity))}.object-cover{object-fit:cover}.p-1{padding:.25rem}.p-10{padding:2.5rem}.p-2{padding:.5rem}.p-3{padding:.75rem}.p-4{padding:1rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.pb-2{padding-bottom:.5rem}.pb-32{padding-bottom:8rem}.pl-5{padding-left:1.25rem}.pt-4{padding-top:1rem}.text-center{text-align:center}.text-\\[10px\\]{font-size:10px}.text-base{font-size:1rem;line-height:1.5rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.leading-relaxed{line-height:1.625}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity))}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175/var(--tw-text-opacity))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128/var(--tw-text-opacity))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99/var(--tw-text-opacity))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81/var(--tw-text-opacity))}.text-gray-900{--tw-text-opacity:1;color:rgb(17 24 39/var(--tw-text-opacity))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38/var(--tw-text-opacity))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity))}.line-through{text-decoration-line:line-through}.shadow{--tw-shadow:0 1px 3px 0 rgb(0 0 0/.1),0 1px 2px -1px rgb(0 0 0/.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color),0 1px 2px -1px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color),0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0/.1),0 2px 4px -2px rgb(0 0 0/.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0/.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.outline-none{outline:2px solid transparent;outline-offset:2px}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.hover\\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity))}.hover\\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.hover\\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity))}.hover\\:bg-gray-100:hover{--tw-bg-opacity:1;background-color:rgb(243 244 246/var(--tw-bg-opacity))}.hover\\:bg-gray-50:hover{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity))}.hover\\:bg-green-50:hover{--tw-bg-opacity:1;background-color:rgb(240 253 244/var(--tw-bg-opacity))}.hover\\:bg-green-700:hover{--tw-bg-opacity:1;background-color:rgb(21 128 61/var(--tw-bg-opacity))}.hover\\:border-blue-400:hover{--tw-border-opacity:1;border-color:rgb(96 165 250/var(--tw-border-opacity))}.hover\\:text-blue-600:hover{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity))}@media(min-width:1024px){.lg\\:grid{display:grid}.lg\\:hidden{display:none}.lg\\:min-w-\\[140px\\]{min-width:140px}.lg\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.lg\\:gap-8{gap:2rem}.lg\\:p-6{padding:1.5rem}.lg\\:px-0{padding-left:0;padding-right:0}.lg\\:mt-0{margin-top:0}.lg\\:block{display:block}.lg\\:inline{display:inline}}`;
+            style.textContent = `*,:before,:after{box-sizing:border-box;border:0 solid #e5e7eb}:before,:after{--tw-content:""}html,:host{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif}body{margin:0;line-height:inherit}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}button,input,optgroup,select,textarea{font-family:inherit;font-size:100%;font-weight:inherit;line-height:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,[type=button],[type=reset],[type=submit]{-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dl,dd,h1,h2,h3,h4,h5,h6,hr,figure,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}ol,ul,menu{list-style:none;margin:0;padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}button,[role=button]{cursor:pointer}:disabled{cursor:default}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]{display:none}*,:before,:after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000}::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000}.fixed{position:fixed}.relative{position:relative}.bottom-0{bottom:0}.left-0{left:0}.right-0{right:0}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:.25rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.ml-2{margin-left:.5rem}.mt-1{margin-top:.25rem}.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}.my-4{margin-top:1rem;margin-bottom:1rem}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-1{height:.25rem}.h-16{height:4rem}.h-24{height:6rem}.h-4{height:1rem}.min-h-\\[2\\.5rem\\]{min-height:2.5rem}.min-h-screen{min-height:100vh}.w-16{width:4rem}.w-4{width:1rem}.w-64{width:16rem}.w-full{width:100%}.max-w-7xl{max-width:80rem}.flex-1{flex:1 1 0%}.cursor-not-allowed{cursor:not-allowed}.cursor-pointer{cursor:pointer}.list-disc{list-style-type:disc}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-center{align-items:center}.justify-between{justify-content:space-between}.justify-center{justify-content:center}.gap-1{gap:.25rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.gap-8{gap:2rem}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem * var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.75rem * var(--tw-space-y-reverse))}.space-y-4>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem * var(--tw-space-y-reverse))}.space-y-6>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.rounded-2xl{border-radius:1rem}.border{border-width:1px}.border-2{border-width:2px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-blue-500{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity))}.border-blue-600{--tw-border-opacity:1;border-color:rgb(37 99 235/var(--tw-border-opacity))}.border-gray-100{--tw-border-opacity:1;border-color:rgb(243 244 246/var(--tw-border-opacity))}.border-gray-200{--tw-border-opacity:1;border-color:rgb(229 231 235/var(--tw-border-opacity))}.border-gray-300{--tw-border-opacity:1;border-color:rgb(209 213 219/var(--tw-border-opacity))}.bg-blue-100{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity))}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity))}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246/var(--tw-bg-opacity))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity))}.bg-green-50{--tw-bg-opacity:1;background-color:rgb(240 253 244/var(--tw-bg-opacity))}.bg-green-600{--tw-bg-opacity:1;background-color:rgb(22 163 74/var(--tw-bg-opacity))}.bg-red-400{--tw-bg-opacity:1;background-color:rgb(248 113 113/var(--tw-bg-opacity))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity))}.object-cover{object-fit:cover}.p-1{padding:.25rem}.p-10{padding:2.5rem}.p-2{padding:.5rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.pb-32{padding-bottom:8rem}.pl-5{padding-left:1.25rem}.pt-4{padding-top:1rem}.text-center{text-align:center}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-\\[10px\\]{font-size:10px}.text-\\[12px\\]{font-size:12px}.text-base{font-size:1rem;line-height:1.5rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.leading-relaxed{line-height:1.625}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity))}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175/var(--tw-text-opacity))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128/var(--tw-text-opacity))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99/var(--tw-text-opacity))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81/var(--tw-text-opacity))}.text-gray-900{--tw-text-opacity:1;color:rgb(17 24 39/var(--tw-text-opacity))}.text-green-600{--tw-text-opacity:1;color:rgb(22 163 74/var(--tw-text-opacity))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38/var(--tw-text-opacity))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity))}.line-through{text-decoration-line:line-through}.shadow{--tw-shadow:0 1px 3px 0 rgb(0 0 0/.1),0 1px 2px -1px rgb(0 0 0/.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color),0 1px 2px -1px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color),0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0/.1),0 2px 4px -2px rgb(0 0 0/.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0/.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.outline-none{outline:2px solid transparent;outline-offset:2px}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.hover\\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity))}.hover\\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.hover\\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity))}.hover\\:bg-gray-100:hover{--tw-bg-opacity:1;background-color:rgb(243 244 246/var(--tw-bg-opacity))}.hover\\:bg-gray-50:hover{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity))}.hover\\:bg-green-50:hover{--tw-bg-opacity:1;background-color:rgb(240 253 244/var(--tw-bg-opacity))}.hover\\:bg-green-700:hover{--tw-bg-opacity:1;background-color:rgb(21 128 61/var(--tw-bg-opacity))}.hover\\:border-blue-400:hover{--tw-border-opacity:1;border-color:rgb(96 165 250/var(--tw-border-opacity))}.hover\\:text-blue-600:hover{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity))}.hover\\:text-gray-900:hover{--tw-text-opacity:1;color:rgb(17 24 39/var(--tw-text-opacity))}@media(min-width:640px){.sm\\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(min-width:1024px){.lg\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.lg\\:hidden{display:none}.lg\\:block{display:block}.lg\\:flex{display:flex}.lg\\:grid{display:grid}.lg\\:inline{display:inline}.lg\\:min-w-\\[140px\\]{min-width:140px}}`;
             shadow.appendChild(style);
 
             var appRoot = document.createElement('div');
             shadow.appendChild(appRoot);
 
             ReactDOM.createRoot(appRoot).render(e(ProductApp));
-            console.log('Gstore EPP v4.1.0: DESKTOP PRESERVED + MOBILE ORDER FIXED ✅');
+            console.log('Gstore EPP v4.2.0: ORIGINAL DESKTOP + NEW MOBILE ORDER ✅');
         } catch(error) {
             console.error('Gstore EPP: Render failed', error);
         }
