@@ -53,13 +53,25 @@ add_action('woocommerce_before_single_product', function(){
 	echo '<style>
 		' . $font_css . '
 		
-        /* CRITICAL: Fix z-index hierarchy */
+        /* ========================================
+           CRITICAL: Z-INDEX HIERARCHY
+           ======================================== */
+        
         /* Theme header - ensure it stays on top */
         .site-header,
         header.header,
-        #masthead {
+        #masthead,
+        .whb-header,
+        .header-banner {
             position: relative !important;
             z-index: 1000 !important;
+        }
+        
+        /* WOODMART FOOTER TOOLBAR - Right below sticky bar */
+        .wd-toolbar.wd-toolbar-label-show {
+            position: fixed !important;
+            bottom: 0 !important;
+            z-index: 999998 !important; /* Below sticky bar (999999) but above everything else */
         }
         
         /* Theme footer - keep it above content but below header */
@@ -82,6 +94,10 @@ add_action('woocommerce_before_single_product', function(){
             pointer-events: none !important;
             z-index: -1 !important;
         }
+        
+        /* ========================================
+           PRODUCT PAGE LAYOUT
+           ======================================== */
         
         /* Hide WooCommerce default product */
         .single-product div.product { 
@@ -114,7 +130,11 @@ add_action('woocommerce_before_single_product', function(){
             margin: 0 auto !important;
         }
         
-        /* CRITICAL: Shadow host with proper z-index and centering */
+        /* ========================================
+           SHADOW HOST & STICKY BAR
+           ======================================== */
+        
+        /* Shadow host with proper z-index and centering */
         #gstore-epp-shadow-host { 
             min-height: 500px;
             width: 100%;
@@ -127,6 +147,8 @@ add_action('woocommerce_before_single_product', function(){
             z-index: 1 !important; /* Below header, above everything else */
             visibility: visible !important;
             opacity: 1 !important;
+            /* Add bottom padding to prevent content from being hidden behind sticky bar */
+            padding-bottom: 80px !important;
         }
         
         /* Ensure content stays below header */
@@ -134,6 +156,26 @@ add_action('woocommerce_before_single_product', function(){
             position: relative;
             z-index: 1;
         }
+        
+        /* ========================================
+           STICKY BOTTOM BAR POSITIONING
+           ======================================== */
+        
+        /* CRITICAL: Sticky bar positioning to appear ABOVE Woodmart footer toolbar */
+        .single-product #gstore-epp-shadow-host > div {
+            /* This targets the shadow root container */
+        }
+        
+        /* Ensure sticky bar appears above Woodmart toolbar */
+        body.single-product {
+            /* Calculate proper spacing for sticky elements */
+            --sticky-bar-height: 70px;
+            --woodmart-toolbar-height: 60px;
+        }
+        
+        /* ========================================
+           CUSTOM FONTS
+           ======================================== */
         
         /* Apply custom fonts globally (will also work in Shadow DOM) */
         #gstore-epp-shadow-host h1,
@@ -155,6 +197,10 @@ add_action('woocommerce_before_single_product', function(){
             font-weight: ' . esc_attr($body_weight) . ' !important;
         }
         
+        /* ========================================
+           RESPONSIVE ADJUSTMENTS
+           ======================================== */
+        
         /* Mobile-specific fixes */
         @media (max-width: 768px) {
             /* Ensure proper padding on mobile */
@@ -165,7 +211,14 @@ add_action('woocommerce_before_single_product', function(){
             
             /* Center content on mobile */
             #gstore-epp-shadow-host {
-                padding: 0 !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+            
+            /* MOBILE: Sticky bar bottom spacing above Woodmart toolbar */
+            #gstore-epp-shadow-host {
+                /* Add bottom padding equal to Woodmart toolbar + sticky bar height */
+                padding-bottom: calc(60px + 70px) !important; /* Woodmart 60px + Sticky 70px */
             }
         }
         
@@ -173,7 +226,10 @@ add_action('woocommerce_before_single_product', function(){
         @media (min-width: 769px) {
             #gstore-epp-shadow-host {
                 max-width: 1400px;
-                padding: 0 20px;
+                padding-left: 20px;
+                padding-right: 20px;
+                /* Desktop needs less bottom padding */
+                padding-bottom: 100px !important;
             }
         }
     </style>';
@@ -181,7 +237,7 @@ add_action('woocommerce_before_single_product', function(){
 	// Insert Shadow host
 	echo '<div id="gstore-epp-shadow-host"></div>';
 
-	// Remove any overlay scripts that might execute
+	// CRITICAL: JavaScript to dynamically position sticky bar above Woodmart toolbar
 	echo '<script>
         // Force remove overlays on page load
         document.addEventListener("DOMContentLoaded", function(){
@@ -205,6 +261,39 @@ add_action('woocommerce_before_single_product', function(){
                 shadowHost.style.opacity = "1";
                 shadowHost.style.zIndex = "1";
             }
+            
+            // CRITICAL: Position sticky bar above Woodmart footer toolbar
+            function positionStickyBar() {
+                var woodmartToolbar = document.querySelector(".wd-toolbar.wd-toolbar-label-show");
+                
+                if (woodmartToolbar) {
+                    var toolbarHeight = woodmartToolbar.offsetHeight || 60; // Default 60px if not found
+                    
+                    // Find sticky bar in shadow DOM
+                    var shadowHost = document.getElementById("gstore-epp-shadow-host");
+                    if (shadowHost && shadowHost.shadowRoot) {
+                        var stickyBar = shadowHost.shadowRoot.querySelector("[class*=\'sticky-bar\'], .fixed.bottom-0");
+                        
+                        if (stickyBar) {
+                            // Position sticky bar above Woodmart toolbar
+                            stickyBar.style.bottom = toolbarHeight + "px";
+                            stickyBar.style.zIndex = "999999"; // Above toolbar (999998)
+                            
+                            console.log("Gstore EPP: Sticky bar positioned " + toolbarHeight + "px above Woodmart toolbar");
+                        }
+                    }
+                }
+            }
+            
+            // Position on load
+            setTimeout(positionStickyBar, 500);
+            
+            // Reposition on window resize
+            window.addEventListener("resize", positionStickyBar);
+            
+            // Observe for dynamic changes
+            var observer = new MutationObserver(positionStickyBar);
+            observer.observe(document.body, { childList: true, subtree: true });
         });
         
         // Also try immediately
@@ -319,7 +408,7 @@ add_action('wp_enqueue_scripts', function(){
 	wp_register_script('gstore-epp-app',
 		GSTORE_EPP_URL.'assets/js/product-app.js',
 		['react','react-dom'],
-		'4.0.0', // Updated version
+		'4.1.0', // Updated version
 		true
 	);
 
