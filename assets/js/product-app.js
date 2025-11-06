@@ -749,22 +749,34 @@
     // INITIALIZE APP
     // ============================================
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Gstore EPP: Initializing...');
         const host = document.getElementById('gstore-epp-shadow-host');
         if (!host) {
-            console.error('Shadow host not found');
+            console.error('Gstore EPP: Host not found');
             return;
         }
 
-        const shadow = host.attachShadow({mode: 'open'});
+        const shadow = host.shadowRoot; // ✅ USE EXISTING SHADOW ROOT
+        if (!shadow) {
+            console.error('Gstore EPP: Shadow root not initialized');
+            return;
+        }
 
-        // Create container
-        const container = document.createElement('div');
-        container.className = 'gstore-container';
-        shadow.appendChild(container);
+        let container = shadow.querySelector('#gstore-app-root') || shadow.querySelector('.gstore-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'gstore-app-root';
+            container.className = 'gstore-container';
+            shadow.appendChild(container);
+        }
 
-        // Mount React app
-        const root = ReactDOM.createRoot(container);
-        root.render(React.createElement(ProductApp));
+        try {
+            const root = ReactDOM.createRoot(container);
+            root.render(React.createElement(ProductApp));
+            console.log('Gstore EPP: Mounted successfully! ✅');
+        } catch (error) {
+            console.error('Gstore EPP: Mount failed:', error);
+        }
     });
 
 })();
