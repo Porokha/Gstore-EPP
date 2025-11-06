@@ -1,12 +1,13 @@
 <?php
 /**
- * Frontend Enqueue - FIXED VERSION
+ * Frontend Enqueue - FIXED VERSION v4.2.0
  * Gstore EPP - Shadow DOM Setup & Asset Loading
  *
  * FIXES:
  * - Removed excessive z-index that overlays header/footer
  * - Proper layering with theme elements
  * - Fixed mobile positioning
+ * - Fixed $product global issue (fatal error fix)
  */
 
 if (!defined('ABSPATH')) exit;
@@ -16,9 +17,6 @@ if (!defined('ABSPATH')) exit;
 // ============================================
 add_action('woocommerce_before_single_product', 'gstore_epp_inject_shadow_host', 5);
 function gstore_epp_inject_shadow_host() {
-	global $product;
-	if (!$product) return;
-
 	// Output shadow host container
 	echo '<div id="gstore-epp-shadow-host"></div>';
 
@@ -71,7 +69,8 @@ function gstore_epp_enqueue_assets() {
 	// Only on single product pages
 	if (!is_product()) return;
 
-	global $product;
+	// CRITICAL FIX: Get product from current post, not global
+	$product = wc_get_product(get_the_ID());
 	if (!$product) return;
 
 	$plugin_url = plugin_dir_url(dirname(__FILE__));
