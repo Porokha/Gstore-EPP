@@ -49,11 +49,28 @@ add_action('woocommerce_before_single_product', function(){
 	$heading_weight = $typo_opts['heading_weight'] ?? '600';
 	$body_weight = $typo_opts['body_weight'] ?? '400';
 
-	// Hide default WooCommerce product display + theme sidebar + OVERLAYS
+	// CRITICAL: Fixed z-index hierarchy and proper centering
 	echo '<style>
 		' . $font_css . '
 		
-        /* CRITICAL: Hide any overlays that might block content */
+        /* CRITICAL: Fix z-index hierarchy */
+        /* Theme header - ensure it stays on top */
+        .site-header,
+        header.header,
+        #masthead {
+            position: relative !important;
+            z-index: 1000 !important;
+        }
+        
+        /* Theme footer - keep it above content but below header */
+        .site-footer,
+        footer.footer,
+        #colophon {
+            position: relative !important;
+            z-index: 100 !important;
+        }
+        
+        /* Hide any overlays */
         .cdp-copy-loader-overlay,
         .loading-overlay,
         .loader-overlay,
@@ -67,20 +84,24 @@ add_action('woocommerce_before_single_product', function(){
         }
         
         /* Hide WooCommerce default product */
-        .single-product div.product { display: none !important; }
+        .single-product div.product { 
+            display: none !important; 
+        }
         
         /* Hide theme sidebar on product pages */
         .single-product #secondary,
         .single-product .sidebar,
-        .single-product aside { display: none !important; }
+        .single-product aside { 
+            display: none !important; 
+        }
         
-        /* Make content area full width */
+        /* Make content area full width and properly centered */
         .single-product #primary,
         .single-product .content-area,
         .single-product main { 
             width: 100% !important; 
             max-width: 100% !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             padding: 0 !important;
         }
         
@@ -90,21 +111,28 @@ add_action('woocommerce_before_single_product', function(){
             max-width: 100% !important;
             width: 100% !important;
             padding: 0 !important;
+            margin: 0 auto !important;
         }
         
-        /* Shadow host styling - CENTERED with VERY HIGH Z-INDEX */
+        /* CRITICAL: Shadow host with proper z-index and centering */
         #gstore-epp-shadow-host { 
             min-height: 500px;
             width: 100%;
-            max-width: 1400px;
+            max-width: 100%;
             display: block !important;
             background: #fff;
             margin: 0 auto !important;
-            padding: 0 20px;
+            padding: 0 !important;
             position: relative !important;
-            z-index: 999999 !important;
+            z-index: 1 !important; /* Below header, above everything else */
             visibility: visible !important;
             opacity: 1 !important;
+        }
+        
+        /* Ensure content stays below header */
+        #gstore-epp-shadow-host * {
+            position: relative;
+            z-index: 1;
         }
         
         /* Apply custom fonts globally (will also work in Shadow DOM) */
@@ -125,6 +153,28 @@ add_action('woocommerce_before_single_product', function(){
         #gstore-epp-shadow-host button {
             font-family: "' . esc_attr($body_font) . '", sans-serif !important;
             font-weight: ' . esc_attr($body_weight) . ' !important;
+        }
+        
+        /* Mobile-specific fixes */
+        @media (max-width: 768px) {
+            /* Ensure proper padding on mobile */
+            .single-product #primary,
+            .single-product .content-area {
+                padding: 0 !important;
+            }
+            
+            /* Center content on mobile */
+            #gstore-epp-shadow-host {
+                padding: 0 !important;
+            }
+        }
+        
+        /* Desktop-specific */
+        @media (min-width: 769px) {
+            #gstore-epp-shadow-host {
+                max-width: 1400px;
+                padding: 0 20px;
+            }
         }
     </style>';
 
@@ -153,7 +203,7 @@ add_action('woocommerce_before_single_product', function(){
                 shadowHost.style.display = "block";
                 shadowHost.style.visibility = "visible";
                 shadowHost.style.opacity = "1";
-                shadowHost.style.zIndex = "999999";
+                shadowHost.style.zIndex = "1";
             }
         });
         
@@ -269,7 +319,7 @@ add_action('wp_enqueue_scripts', function(){
 	wp_register_script('gstore-epp-app',
 		GSTORE_EPP_URL.'assets/js/product-app.js',
 		['react','react-dom'],
-		GSTORE_EPP_VER,
+		'4.0.0', // Updated version
 		true
 	);
 
@@ -334,9 +384,3 @@ add_action('wp_enqueue_scripts', function(){
 		wp_add_inline_style('gstore-epp-app', $options['custom_css']);
 	}
 }, 25);
-
-
-
-
-
-
