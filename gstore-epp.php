@@ -9,6 +9,7 @@ Author URI: https://gstore.ge
 Update URI: https://github.com/Porokha/gstore-epp
 */
 
+// Super Test v. 5.1.1 @greptileai //
 // ===== GitHub Release Updater =====
 add_filter('pre_set_site_transient_update_plugins', function($transient){
 	if (empty($transient->checked)) return $transient;
