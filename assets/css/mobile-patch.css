@@ -1,87 +1,94 @@
-
-/* Mobile-only patches */
-@media (max-width: 768px){
-    /* Sticky bar */
-    #gstore-sticky-cta{
-        position: fixed;
-        left: 0; right: 0; bottom: 0;
-        z-index: 99999;
-        background: #3A53CF;
-        color: #fff;
-        box-shadow: 0 -6px 20px rgba(0,0,0,.18);
-    }
-    #gstore-sticky-cta .gstore-sticky-cta-inner{
-        display:flex; align-items:center; justify-content:space-between;
-        gap: 12px;
-        padding: 12px 14px;
-    }
-    #gstore-sticky-cta .gstore-prices {display:flex; flex-direction:column;}
-    #gstore-sticky-cta .gstore-prices .regular{
-        text-decoration: line-through;
-        opacity:.8; font-size:12px; line-height:1;
-        margin-bottom:4px;
-    }
-    #gstore-sticky-cta .gstore-prices .sale{
-        font-size:18px; font-weight:700; line-height:1;
-    }
-    #gstore-sticky-cta .gstore-actions{display:flex; gap:10px; align-items:center;}
-    #gstore-sticky-cta .btn-cart,
-    #gstore-sticky-cta .btn-buy{
-        border-radius:12px; padding:10px 14px; border:none; font-weight:600;
-    }
-    #gstore-sticky-cta .btn-cart{
-        background:#14a44d; color:#fff; width:46px; height:42px;
-        -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"white\"><path d=\"M7 4h-2l-1 2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h9v-2h-8.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h5.72c.75 0 1.41-.41 1.75-1.03l3.58-6.49a1 1 0 0 0-.88-1.48h-14.31l-.94-2zm-1 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 .001 3.999A2 2 0 0 0 16 20z\"/></svg>') center / 22px no-repeat;
-        background-color:#14a44d;
-        color: transparent;
-    }
-    #gstore-sticky-cta .btn-buy{ background:#fff; color:#3A53CF; }
-
-    /* Tabs collapse helper */
-    .epp-tabs-panel.is-collapsed{ display:none !important; }
+/* Mobile sticky CTA bar */
+#gstore-sticky-cta {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #3A53CF; /* Brand blue - FIXED */
+    color: white;
+    z-index: 9999;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-/* Enhanced mobile layout fixes */
+.gstore-sticky-cta-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.gstore-prices {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.gstore-prices .regular {
+    font-size: 0.875rem;
+    text-decoration: line-through;
+    opacity: 0.8;
+}
+
+.gstore-prices .sale {
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.gstore-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#gstore-sticky-cta .btn-cart {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#gstore-sticky-cta .btn-cart::after {
+    content: "🛒";
+    font-size: 16px;
+}
+
+#gstore-sticky-cta .btn-buy {
+    background: #fff;
+    color: #3A53CF; /* Brand blue - FIXED */
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+/* SHADOW DOM MOBILE FIXES - This is the key! */
+#gstore-epp-shadow-host {
+    width: 100% !important;
+}
+
 @media (max-width: 768px) {
-    /* Fix centering issues */
-    .gstore-app {
-        padding: 0.75rem;
-        margin: 0 auto;
-        max-width: 100vw;
-        overflow-x: hidden;
+    /* Force shadow DOM to apply mobile styles */
+    #gstore-epp-shadow-host * {
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
     }
 
-    /* Center product headers */
-    .epp-product-header {
-        text-align: center;
-        margin-bottom: 1.5rem;
+    /* Add padding for sticky bar */
+    body {
+        padding-bottom: 80px !important;
     }
 
-    /* Improve selector spacing and centering */
-    .epp-condition-selector,
-    .epp-storage-selector,
-    .epp-color-selector {
-        margin-bottom: 1rem;
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
-    /* Ensure proper tab panel visibility */
-    .epp-tabs-panel {
-        margin-top: 1rem;
-        padding: 1rem;
-    }
-
-    /* Fix any z-index conflicts */
-    .gstore-app {
-        position: relative;
-        z-index: 1;
-    }
-
-    /* Prevent horizontal scrolling */
-    body.gstore-epp-active {
-        overflow-x: hidden;
+    /* Center the shadow DOM content */
+    #gstore-epp-shadow-host {
+        padding: 0 1rem !important;
+        margin: 0 auto !important;
     }
 }
