@@ -1,5 +1,5 @@
 (function(){
-    console.log('Gstore EPP: product-app.js v2.4.0 COMPLETE - ALL FEATURES + TRANSLATIONS');
+    console.log('Gstore EPP: product-app.js v5.1.0 COMPLETE - ALL FEATURES + TRANSLATIONS');
 
     function money(n){ var x = Number(n||0); return isFinite(x) ? x.toFixed(2) : "0.00"; }
     function gel(n){ return "₾" + money(n); }
@@ -90,7 +90,7 @@
             var _s7 = useState([]);
             var selectedFBT = _s7[0]; var setSelectedFBT = _s7[1];
 
-            var _s8 = useState('specifications');
+            var _s8 = useState((typeof window!=='undefined' && window.innerWidth<=768)?null:'specifications');
             var activeTab = _s8[0]; var setActiveTab = _s8[1];
 
             var _s9 = useState((cur.condition==='new')?'new':'used');
@@ -348,6 +348,10 @@
                 fd.append('nonce', BOOT.ajax.nonce);
                 fd.append('product_id', cur.productId);
                 fd.append('quantity', 1);
+                fd.append('condition', cond);
+                fd.append('tier', tier||'');
+                fd.append('new_battery', newBat?1:0);
+                try{ fd.append('laptop_addons', JSON.stringify({})); }catch(e){ fd.append('laptop_addons','{}'); }
                 fetch(BOOT.ajax.url, { method:'POST', body:fd, credentials:'same-origin' })
                     .then(function(r){ return r.json(); })
                     .then(function(res){
@@ -357,7 +361,7 @@
                     .catch(function(err){ console.error(err); alert('Failed to add to cart'); });
             }
 
-            function CondButton(lbl, key, enabled){
+            function CondButton(lbl, key, enabled){ if(!enabled){ return null; }
                 var active = (cond===key);
                 var cls = "flex-1 text-center py-2 text-sm font-medium transition-all ";
                 if (!enabled) {
@@ -480,7 +484,7 @@
                                 return tabs.map(function(tab){
                                     var active = activeTab===tab[0];
                                     var cls = "flex-1 text-center py-2 px-4 text-sm font-medium rounded-md cursor-pointer transition-all "+(active?"bg-white text-gray-900 shadow-sm":"text-gray-600 hover:text-gray-900");
-                                    return e("button",{key:tab[0],className:cls,onClick:function(){ setActiveTab(tab[0]); }}, tab[1]);
+                                    return e("button",{key:tab[0],className:cls,onClick:function(){ if (typeof window!=='undefined' && window.innerWidth<=768 && activeTab===tab[0]) { setActiveTab(null); } else { setActiveTab(tab[0]); } }}, tab[1]);
                                 });
                             })),
 
@@ -603,7 +607,7 @@
                             ]),
                             e("div",{key:"batt",className:"flex items-center gap-2"},[
                                 e(BatteryIcon),
-                                " " + t('battery_health_text', 'Battery Health: 100%')
+                                " " + t('battery_health_text', 'Battery Health: {health}%', {health: (function(){ try{ if (cond==='new') return '100'; if (!tier) return '100'; var p=tier.split('-'); var mid=(parseInt(p[0]) + parseInt(p[1]))/2; return String(Math.round(mid)); }catch(e){ return '100'; } })()})
                             ]),
                             e("div",{key:"cond",className:"flex items-center gap-2"},[
                                 e(InfoIcon),
@@ -753,7 +757,7 @@
             shadow.appendChild(appRoot);
 
             ReactDOM.createRoot(appRoot).render(e(ProductApp));
-            console.log('Gstore EPP v2.4.0: ALL FEATURES COMPLETE! ✅ Translations, Warranty, Shipping, Fonts - Everything Working!');
+            console.log('Gstore EPP v5.1.0: ALL FEATURES COMPLETE! ✅ Translations, Warranty, Shipping, Fonts - Everything Working!');
         } catch(error) {
             console.error('Gstore EPP: Render failed', error);
         }

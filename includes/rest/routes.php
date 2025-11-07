@@ -12,6 +12,13 @@ class GStore_EPP_REST {
 
 	public function routes(){
 
+		// Laptop add-ons
+		register_rest_route(self::NS, '/laptop-addons', [
+			'methods' => 'GET',
+			'callback' => [$this,'get_laptop_addons'],
+			'permission_callback' => '__return_true'
+		]);
+
 		// Compare specs
 		register_rest_route(self::NS, '/compare-specs', [
 			'methods' => 'GET',
@@ -92,17 +99,15 @@ class GStore_EPP_REST {
 
 		$ctx = gstore_epp_parse_by_product_id($pid);
 
-		// NEW: Include storage in the key
+		// Include storage in the key
 		$storage = $ctx['storage'] ?: '';
 		$storage_normalized = strtolower(preg_replace('/[^a-z0-9]/', '', $storage));
 
 		// Build storage-specific group key
 		$group_key = $ctx['group_key']; // e.g., "apple iphone-14-pro"
-
+		$group_key_with_storage = $group_key;
 		if ($storage_normalized) {
 			$group_key_with_storage = $group_key . ' ' . $storage_normalized; // e.g., "apple iphone-14-pro 128gb"
-		} else {
-			$group_key_with_storage = $group_key;
 		}
 
 		global $wpdb;
@@ -581,7 +586,33 @@ class GStore_EPP_REST {
 
 		return new WP_REST_Response($result, 200);
 	}
-}
+
+	/* -------------------------
+		LAPTOP ADD-ONS (INSIDE CLASS)
+	--------------------------*/
+	public function get_laptop_addons(WP_REST_Request $r){
+		global $wpdb;
+		$tbl = gstore_epp_table_addons();
+		$rows = $wpdb->get_results("SELECT scope, data_json FROM {$tbl}", ARRAY_A);
+		$data = ['laptop_ram'=>[], 'laptop_storage'=>[]];
+		if ($rows){
+			foreach($rows as $row){
+				$arr = json_decode($row['data_json'], true);
+				if (!is_array($arr)) $arr=[];
+				if ($row['scope']==='laptop_ram') $data['laptop_ram']=$arr;
+				if ($row['scope']==='laptop_storage') $data['laptop_storage']=$arr;
+			}
+		}
+		if (empty($data['laptop_ram']) && empty($data['laptop_storage'])){
+			// fallback to options
+			$opt = get_option('gstore_global_addons', []);
+			if (isset($opt['laptop_ram'])) $data['laptop_ram']=$opt['laptop_ram'];
+			if (isset($opt['laptop_storage'])) $data['laptop_storage']=$opt['laptop_storage'];
+		}
+		return new WP_REST_Response(['ok'=>true] + $data, 200);
+	}
+
+} // END CLASS
 
 new GStore_EPP_REST();
 
