@@ -23,7 +23,9 @@ function gstore_translations_page(){
                 'installment_text' => sanitize_text_field($_POST['installment_text'] ?? ''),
                 'shipping_text' => sanitize_text_field($_POST['shipping_text'] ?? ''),
                 'warranty_text' => sanitize_text_field($_POST['warranty_text'] ?? ''),
-                'battery_health_text' => sanitize_text_field($_POST['battery_health_text'] ?? ''),
+                'warehouse_text' => sanitize_text_field($_POST['warehouse_text'] ?? ''),
+                'warehouse_fallback' => sanitize_text_field($_POST['warehouse_fallback'] ?? ''),
+                'warehouse_mobile_fallback' => sanitize_text_field($_POST['warehouse_mobile_fallback'] ?? ''),
                 'condition_text' => sanitize_text_field($_POST['condition_text'] ?? ''),
                 'storage_options_text' => sanitize_text_field($_POST['storage_options_text'] ?? ''),
                 'condition_label' => sanitize_text_field($_POST['condition_label'] ?? ''),
@@ -33,7 +35,7 @@ function gstore_translations_page(){
                 'add_button' => sanitize_text_field($_POST['add_button'] ?? ''),
                 'added_button' => sanitize_text_field($_POST['added_button'] ?? ''),
                 'specifications_tab' => sanitize_text_field($_POST['specifications_tab'] ?? ''),
-                'warranty_tab' => sanitize_text_field($_POST['warranty_tab'] ?? ''),
+                'delivery_tab' => sanitize_text_field($_POST['delivery_tab'] ?? ''),
                 'compare_tab' => sanitize_text_field($_POST['compare_tab'] ?? ''),
                 'add_to_compare' => sanitize_text_field($_POST['add_to_compare'] ?? ''),
                 'condition_new' => sanitize_text_field($_POST['condition_new'] ?? ''),
@@ -41,7 +43,6 @@ function gstore_translations_page(){
                 'add_to_cart' => sanitize_text_field($_POST['add_to_cart'] ?? ''),
                 'buy_now' => sanitize_text_field($_POST['buy_now'] ?? ''),
                 'default_shipping' => sanitize_text_field($_POST['default_shipping'] ?? ''),
-                'default_warranty_content' => wp_kses_post($_POST['default_warranty_content'] ?? ''),
         ];
 
         update_option('gstore_epp_translations', $translations);
@@ -53,10 +54,12 @@ function gstore_translations_page(){
 
     // Default values
     $defaults = [
-            'installment_text' => 'From ₾{amount}/month for 12 months',
+            'installment_text' => 'From ₾{amount}/month for 24 months',
             'shipping_text' => 'Shipping: 2–3 business days',
             'warranty_text' => 'Warranty: Available',
-            'battery_health_text' => 'Battery Health: 100%',
+            'warehouse_text' => 'Warehouse: {location}',
+            'warehouse_fallback' => 'Warehouse: Tbilisi',
+            'warehouse_mobile_fallback' => 'Tbilisi',
             'condition_text' => 'Condition: {condition}',
             'storage_options_text' => 'Storage Options',
             'condition_label' => 'Condition',
@@ -66,7 +69,7 @@ function gstore_translations_page(){
             'add_button' => '+ Add ₾{price}',
             'added_button' => '✓ Added (₾{price})',
             'specifications_tab' => 'Specifications',
-            'warranty_tab' => 'Warranty',
+            'delivery_tab' => 'Delivery',
             'compare_tab' => 'Compare',
             'add_to_compare' => 'Add Product to Compare',
             'condition_new' => 'NEW',
@@ -79,7 +82,7 @@ function gstore_translations_page(){
     ?>
     <div class="wrap">
         <h1 class="wp-heading-inline">Translations</h1>
-        <p class="description">Customize text displayed on product pages. Leave empty to use default English text.</p>
+        <p class="description">Customize text displayed on product pages. Leave empty to use the default English text.</p>
         <hr class="wp-header-end" />
 
         <form method="post" action="">
@@ -132,7 +135,7 @@ function gstore_translations_page(){
                                class="regular-text"
                                placeholder="<?php echo esc_attr($defaults['default_shipping']); ?>">
                         <p class="description">
-                            Fallback if product has no shipping attribute.
+                            Fallback if the product has no shipping attribute.
                             Default: <strong><?php echo esc_html($defaults['default_shipping']); ?></strong>
                         </p>
                     </td>
@@ -152,17 +155,54 @@ function gstore_translations_page(){
                     </td>
                 </tr>
 
-                <!-- Battery Health -->
+                <!-- Warehouse Text (with location) -->
                 <tr>
                     <th scope="row">
-                        <label for="battery_health_text">Battery Health Text</label>
+                        <label for="warehouse_text">Warehouse Text (with location)</label>
                     </th>
                     <td>
-                        <input type="text" id="battery_health_text" name="battery_health_text"
-                               value="<?php echo esc_attr($translations['battery_health_text'] ?? ''); ?>"
+                        <input type="text" id="warehouse_text" name="warehouse_text"
+                               value="<?php echo esc_attr($translations['warehouse_text'] ?? ''); ?>"
                                class="large-text"
-                               placeholder="<?php echo esc_attr($defaults['battery_health_text']); ?>">
-                        <p class="description">Default: <strong><?php echo esc_html($defaults['battery_health_text']); ?></strong></p>
+                               placeholder="<?php echo esc_attr($defaults['warehouse_text']); ?>">
+                        <p class="description">
+                            Use <code>{location}</code> placeholder for warehouse name.
+                            Default: <strong><?php echo esc_html($defaults['warehouse_text']); ?></strong>
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Warehouse Fallback (no attribute) -->
+                <tr>
+                    <th scope="row">
+                        <label for="warehouse_fallback">Warehouse Fallback Text</label>
+                    </th>
+                    <td>
+                        <input type="text" id="warehouse_fallback" name="warehouse_fallback"
+                               value="<?php echo esc_attr($translations['warehouse_fallback'] ?? ''); ?>"
+                               class="large-text"
+                               placeholder="<?php echo esc_attr($defaults['warehouse_fallback']); ?>">
+                        <p class="description">
+                            Shown when the product has no warehouse attribute (Desktop).
+                            Default: <strong><?php echo esc_html($defaults['warehouse_fallback']); ?></strong>
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Warehouse Mobile Fallback -->
+                <tr>
+                    <th scope="row">
+                        <label for="warehouse_mobile_fallback">Warehouse Fallback (Mobile)</label>
+                    </th>
+                    <td>
+                        <input type="text" id="warehouse_mobile_fallback" name="warehouse_mobile_fallback"
+                               value="<?php echo esc_attr($translations['warehouse_mobile_fallback'] ?? ''); ?>"
+                               class="regular-text"
+                               placeholder="<?php echo esc_attr($defaults['warehouse_mobile_fallback']); ?>">
+                        <p class="description">
+                            Shown on mobile when the product has no warehouse attribute (without a label).
+                            Default: <strong><?php echo esc_html($defaults['warehouse_mobile_fallback']); ?></strong>
+                        </p>
                     </td>
                 </tr>
 
@@ -193,7 +233,7 @@ function gstore_translations_page(){
                                value="<?php echo esc_attr($translations['condition_new'] ?? ''); ?>"
                                class="regular-text"
                                placeholder="<?php echo esc_attr($defaults['condition_new']); ?>">
-                        <p class="description">Translation for "NEW" button. Default: <strong><?php echo esc_html($defaults['condition_new']); ?></strong></p>
+                        <p class="description">Translation for the "NEW" button. Default: <strong><?php echo esc_html($defaults['condition_new']); ?></strong></p>
                     </td>
                 </tr>
 
@@ -207,7 +247,7 @@ function gstore_translations_page(){
                                value="<?php echo esc_attr($translations['condition_used'] ?? ''); ?>"
                                class="regular-text"
                                placeholder="<?php echo esc_attr($defaults['condition_used']); ?>">
-                        <p class="description">Translation for "USED (A)" button. Default: <strong><?php echo esc_html($defaults['condition_used']); ?></strong></p>
+                        <p class="description">Translation for the "USED (A)" button. Default: <strong><?php echo esc_html($defaults['condition_used']); ?></strong></p>
                     </td>
                 </tr>
 
@@ -357,8 +397,8 @@ function gstore_translations_page(){
                     <td>
                         <textarea id="default_warranty_content" name="default_warranty_content" rows="4" class="large-text"><?php echo esc_textarea($translations['default_warranty_content'] ?? ''); ?></textarea>
                         <p class="description">
-                            Default warranty text shown if model has no specific warranty set.
-                            Default: <strong>1 year limited hardware warranty. Extended warranty options available at checkout.</strong>
+                            Default warranty text is shown if the model has no specific warranty set.
+                            Default: <strong>1 year limited hardware warranty. Extended warranty options are available at checkout.</strong>
                         </p>
                     </td>
                 </tr>
@@ -377,17 +417,17 @@ function gstore_translations_page(){
                     </td>
                 </tr>
 
-                <!-- Tab: Warranty -->
+                <!-- Tab: Delivery -->
                 <tr>
                     <th scope="row">
-                        <label for="warranty_tab">Tab: Warranty</label>
+                        <label for="delivery_tab">Tab: Delivery</label>
                     </th>
                     <td>
-                        <input type="text" id="warranty_tab" name="warranty_tab"
-                               value="<?php echo esc_attr($translations['warranty_tab'] ?? ''); ?>"
+                        <input type="text" id="delivery_tab" name="delivery_tab"
+                               value="<?php echo esc_attr($translations['delivery_tab'] ?? ''); ?>"
                                class="regular-text"
-                               placeholder="<?php echo esc_attr($defaults['warranty_tab']); ?>">
-                        <p class="description">Default: <strong><?php echo esc_html($defaults['warranty_tab']); ?></strong></p>
+                               placeholder="<?php echo esc_attr($defaults['delivery_tab']); ?>">
+                        <p class="description">Default: <strong><?php echo esc_html($defaults['delivery_tab']); ?></strong></p>
                     </td>
                 </tr>
 
@@ -418,6 +458,7 @@ function gstore_translations_page(){
                         <p class="description">Default: <strong><?php echo esc_html($defaults['add_to_compare']); ?></strong></p>
                     </td>
                 </tr>
+
                 </tbody>
             </table>
 

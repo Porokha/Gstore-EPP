@@ -1,4 +1,3 @@
-
 (function(){
     if (typeof window === 'undefined') return;
     var isMobile = function(){ return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; };
@@ -35,7 +34,7 @@
     adjustPadding();
     window.addEventListener('resize', adjustPadding);
 
-    // Wire actions to inner app (shadow DOM) if present
+    // Wire actions to the inner app (shadow DOM) if present
     function getShadow() {
         var host = document.getElementById('gstore-epp-shadow-host');
         if (host && host.shadowRoot) return host.shadowRoot;
@@ -66,7 +65,7 @@
     document.querySelector('#gstore-sticky-cta .btn-buy').addEventListener('click', function(){
         var sh = getShadow();
         if (!clickSelector(sh, '[data-action=\"buy-now\"], .btn-buy-now')) {
-            // fallback: add then redirect to checkout
+            // fallback: add then redirect to check out
             var atc = document.querySelector('button.single_add_to_cart_button');
             if (atc) { atc.click(); setTimeout(function(){ window.location.href='/checkout/'; }, 500); }
         }

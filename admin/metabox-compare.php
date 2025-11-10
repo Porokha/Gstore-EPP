@@ -2,7 +2,7 @@
 if (!defined('ABSPATH')) { exit; }
 
 /**
- * Add meta box for product comparison specs
+ * Add meta-box for product comparison specs
  */
 add_action('add_meta_boxes', function(){
 	add_meta_box('gstore_compare_specs','Product Comparison Specs','gstore_compare_specs_box','product','normal','default');
@@ -46,7 +46,7 @@ function gstore_compare_specs_box($post){
 
 	echo '</div>';
 
-	echo '<p class="description" style="margin-top:15px;">Enter scores from 0-100 for each category. These will be used in the Compare tab.</p>';
+	echo '<p class="description" style="margin-top:15px;">Enter scores from 0 to 100 for each category. These will be used in the Compare tab.</p>';
 }
 
 add_action('save_post_product', function($post_id){

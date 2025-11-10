@@ -19,6 +19,7 @@ add_action('admin_menu', function(){
 add_action('admin_post_gstore_save_rule','gstore_handle_save_rule');
 add_action('admin_post_gstore_delete_rule','gstore_handle_delete_rule');
 add_action('admin_post_gstore_clear_rules','gstore_handle_clear_rules');
+add_action('admin_post_gstore_clear_pricing_cache','gstore_handle_clear_pricing_cache');
 add_action('admin_post_gstore_save_addons','gstore_handle_save_addons');
 add_action('admin_post_gstore_save_debug','gstore_handle_save_debug');
 
@@ -92,7 +93,9 @@ function gstore_rule_list_page(){
     <div class="wrap">
         <h1 class="wp-heading-inline">Pricing Rules</h1>
         <a class="page-title-action" href="<?php echo esc_url( admin_url('admin.php?page=gstore_rules&action=edit') ); ?>">Add New</a>
+        <a class="page-title-action" href="<?php echo esc_url( wp_nonce_url(admin_url('admin-post.php?action=gstore_clear_pricing_cache'), 'gstore_clear_pricing_cache') ); ?>" onclick="return confirm('Clear all pricing caches? This will force fresh data on next page load.');">Clear All Caches</a>
         <?php if (!empty($_GET['updated'])) echo '<div class="notice notice-success is-dismissible"><p>Saved successfully.</p></div>'; ?>
+        <?php if (!empty($_GET['cache_cleared'])) echo '<div class="notice notice-success is-dismissible"><p>All pricing caches cleared successfully.</p></div>'; ?>
         <?php if (!empty($_GET['err'])) echo '<div class="notice notice-error is-dismissible"><p>Error occurred. Check logs/error.log</p></div>'; ?>
         <hr class="wp-header-end" />
 
@@ -162,7 +165,7 @@ function gstore_rule_edit_page(){
     if ($row){
         $device_type = $row['device_type'];
 
-        // Extract storage from group key if present
+        // Extract storage from the group key if present
         if (preg_match('/(\d+gb)$/', $row['group_key'], $matches)) {
             $storage = strtoupper($matches[1]);
         }
@@ -234,7 +237,7 @@ function gstore_rule_edit_page(){
             </table>
 
             <h2>Pricing (GEL) for <?php echo $storage ? esc_html($storage) : 'this model'; ?></h2>
-            <p class="description">Leave empty to disable that tier. Empty tiers will be greyed out on product page.</p>
+            <p class="description">Leave empty to disable that tier. Empty tiers will be greyed out on the product page.</p>
             <table class="widefat striped" style="max-width:720px;">
                 <thead><tr><th>Tier</th><th>Regular Price</th><th>Sale Price</th></tr></thead>
                 <tbody>
@@ -333,24 +336,18 @@ function gstore_handle_save_rule(){
             ], ['%s','%s','%s','%s','%s']);
         }
 
-        // Clear pricing cache for all products with this model+storage
-        // Extract storage from group key
-        if (preg_match('/(\d+gb)$/', $group_key, $matches)) {
-            $storage = $matches[1];
-            // Clear cache for all products with this storage
-            global $wpdb;
-            $sql = "SELECT DISTINCT p.ID FROM {$wpdb->posts} p
-                    INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-                    WHERE p.post_type = 'product'
-                    AND pm.meta_key LIKE '%storage%'
-                    AND LOWER(pm.meta_value) LIKE %s
-                    LIMIT 100";
+        // Clear ALL product caches to ensure prices update immediately
+        global $wpdb;
+        $sql = "SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+                WHERE p.post_type = 'product'
+                AND p.post_status = 'publish'
+                LIMIT 1000";
 
-            $pids = $wpdb->get_col($wpdb->prepare($sql, '%' . $storage . '%'));
-            foreach($pids as $pid) {
-                delete_transient('gstore_pricing_' . $pid);
-                delete_transient('gstore_warranty_' . $pid);
-            }
+        $all_pids = $wpdb->get_col($sql);
+        foreach($all_pids as $pid) {
+            delete_transient('gstore_pricing_' . $pid);
+            delete_transient('gstore_warranty_' . $pid);
+            delete_transient('gstore_siblings_' . $pid);
         }
 
         gstore_log_debug('rule_saved', compact('group_key','device_type'));
@@ -381,9 +378,19 @@ function gstore_handle_delete_rule(){
             $wpdb->delete($table, ['group_key'=>$group_key], ['%s']);
             gstore_log_debug('rule_deleted', ['group_key'=>$group_key]);
 
-            // Clear related caches
-            delete_transient('gstore_pricing_*');
-            delete_transient('gstore_warranty_*');
+            // Clear related caches for all products
+            global $wpdb;
+            $sql = "SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+                    WHERE p.post_type = 'product'
+                    AND p.post_status = 'publish'
+                    LIMIT 500";
+
+            $all_pids = $wpdb->get_col($sql);
+            foreach($all_pids as $pid) {
+                delete_transient('gstore_pricing_' . $pid);
+                delete_transient('gstore_warranty_' . $pid);
+                delete_transient('gstore_siblings_' . $pid);
+            }
         }
 
         wp_safe_redirect( admin_url('admin.php?page=gstore_rules&updated=1') );
@@ -391,6 +398,46 @@ function gstore_handle_delete_rule(){
 
     } catch(\Throwable $e){
         gstore_log_error('rule_delete_failed', ['err'=>$e->getMessage()]);
+        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&err=1') );
+        exit;
+    }
+}
+
+function gstore_handle_clear_pricing_cache(){
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die('Unauthorized', 'Error', ['response'=>403]);
+    }
+
+    check_admin_referer('gstore_clear_pricing_cache');
+
+    try{
+        global $wpdb;
+
+        // Clear all pricing, warranty, and siblings caches
+        $sql = "SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+                WHERE p.post_type = 'product'
+                AND p.post_status = 'publish'
+                LIMIT 1000";
+
+        $all_pids = $wpdb->get_col($sql);
+        $cleared = 0;
+
+        foreach($all_pids as $pid) {
+            delete_transient('gstore_pricing_' . $pid);
+            delete_transient('gstore_warranty_' . $pid);
+            delete_transient('gstore_siblings_' . $pid);
+            delete_transient('gstore_fbt_' . $pid);
+            delete_transient('gstore_compare_specs_' . $pid);
+            $cleared++;
+        }
+
+        gstore_log_debug('pricing_cache_cleared', ['count'=>$cleared]);
+
+        wp_safe_redirect( admin_url('admin.php?page=gstore_rules&cache_cleared=1') );
+        exit;
+
+    } catch(\Throwable $e){
+        gstore_log_error('cache_clear_failed', ['err'=>$e->getMessage()]);
         wp_safe_redirect( admin_url('admin.php?page=gstore_rules&err=1') );
         exit;
     }

@@ -32,7 +32,7 @@ add_action('admin_enqueue_scripts', function($hook){
     wp_enqueue_script('gstore-typography-admin',
             GSTORE_EPP_URL . 'assets/js/typography-admin.js',
             ['jquery', 'media-upload', 'media-views'],
-            GSTORE_EPP_VER,
+            GSTORE_EPP_VERSION,
             true
     );
 });
@@ -232,7 +232,7 @@ function gstore_typography_page(){
                         <?php if (!empty($options['heading_font_file'])): ?>
                             <button type="button" class="button remove-font-btn" data-target="heading_font_file">Remove</button>
                         <?php endif; ?>
-                        <p class="description">Upload custom font file for headings (recommended: .woff2 for best performance)</p>
+                        <p class="description">Upload custom font file for headings (recommended: .woff2 for the best performance)</p>
                         <?php if (!empty($options['heading_font_file'])): ?>
                             <p class="description">Current: <a href="<?php echo esc_url($options['heading_font_file']); ?>" target="_blank">View File</a></p>
                         <?php endif; ?>
@@ -362,7 +362,7 @@ p {
                     var attachment = mediaUploader.state().get('selection').first().toJSON();
                     $('#' + targetInput).val(attachment.url);
 
-                    // Show remove button if not already there
+                    // Show the remove button if not already there
                     if (button.next('.remove-font-btn').length === 0) {
                         button.after('<button type="button" class="button remove-font-btn" data-target="' + targetInput + '">Remove</button>');
                     }

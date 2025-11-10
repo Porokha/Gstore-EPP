@@ -79,6 +79,16 @@ class GStore_EPP_REST {
 				'product_id'=>['required'=>true,'type'=>'integer']
 			]
 		]);
+
+		// Delivery
+		register_rest_route(self::NS, '/delivery', [
+			'methods'=>'GET',
+			'permission_callback'=>'__return_true',
+			'callback'=>[$this,'get_delivery'],
+			'args'=>[
+				'warehouse'=>['required'=>false,'type'=>'string','default'=>'tbilisi']
+			]
+		]);
 	}
 
 	/* -------------------------
@@ -439,16 +449,25 @@ class GStore_EPP_REST {
 		if (!is_array($ids)) $ids = [];
 		$ids = array_filter(array_map('absint', $ids));
 
-		// If empty, fallback
+		// If empty, fallback to group default (same model)
 		if (empty($ids)){
 			$ctx = gstore_epp_parse_by_product_id($pid);
-			if ($ctx && $ctx['group_key']){
+			if ($ctx && $ctx['group_key'] && $ctx['model']){
+				// Find group default product with same model
+				$model_slug = sanitize_title($ctx['model']);
 				$q = new WP_Query([
 					'post_type'=>'product',
 					'posts_per_page'=>1,
 					'post_status'=>'publish',
 					'meta_query'=>[
 						['key'=>'_gstore_is_group_default','value'=>'yes']
+					],
+					'tax_query'=>[
+						[
+							'taxonomy'=>'pa_model',
+							'field'=>'slug',
+							'terms'=>$model_slug
+						]
 					],
 					'fields'=>'ids'
 				]);
@@ -458,6 +477,7 @@ class GStore_EPP_REST {
 					$ids = get_post_meta($default_id, '_gstore_fbt_ids', true);
 					if (!is_array($ids)) $ids = [];
 					$ids = array_filter(array_map('absint', $ids));
+					gstore_log_debug('fbt_fallback_group_default', ['pid'=>$pid,'default_id'=>$default_id,'model'=>$ctx['model']]);
 				}
 
 				wp_reset_postdata();
@@ -588,28 +608,76 @@ class GStore_EPP_REST {
 	}
 
 	/* -------------------------
+		DELIVERY (WITH CACHING)
+	--------------------------*/
+	public function get_delivery(WP_REST_Request $r){
+		$warehouse = sanitize_text_field($r->get_param('warehouse') ?: 'tbilisi');
+		$warehouse_normalized = strtolower($warehouse);
+
+		// Check cache
+		$cache_key = 'gstore_delivery_' . $warehouse_normalized;
+		$cached = get_transient($cache_key);
+		if ($cached !== false) {
+			return new WP_REST_Response($cached, 200);
+		}
+
+		// Get delivery texts from options
+		$delivery_texts = get_option('gstore_epp_delivery_texts', []);
+		$delivery_text = '';
+
+		// Try to find text for this warehouse
+		if (isset($delivery_texts[$warehouse_normalized])) {
+			$delivery_text = $delivery_texts[$warehouse_normalized];
+		}
+
+		// Fallback to default
+		if (empty($delivery_text)) {
+			$delivery_text = $delivery_texts['default'] ?? 'Standard delivery: 2-3 business days.';
+		}
+
+		$result = [
+			'ok'=>true,
+			'warehouse'=>$warehouse,
+			'delivery_text'=>$delivery_text
+		];
+
+		// Cache for 1 hour
+		set_transient($cache_key, $result, HOUR_IN_SECONDS);
+
+		return new WP_REST_Response($result, 200);
+	}
+
+	/* -------------------------
 		LAPTOP ADD-ONS (INSIDE CLASS)
 	--------------------------*/
 	public function get_laptop_addons(WP_REST_Request $r){
-		global $wpdb;
-		$tbl = gstore_epp_table_addons();
-		$rows = $wpdb->get_results("SELECT scope, data_json FROM {$tbl}", ARRAY_A);
-		$data = ['laptop_ram'=>[], 'laptop_storage'=>[]];
-		if ($rows){
-			foreach($rows as $row){
-				$arr = json_decode($row['data_json'], true);
-				if (!is_array($arr)) $arr=[];
-				if ($row['scope']==='laptop_ram') $data['laptop_ram']=$arr;
-				if ($row['scope']==='laptop_storage') $data['laptop_storage']=$arr;
+		// Get addons from option (saved by admin page)
+		$opt = get_option('gstore_epp_addons_laptop', ['rows'=>[]]);
+		$rows = isset($opt['rows']) && is_array($opt['rows']) ? $opt['rows'] : [];
+
+		// Separate into RAM and Storage based on key prefix (or return all as generic addons)
+		$laptop_ram = [];
+		$laptop_storage = [];
+
+		foreach($rows as $row){
+			if (isset($row['key']) && isset($row['label']) && isset($row['price'])){
+				// If key starts with 'ram', put in laptop_ram, else in laptop_storage
+				if (stripos($row['key'], 'ram') === 0){
+					$laptop_ram[] = $row;
+				} else if (stripos($row['key'], 'storage') === 0 || stripos($row['key'], 'ssd') === 0){
+					$laptop_storage[] = $row;
+				} else {
+					// Default: add to both or just RAM
+					$laptop_ram[] = $row;
+				}
 			}
 		}
-		if (empty($data['laptop_ram']) && empty($data['laptop_storage'])){
-			// fallback to options
-			$opt = get_option('gstore_global_addons', []);
-			if (isset($opt['laptop_ram'])) $data['laptop_ram']=$opt['laptop_ram'];
-			if (isset($opt['laptop_storage'])) $data['laptop_storage']=$opt['laptop_storage'];
-		}
-		return new WP_REST_Response(['ok'=>true] + $data, 200);
+
+		return new WP_REST_Response([
+			'ok'=>true,
+			'laptop_ram'=>$laptop_ram,
+			'laptop_storage'=>$laptop_storage
+		], 200);
 	}
 
 } // END CLASS
@@ -624,6 +692,7 @@ add_action('save_post_product', function($post_id){
 	delete_transient('gstore_fbt_' . $post_id);
 	delete_transient('gstore_warranty_' . $post_id);
 	delete_transient('gstore_compare_specs_' . $post_id);
+	delete_transient('gstore_shipping_' . $post_id);
 
 	// Also clear cache for products in same model
 	$ctx = gstore_epp_parse_by_product_id($post_id);
@@ -651,6 +720,7 @@ add_action('save_post_product', function($post_id){
 			delete_transient('gstore_pricing_' . $id);
 			delete_transient('gstore_fbt_' . $id);
 			delete_transient('gstore_warranty_' . $id);
+			delete_transient('gstore_shipping_' . $id);
 		}
 	}
 }, 10, 1);
@@ -660,3 +730,28 @@ add_action('save_post_product', function(){
 	global $wpdb;
 	$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gstore_search_%'");
 }, 20);
+
+// OPTIMIZED: Daily cleanup of expired transients to prevent database bloat
+add_action('gstore_epp_daily_cleanup', function(){
+	global $wpdb;
+	// Clean up expired transients
+	$wpdb->query(
+		"DELETE FROM {$wpdb->options} 
+		 WHERE option_name LIKE '_transient_gstore_%' 
+		 OR option_name LIKE '_transient_timeout_gstore_%'"
+	);
+	gstore_log_debug('transient_cleanup', ['action' => 'daily_cleanup_completed']);
+});
+
+// Schedule the cleanup event if not already scheduled
+if (!wp_next_scheduled('gstore_epp_daily_cleanup')) {
+	wp_schedule_event(time(), 'daily', 'gstore_epp_daily_cleanup');
+}
+
+// Clear scheduled event on plugin deactivation
+register_deactivation_hook(GSTORE_EPP_DIR . 'gstore-epp.php', function(){
+	$timestamp = wp_next_scheduled('gstore_epp_daily_cleanup');
+	if ($timestamp) {
+		wp_unschedule_event($timestamp, 'gstore_epp_daily_cleanup');
+	}
+});

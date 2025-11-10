@@ -115,21 +115,32 @@ function gstore_epp_parse_by_product_id($product_id){
 /**
  * Get shipping time for a product.
  * Priority: Product attribute > Sibling attribute > Global default from translations
+ * OPTIMIZED: Uses caching and limited queries
  */
 function gstore_epp_get_shipping($product_id){
-	// Try product's own shipping attribute
-	$shipping = gstore_epp_attr($product_id, 'shipping');
-	if ($shipping) return $shipping;
+	// Check cache first
+	$cache_key = 'gstore_shipping_' . $product_id;
+	$cached = get_transient($cache_key);
+	if ($cached !== false) {
+		return $cached;
+	}
 
-	// Try siblings in same model
+	// Try the product's own shipping attribute
+	$shipping = gstore_epp_attr($product_id, 'shipping');
+	if ($shipping) {
+		set_transient($cache_key, $shipping, HOUR_IN_SECONDS);
+		return $shipping;
+	}
+
+	// Try siblings in the same model (OPTIMIZED: limit to 50 products)
 	$ctx = gstore_epp_parse_by_product_id($product_id);
 	if ($ctx && $ctx['group_key']) {
 		global $wpdb;
 
-		// Find sibling products with shipping attribute
+		// Find sibling products with a shipping attribute (LIMITED QUERY)
 		$q = new WP_Query([
 			'post_type'=>'product',
-			'posts_per_page'=>-1,
+			'posts_per_page'=>50, // OPTIMIZED: limit instead of -1
 			'post_status'=>'publish',
 			'fields'=>'ids',
 			'post__not_in'=>[$product_id]
@@ -142,6 +153,8 @@ function gstore_epp_get_shipping($product_id){
 					$sibling_shipping = gstore_epp_attr($sibling_id, 'shipping');
 					if ($sibling_shipping) {
 						wp_reset_postdata();
+						// Cache the result
+						set_transient($cache_key, $sibling_shipping, HOUR_IN_SECONDS);
 						return $sibling_shipping;
 					}
 				}
@@ -152,5 +165,10 @@ function gstore_epp_get_shipping($product_id){
 
 	// Fall back to global default from translations
 	$translations = get_option('gstore_epp_translations', []);
-	return $translations['default_shipping'] ?? '2–3 business days';
+	$default_shipping = $translations['default_shipping'] ?? '2–3 business days';
+
+	// Cache the default result
+	set_transient($cache_key, $default_shipping, HOUR_IN_SECONDS);
+
+	return $default_shipping;
 }

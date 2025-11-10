@@ -49,7 +49,7 @@ add_action('woocommerce_before_single_product', function(){
 	$heading_weight = $typo_opts['heading_weight'] ?? '600';
 	$body_weight = $typo_opts['body_weight'] ?? '400';
 
-	// Hide default WooCommerce product display + theme sidebar + OVERLAYS
+	// Hide default WooCommerce product display + theme sidebar and OVERLAYS
 	echo '<style>
 		' . $font_css . '
 		
@@ -66,30 +66,9 @@ add_action('woocommerce_before_single_product', function(){
             z-index: -1 !important;
         }
         
-        /* Hide WooCommerce default product */
-        .single-product div.product { display: none; }
-        
-        /* Hide theme sidebar on product pages */
-        .single-product #secondary,
-        .single-product .sidebar,
-        .single-product aside { display: none; }
-        
-        /* Make content area full width */
-        .single-product #primary,
-        .single-product .content-area,
-        .single-product main { 
-            width: 100% !important; 
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        
-        /* Full width container */
-        .single-product .site-content,
-        .single-product .container { 
-            max-width: 100% !important;
-            width: 100% !important;
-            padding: 0 !important;
+        /* Hide WooCommerce default product ONLY */
+        .single-product div.product { 
+            display: none !important; 
         }
         
         /* Shadow host styling - CENTERED with VERY HIGH Z-INDEX */
@@ -100,14 +79,18 @@ add_action('woocommerce_before_single_product', function(){
             display: block !important;
             background: #fff;
             margin: 0 auto !important;
-            padding: 0 20px;
+            padding: 0 5px;
             position: relative !important;
-            z-index: 999999 !important;
+            z-index: 1 !important;
             visibility: visible !important;
             opacity: 1 !important;
         }
         
-        /* Apply custom fonts globally (will also work in Shadow DOM) */
+        #gstore-epp-shadow-host * {
+            font-family: "' . esc_attr($body_font) . '", sans-serif !important;
+            font-weight: ' . esc_attr($body_weight) . ' !important;
+        }
+        
         #gstore-epp-shadow-host h1,
         #gstore-epp-shadow-host h2,
         #gstore-epp-shadow-host h3,
@@ -116,15 +99,6 @@ add_action('woocommerce_before_single_product', function(){
         #gstore-epp-shadow-host h6 {
             font-family: "' . esc_attr($heading_font) . '", sans-serif !important;
             font-weight: ' . esc_attr($heading_weight) . ' !important;
-        }
-        
-        #gstore-epp-shadow-host,
-        #gstore-epp-shadow-host p,
-        #gstore-epp-shadow-host span,
-        #gstore-epp-shadow-host div,
-        #gstore-epp-shadow-host button {
-            font-family: "' . esc_attr($body_font) . '", sans-serif !important;
-            font-weight: ' . esc_attr($body_weight) . ' !important;
         }
     </style>';
 
@@ -135,7 +109,7 @@ add_action('woocommerce_before_single_product', function(){
 	echo '<script>
         // Force remove overlays on page load
         document.addEventListener("DOMContentLoaded", function(){
-            // Remove overlay classes from body
+            // Remove overlay classes from the body
             document.body.classList.remove("loading", "overlay-active");
             
             // Hide any overlays
@@ -147,7 +121,7 @@ add_action('woocommerce_before_single_product', function(){
                 el.remove();
             });
             
-            // Ensure shadow host is visible
+            // Ensure the shadow host is visible
             var shadowHost = document.getElementById("gstore-epp-shadow-host");
             if (shadowHost) {
                 shadowHost.style.display = "block";
@@ -183,18 +157,7 @@ add_action('wp_enqueue_scripts', function(){
 		return;
 	}
 
-	// Enqueue styles
-	wp_enqueue_style('gstore-epp-tw',
-		GSTORE_EPP_URL.'assets/css/tw.css',
-		[],
-		GSTORE_EPP_VER
-	);
-
-	wp_enqueue_style('gstore-epp-app',
-		GSTORE_EPP_URL.'assets/css/app.css',
-		['gstore-epp-tw'],
-		GSTORE_EPP_VER
-	);
+	// No CSS needed - Shadow DOM has inline compiled Tailwind
 
 	// Enqueue React from CDN
 	wp_enqueue_script('react',
@@ -221,6 +184,15 @@ add_action('wp_enqueue_scripts', function(){
 	$img_id = $product->get_image_id();
 	$hero = $img_id ? wp_get_attachment_image_url($img_id, 'large') : wc_placeholder_img_src('large');
 
+	// Get gallery images
+	$gallery_ids = $product->get_gallery_image_ids();
+	$gallery = [];
+	if (!empty($gallery_ids)) {
+		foreach ($gallery_ids as $gal_id) {
+			$gallery[] = wp_get_attachment_image_url($gal_id, 'large');
+		}
+	}
+
 	// Get translations
 	$translations = get_option('gstore_epp_translations', []);
 
@@ -228,6 +200,20 @@ add_action('wp_enqueue_scripts', function(){
 	$shipping_time = function_exists('gstore_epp_get_shipping')
 		? gstore_epp_get_shipping($pid)
 		: ($translations['default_shipping'] ?? '2–3 business days');
+
+	// Get warehouse attribute
+	$warehouse = '';
+	$attributes = $product->get_attributes();
+	if (isset($attributes['pa_warehouse'])) {
+		$terms = wc_get_product_terms($pid, 'pa_warehouse', ['fields' => 'names']);
+		$warehouse = !empty($terms) ? $terms[0] : '';
+	} elseif (isset($attributes['warehouse'])) {
+		$attr = $attributes['warehouse'];
+		if (is_a($attr, 'WC_Product_Attribute')) {
+			$options = $attr->get_options();
+			$warehouse = !empty($options) ? (is_array($options) ? $options[0] : $options) : '';
+		}
+	}
 
 	// Build boot data
 	$boot = [
@@ -245,7 +231,12 @@ add_action('wp_enqueue_scripts', function(){
 		'deviceType' => $ctx['device_type'] ?? 'phone',
 		'groupKey'   => $ctx['group_key'] ?? '',
 		'image'      => $hero,
+		'gallery'    => $gallery,
 		'shippingTime' => $shipping_time,
+		'warehouse'  => $warehouse,
+		'description' => $product->get_description(),
+		'shortDescription' => $product->get_short_description(),
+		'warrantyContent' => get_option('gstore_epp_warranty_content', ''),
 		'translations' => $translations,
 		'rest'       => [
 			'base'  => esc_url_raw( rest_url( 'gstore/v1' ) ),
@@ -265,11 +256,13 @@ add_action('wp_enqueue_scripts', function(){
 		'after'
 	);
 
-	// Register product app
+	// Register a product app with aggressive cache busting
+	$js_file = GSTORE_EPP_DIR.'assets/js/product-app.js';
+	$js_url = GSTORE_EPP_URL.'assets/js/product-app.js?v=' . filemtime($js_file);
 	wp_register_script('gstore-epp-app',
-		GSTORE_EPP_URL.'assets/js/product-app.js',
+		$js_url,
 		['react','react-dom'],
-		GSTORE_EPP_VER,
+		GSTORE_EPP_VERSION . '.' . filemtime($js_file),
 		true
 	);
 
@@ -334,9 +327,3 @@ add_action('wp_enqueue_scripts', function(){
 		wp_add_inline_style('gstore-epp-app', $options['custom_css']);
 	}
 }, 25);
-
-
-
-
-
-
