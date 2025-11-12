@@ -49,7 +49,7 @@ add_action('woocommerce_before_single_product', function(){
 	$heading_weight = $typo_opts['heading_weight'] ?? '600';
 	$body_weight = $typo_opts['body_weight'] ?? '400';
 
-	// Hide default WooCommerce product display + theme sidebar and OVERLAYS
+	// Hide default WooCommerce product display + theme sidebar + OVERLAYS
 	echo '<style>
 		' . $font_css . '
 		
@@ -109,7 +109,7 @@ add_action('woocommerce_before_single_product', function(){
 	echo '<script>
         // Force remove overlays on page load
         document.addEventListener("DOMContentLoaded", function(){
-            // Remove overlay classes from the body
+            // Remove overlay classes from body
             document.body.classList.remove("loading", "overlay-active");
             
             // Hide any overlays
@@ -121,7 +121,7 @@ add_action('woocommerce_before_single_product', function(){
                 el.remove();
             });
             
-            // Ensure the shadow host is visible
+            // Ensure shadow host is visible
             var shadowHost = document.getElementById("gstore-epp-shadow-host");
             if (shadowHost) {
                 shadowHost.style.display = "block";
@@ -256,7 +256,7 @@ add_action('wp_enqueue_scripts', function(){
 		'after'
 	);
 
-	// Register a product app with aggressive cache busting
+	// Register product app with aggressive cache busting
 	$js_file = GSTORE_EPP_DIR.'assets/js/product-app.js';
 	$js_url = GSTORE_EPP_URL.'assets/js/product-app.js?v=' . filemtime($js_file);
 	wp_register_script('gstore-epp-app',

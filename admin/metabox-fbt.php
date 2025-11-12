@@ -21,9 +21,9 @@ function gstore_fbt_box($post){
 
 	echo '<hr style="margin:12px 0;">';
 
-	echo '<p><strong>Select up to three products:</strong></p>';
+	echo '<p><strong>Select up to 3 products:</strong></p>';
 	echo '<input type="text" name="gstore_fbt_ids" value="'.esc_attr(implode(',', $ids)).'" style="width:100%" placeholder="Enter product IDs (comma separated)">';
-	echo '<p class="description">If empty, this product inherits from its group by default. If no default, random 3 from the Accessories category will be shown.</p>';
+	echo '<p class="description">If empty, this product inherits from its group default. If no default, random 3 from Accessories category will be shown.</p>';
 }
 
 add_action('save_post_product', function($post_id){
@@ -47,7 +47,7 @@ add_action('save_post_product', function($post_id){
 			: [];
 
 		if (!empty($ctx['group_key'])){
-			// Find all products in the same group
+			// Find all products in same group
 			$q = new WP_Query([
 				'post_type'=>'product',
 				'posts_per_page'=>-1,

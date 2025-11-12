@@ -165,7 +165,7 @@ function gstore_rule_edit_page(){
     if ($row){
         $device_type = $row['device_type'];
 
-        // Extract storage from the group key if present
+        // Extract storage from group key if present
         if (preg_match('/(\d+gb)$/', $row['group_key'], $matches)) {
             $storage = strtoupper($matches[1]);
         }
@@ -237,7 +237,7 @@ function gstore_rule_edit_page(){
             </table>
 
             <h2>Pricing (GEL) for <?php echo $storage ? esc_html($storage) : 'this model'; ?></h2>
-            <p class="description">Leave empty to disable that tier. Empty tiers will be greyed out on the product page.</p>
+            <p class="description">Leave empty to disable that tier. Empty tiers will be greyed out on product page.</p>
             <table class="widefat striped" style="max-width:720px;">
                 <thead><tr><th>Tier</th><th>Regular Price</th><th>Sale Price</th></tr></thead>
                 <tbody>

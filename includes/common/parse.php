@@ -125,19 +125,19 @@ function gstore_epp_get_shipping($product_id){
 		return $cached;
 	}
 
-	// Try the product's own shipping attribute
+	// Try product's own shipping attribute
 	$shipping = gstore_epp_attr($product_id, 'shipping');
 	if ($shipping) {
 		set_transient($cache_key, $shipping, HOUR_IN_SECONDS);
 		return $shipping;
 	}
 
-	// Try siblings in the same model (OPTIMIZED: limit to 50 products)
+	// Try siblings in same model (OPTIMIZED: limit to 50 products)
 	$ctx = gstore_epp_parse_by_product_id($product_id);
 	if ($ctx && $ctx['group_key']) {
 		global $wpdb;
 
-		// Find sibling products with a shipping attribute (LIMITED QUERY)
+		// Find sibling products with shipping attribute (LIMITED QUERY)
 		$q = new WP_Query([
 			'post_type'=>'product',
 			'posts_per_page'=>50, // OPTIMIZED: limit instead of -1

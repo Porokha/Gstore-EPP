@@ -287,6 +287,42 @@ class GStore_EPP_REST {
 						$normalized_condition = 'openbox';
 					}
 
+					// Get color and try to get hex value
+					$color_name = gstore_epp_attr($ip->get_id(),'color');
+					$color_hex = gstore_epp_attr($ip->get_id(),'color_hex');
+
+					// If no hex attribute, map common color names to hex
+					if (!$color_hex && $color_name) {
+						$color_map = [
+							'black' => '#000000',
+							'white' => '#FFFFFF',
+							'silver' => '#C0C0C0',
+							'gray' => '#808080',
+							'grey' => '#808080',
+							'gold' => '#FFD700',
+							'rose gold' => '#B76E79',
+							'blue' => '#0000FF',
+							'navy' => '#000080',
+							'midnight' => '#191970',
+							'green' => '#008000',
+							'alpine green' => '#2F4F4F',
+							'red' => '#FF0000',
+							'product red' => '#E0115F',
+							'purple' => '#800080',
+							'deep purple' => '#673AB7',
+							'pink' => '#FFC0CB',
+							'yellow' => '#FFFF00',
+							'starlight' => '#F5F5DC',
+							'sierra blue' => '#69C2D0',
+							'graphite' => '#383838',
+							'space gray' => '#4A4A4A',
+							'space black' => '#1C1C1C',
+							'titanium' => '#878681'
+						];
+						$color_lower = strtolower(trim($color_name));
+						$color_hex = isset($color_map[$color_lower]) ? $color_map[$color_lower] : '#333333';
+					}
+
 					$items[] = [
 						'id'=>$ip->get_id(),
 						'title'=>$ip->get_title(),
@@ -299,7 +335,8 @@ class GStore_EPP_REST {
 						'brand'=>gstore_epp_attr($ip->get_id(),'brand'),
 						'model'=>$p_model,
 						'storage'=>gstore_epp_attr($ip->get_id(),'storage'),
-						'color'=>gstore_epp_attr($ip->get_id(),'color'),
+						'color'=>$color_name,
+						'hex'=>$color_hex,
 						'image'=>$hero
 					];
 				}

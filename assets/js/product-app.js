@@ -4,7 +4,7 @@
     function gel(n){ return "₾" + money(n); }
 
     function mount(){
-        // VERSION CHECK: Verify the latest code with all fixes is loaded
+        // VERSION CHECK: Verify latest code with all fixes is loaded
         console.log('🔧 GSTORE EPP v2024-11-09-15:47 - MOBILE PADDING FIX:', {
             'Gallery thumbnails with scroll': true,
             'Fixed button widths': true,
@@ -67,7 +67,7 @@
         var USED_TIERS = ['80-85','85-90','90-95','95-100'];
         var ALL_STORAGES = ['128GB', '256GB', '512GB', '1TB'];
 
-        // Helper: Check if the battery tier should be shown (only for iPhones)
+        // Helper: Check if battery tier should be shown (only for iPhones)
         function shouldShowBatteryTier(deviceType, brand){
             var dt = (deviceType||'').toLowerCase();
             var br = (brand||'').toLowerCase();
@@ -131,6 +131,102 @@
         function fetchJSON(url){
             return fetch(url, {credentials:'same-origin'})
                 .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
+        }
+
+        // Comprehensive color mapping for major phone brands
+        var COLOR_MAP = {
+            // iPhone Colors (all generations)
+            'natural titanium': '#A8A8A3',
+            'blue titanium': '#4E5B6B',
+            'white titanium': '#F5F5F0',
+            'black titanium': '#3D3D3F',
+            'desert titanium': '#D4C5B0',
+            'cosmic orange': '#FF6B35',
+            'space black': '#2C2C2E',
+            'silver': '#E3E4E5',
+            'gold': '#FAD7BD',
+            'deep purple': '#594F63',
+            'sierra blue': '#A7C1D9',
+            'graphite': '#52514D',
+            'alpine green': '#576856',
+            'midnight': '#232A31',
+            'starlight': '#F9F6F3',
+            'product red': '#BF0013',
+            '(product)red': '#BF0013',
+            'blue': '#276787',
+            'pink': '#FAE5D3',
+            'yellow': '#FFD33C',
+            'green': '#ADE0CD',
+            'purple': '#D1CDDA',
+            'coral': '#FF6961',
+            'pacific blue': '#2F5C7C',
+            'rose gold': '#E0BFB8',
+            'jet black': '#0D0D0D',
+            'matte black': '#1C1C1C',
+            'space gray': '#7D7E80',
+            'space grey': '#7D7E80',
+
+            // Samsung Galaxy Colors
+            'phantom black': '#1E1E1E',
+            'phantom white': '#F4F4F4',
+            'phantom gray': '#6B6B6B',
+            'phantom grey': '#6B6B6B',
+            'phantom silver': '#C0C0C0',
+            'phantom violet': '#8B7BA8',
+            'phantom pink': '#E8C4D8',
+            'phantom green': '#C1D5C0',
+            'cream': '#F5EFE7',
+            'lavender': '#E6E6FA',
+            'graphite': '#52514D',
+            'burgundy': '#800020',
+            'mystic bronze': '#CD7F32',
+            'mystic black': '#1A1A1A',
+            'mystic white': '#F8F8F8',
+            'mystic gray': '#8E8E8E',
+            'mystic grey': '#8E8E8E',
+            'cloud blue': '#A7C7E7',
+            'cloud pink': '#FFB6C1',
+            'cloud white': '#FAFAFA',
+            'aura glow': '#E8E8E8',
+            'aura black': '#000000',
+            'aura blue': '#4A90E2',
+            'prism black': '#1C1C1C',
+            'prism white': '#FFFFFF',
+            'prism blue': '#4169E1',
+            'prism green': '#50C878',
+
+            // Google Pixel Colors
+            'obsidian': '#1F1F1F',
+            'porcelain': '#F8F5F0',
+            'hazel': '#6B705C',
+            'bay': '#5B8FA3',
+            'rose': '#F4C2C2',
+            'snow': '#FFFFFF',
+            'sorta seafoam': '#98D8C8',
+            'kinda coral': '#FF8A80',
+            'just black': '#000000',
+            'clearly white': '#FFFFFF',
+            'oh so orange': '#FF6F00',
+            'stormy black': '#2C2C2E',
+            'cloudy white': '#F5F5F5',
+            'sage': '#87AE73',
+            'sorta sage': '#87AE73',
+            'sorta sunny': '#FFD54F',
+            'kinda blue': '#5B9BD5',
+
+            // Generic/Common colors
+            'black': '#000000',
+            'white': '#FFFFFF',
+            'red': '#FF0000',
+            'orange': '#FF8C00',
+            'titanium': '#878681'
+        };
+
+        // Get hex color from color name
+        function getColorHex(colorName) {
+            if (!colorName) return '#333';
+            var normalized = String(colorName).toLowerCase().trim();
+            return COLOR_MAP[normalized] || '#333';
         }
 
         function ProductApp(){
@@ -237,6 +333,23 @@
             var heroImageHeight = _useState13[0];
             var setHeroImageHeight = _useState13[1];
 
+            // Battery Tier Challenge state
+            var _useState16 = useState(false); var showChallenge = _useState16[0]; var setShowChallenge = _useState16[1];
+            var _useState17 = useState(false); var challengeUnlocked = _useState17[0]; var setChallengeUnlocked = _useState17[1];
+            var _useState18 = useState(null); var challengeScreen = _useState18[0]; var setChallengeScreen = _useState18[1];
+            var _useState19 = useState(1); var challengeLevel = _useState19[0]; var setChallengeLevel = _useState19[1];
+            var _useState20 = useState(0); var challengeScore = _useState20[0]; var setChallengeScore = _useState20[1];
+            var _useState21 = useState([]); var pipes = _useState21[0]; var setPipes = _useState21[1];
+            var _useState22 = useState(200); var birdY = _useState22[0]; var setBirdY = _useState22[1];
+            var _useState23 = useState(0); var velocity = _useState23[0]; var setVelocity = _useState23[1];
+            var _useState24 = useState(false); var gameRunning = _useState24[0]; var setGameRunning = _useState24[1];
+            var _useState25 = useState(5); var mathTries = _useState25[0]; var setMathTries = _useState25[1];
+            var _useState26 = useState(''); var mathInput = _useState26[0]; var setMathInput = _useState26[1];
+            var _useState27 = useState(''); var mathFeedback = _useState27[0]; var setMathFeedback = _useState27[1];
+            var _useState28 = useState(null); var chessGame = _useState28[0]; var setChessGame = _useState28[1];
+            var _useState29 = useState([]); var chessBoard = _useState29[0]; var setChessBoard = _useState29[1];
+            var _useState30 = useState(null); var selectedSquare = _useState30[0]; var setSelectedSquare = _useState30[1];
+
             var gallery = BOOT.gallery || [];
             var hasGallery = gallery.length > 0;
 
@@ -244,7 +357,7 @@
             var visibleGalleryCount = useMemo(function(){
                 if (!heroImageHeight) return isMobile ? 3 : 4; // Default
 
-                // Since the gallery is centered, we can be more generous with space
+                // Since gallery is centered, we can be more generous with space
                 var thumbSize = isMobile ? 32 : 60; // thumbnail size
                 var gap = isMobile ? 4 : 8; // gap between items
                 var arrowHeight = isMobile ? 20 : 28; // each arrow button
@@ -262,10 +375,10 @@
 
             var maxScroll = Math.max(0, gallery.length - visibleGalleryCount);
 
-            // Sync heroImage with cur.image when the product changes
+            // Sync heroImage with cur.image when product changes
             useEffect(function(){
                 setHeroImage(cur.image || BOOT.image);
-                setGalleryScroll(0); // Reset scroll when the product changes
+                setGalleryScroll(0); // Reset scroll when product changes
             }, [cur.productId]);
 
             var activeTab = state.activeTab;
@@ -345,19 +458,19 @@
                 }).catch(function(e){ console.error('siblings fetch failed', e); });
             }, []);
 
-            // Load the pricing and set the default tier - reload when the product changes
+            // Load the pricing and set default tier - reload when product changes
             useEffect(function(){
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/pricing?product_id=' + cur.productId;
                 fetchJSON(url).then(function(j){
                     setRules(j);
-                    // Set the default tier immediately when rules load for used products
+                    // Set default tier immediately when rules load for used products
                     if (j && j.exists && j.default_condition && cond==='used'){
                         setTier(j.default_condition);
                     }
                 }).catch(function(e){ console.error('pricing fetch failed', e); });
             }, [cur.productId, cond]);
 
-            // Load FBT - reload when the product changes (storage switch)
+            // Load FBT - reload when product changes (storage switch)
             useEffect(function(){
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/fbt?product_id=' + cur.productId;
                 fetchJSON(url).then(function(j){
@@ -388,16 +501,38 @@
                 fetchJSON(url).then(function(j){
                     if (j && j.ok){
                         var allAddons = [];
-                        if (j.laptop_ram && j.laptop_ram.length > 0){
-                            j.laptop_ram.forEach(function(item){ allAddons.push({...item, type: 'ram'}); });
-                        }
-                        if (j.laptop_storage && j.laptop_storage.length > 0){
-                            j.laptop_storage.forEach(function(item){ allAddons.push({...item, type: 'storage'}); });
-                        }
+                        if (j.laptop_ram && j.laptop_ram.length > 0){ j.laptop_ram.forEach(function(item){ allAddons.push({...item, type: 'ram'}); }); }
+                        if (j.laptop_storage && j.laptop_storage.length > 0){ j.laptop_storage.forEach(function(item){ allAddons.push({...item, type: 'storage'}); }); }
                         setLaptopAddons(allAddons);
                     }
                 }).catch(function(e){ console.error('laptop addons fetch failed', e); });
             }, [cur.deviceType]);
+
+            // Flappy Bird Game Loop
+            useEffect(function(){
+                if (challengeScreen !== 'game' || !gameRunning) return;
+                var gravity = 0.3; var pipeSpeed = 1.6; var frame;
+                var loop = function(){
+                    setBirdY(function(prev){ return Math.max(0, Math.min(460, prev + velocity)); });
+                    setVelocity(function(v){ return v + gravity; });
+                    setPipes(function(prev){
+                        var moved = prev.map(function(p){ return {x: p.x - pipeSpeed, gapY: p.gapY, scored: p.scored}; }).filter(function(p){ return p.x > -60; });
+                        if (Math.random() < 0.009){ var gapY = 140 + Math.random() * 180; moved.push({x: 420, gapY: gapY, scored: false}); }
+                        return moved;
+                    });
+                    frame = requestAnimationFrame(loop);
+                };
+                frame = requestAnimationFrame(loop);
+                return function(){ cancelAnimationFrame(frame); };
+            }, [challengeScreen, gameRunning, velocity]);
+
+            // Flappy Bird Collision
+            useEffect(function(){
+                if (challengeScreen !== 'game' || !gameRunning) return;
+                var gapHalf = 100;
+                setPipes(function(prev){ return prev.map(function(p){ if (!p.scored && p.x < 60){ setChallengeScore(function(s){ var newScore = s + 10; if (newScore >= 100 && challengeLevel === 1){ setChallengeLevel(2); setGameRunning(false); setChallengeScreen('level2'); } return newScore; }); return {...p, scored: true}; } return p; }); });
+                for (var i = 0; i < pipes.length; i++){ var p = pipes[i]; if (p.x < 80 && p.x > 20){ if (birdY < p.gapY - gapHalf || birdY > p.gapY + gapHalf){ setGameRunning(false); setChallengeScreen('lose'); return; } } }
+            }, [birdY, pipes, challengeScore, challengeLevel, gameRunning, challengeScreen]);
 
             // Search products
             useEffect(function(){
@@ -423,7 +558,7 @@
                 }).catch(function(e){ console.error('compare specs failed', e); });
             }, [compareProduct]);
 
-            // SMART DEFAULT: Apply the default tier when switching to USED
+            // SMART DEFAULT: Apply default tier when switching to USED
             useEffect(function(){
                 if (cond === 'used' && rules && rules.exists && rules.default_condition) {
                     setTier(rules.default_condition);
@@ -468,10 +603,14 @@
                     var storageMatch = !cur.storage || String(p.storage).toLowerCase()===String(cur.storage).toLowerCase();
 
                     if (condMatch && storageMatch){
-                        var key = (String(p.color||'').toLowerCase().replace(/\s+/g,'')) || ('id-'+p.id);
+                        var colorStr = String(p.color||'').toLowerCase().trim();
+                        var key = colorStr || ('id-'+p.id);
                         if (!seen[key]){
                             seen[key]=true;
-                            list.push({ id:p.id, color:p.color||'', image:p.image });
+                            // Prioritize COLOR_MAP, fallback to database hex
+                            var mappedHex = getColorHex(p.color);
+                            var hexColor = (mappedHex !== '#333') ? mappedHex : (p.hex || '#333');
+                            list.push({ id:p.id, color:p.color||'', hex:hexColor, image:p.image });
                         }
                     }
                 });
@@ -665,9 +804,16 @@
             }
 
             // P3 OPTIMIZED: Use reducer action for FBT toggle
-            function toggleFBT(id){
-                dispatch({type: 'TOGGLE_FBT', payload: id});
-            }
+            function toggleFBT(id){ dispatch({type: 'TOGGLE_FBT', payload: id}); }
+
+            // Battery Tier Challenge Functions
+            var CHALLENGE_TEXTS = {unlock_btn:'დაიმსახურე ყველაზე დაბალი ფასი!',unlocked_btn:'✅ განსაკუთრებული ფასი გახსნილია!',intro_title:'დაიმსახურე ყველაზე დაბალი ფასი!',intro_desc1:function(title){return 'შენ ცდილობ იყიდო '+title+' ყველაზე დაბალ ფასად!';},intro_desc2:'ამას დამსახურება სჭირდება!',intro_desc3:'დაგვამარცხე სამ დონიან თამაშში და მიიღე განსაკუთრებული ფასი.',start_btn:'დაწყება',score:'ქულა',lose_title:'შენ დამარცხდი',lose_desc:'არ დანებდე, დაგვამარცხე და დაიმსახურე!',try_again:'კიდევ სცადე',close_btn:'დანებდი',level2_title:'შენ გადახვედი მეორე დონეზე!',level2_desc1:'ყოჩაღ, შენ შეძელი და გაიარე პირველი დაბრკოლება.',level2_desc2:'შემდეგი მისია: ჭადრაკი',continue_btn:'გაგრძელება',chess_title:'მეორე დონე: დაამარცხე ჭადრაკში Gstore Chess AI',chess_desc:'დაგვამარცხე!',math_title:'დონე მესამე: მათემატიკური პრობლემა',math_tries:function(n){return 'შენ გაქვს '+n+' მცდელობა';},math_question:'რა არის 6 × 7 ?',submit_btn:'სცადე',congratulations:'გილოცავ'};
+            function startChallenge(){ console.log('🎮 Starting challenge'); setShowChallenge(true); setChallengeScreen('intro'); setChallengeLevel(1); setChallengeScore(0); setMathTries(5); setMathInput(''); setMathFeedback(''); }
+            function closeChallenge(){ console.log('❌ Closing challenge'); setShowChallenge(false); setChallengeScreen(null); }
+            function startFlappyGame(){ setChallengeScreen('game'); setGameRunning(true); setChallengeScore(0); setBirdY(200); setVelocity(0); setPipes([]); }
+            function jumpBird(){ if (!gameRunning) return; setVelocity(-7); }
+            function initChess(){ var board=[]; var pieces=['r','n','b','q','k','b','n','r']; var pawns=['p','p','p','p','p','p','p','p']; board.push(pieces.map(function(p){return{piece:p,color:'black'};})); board.push(pawns.map(function(p){return{piece:p,color:'black'};})); for(var i=0;i<4;i++)board.push(Array(8).fill(null)); board.push(pawns.map(function(p){return{piece:p,color:'white'};})); board.push(pieces.map(function(p){return{piece:p,color:'white'};})); setChessBoard(board); setChessGame({turn:'white',moves:0,gameOver:false,winner:null}); }
+            function handleMathSubmit(){ var correctAnswer=42; var userAnswer=parseInt(mathInput,10); if(userAnswer===correctAnswer){ setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! '+CHALLENGE_TEXTS.math_tries(mathTries-1)); }else{ setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
 
             function ScoreBar(score, better){
                 var width = Math.max(5, Math.min(100, score * 10));
@@ -702,7 +848,7 @@
 
             var scoreKeys = ['CPU','GPU','Camera','Battery','Display','Build','Connectivity','Charging','Weight','Durability','Storage Speed','Thermals'];
 
-// OPTIMIZED: Icons organized in single objects for better maintainability
+// OPTIMIZED: Icons organized in single object for better maintainability
             var Icons = {
                 Truck: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"}),e("path",{key:2,d:"M15 18H9"}),e("path",{key:3,d:"M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"}),e("circle",{key:4,cx:17,cy:18,r:2}),e("circle",{key:5,cx:7,cy:18,r:2})]); },
                 Shield: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"})]); },
@@ -740,7 +886,7 @@
                 return function(){ window.removeEventListener('resize', handleResize); };
             }, []);
 
-            // Create a sticky bar outside Shadow DOM for mobile
+            // Create sticky bar outside Shadow DOM for mobile
             useEffect(function(){
                 if (!isMobile) {
                     // Remove sticky bar if exists
@@ -760,7 +906,7 @@
                 // Style the sticky bar - find .wd-toolbar footer
                 var bottomNav = document.querySelector('.wd-toolbar');
                 var footerHeight = bottomNav ? bottomNav.offsetHeight : 60;
-                // Use z-index 99 to stay below the side menu, cart, and navigation
+                // Use z-index 99 to stay below side menu, cart, and navigation
                 stickyBar.style.cssText = 'position:fixed;bottom:' + footerHeight + 'px;left:0;right:0;background:white;border-top:1px solid #e5e7eb;padding:0.625rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;z-index:99;box-shadow:0 -2px 10px rgba(0,0,0,0.1)';
 
                 // Render content
@@ -785,9 +931,15 @@
                 cartBtn.onclick = function(){ addToCart(null); };
 
                 var buyBtn = document.createElement('button');
-                buyBtn.style.cssText = 'background:white;border:2px solid #2563eb;color:#2563eb;font-weight:500;padding:0.75rem 1.5rem;border-radius:0.5rem;cursor:pointer';
+                buyBtn.className = 'buy-now-btn';
+                buyBtn.style.cssText = 'background:white;border:2px solid #2563eb;color:#2563eb;font-weight:500;padding:0.75rem 1.5rem;border-radius:0.5rem;cursor:pointer;position:relative;overflow:hidden';
                 buyBtn.textContent = t('buy_now', 'Buy Now');
-                buyBtn.onclick = function(){ addToCart('/checkout/'); };
+                buyBtn.onclick = function(ev){
+                    var btn = ev.currentTarget;
+                    btn.classList.add('animate');
+                    setTimeout(function(){ if(btn) btn.classList.remove('animate'); }, 600);
+                    addToCart('/checkout/');
+                };
 
                 stickyBar.innerHTML = '';
                 stickyBar.appendChild(pricesDiv);
@@ -810,15 +962,15 @@
                     return;
                 }
 
-                // Observe the CTA section in the desktop layout
+                // Observe the CTA section in desktop layout
                 var observer = new IntersectionObserver(function(entries){
                     entries.forEach(function(entry){
-                        // Show a sticky bar when CTA is NOT visible
+                        // Show sticky bar when CTA is NOT visible
                         setShowDesktopSticky(!entry.isIntersecting);
                     });
                 }, {threshold: 0});
 
-                // OPTIMIZED: Wait for DOM with timeout to prevent the infinite interval
+                // OPTIMIZED: Wait for DOM with timeout to prevent infinite interval
                 var checkInterval = setInterval(function(){
                     var host = document.getElementById('gstore-epp-shadow-host');
                     var ctaSection = null;
@@ -843,7 +995,7 @@
                 };
             }, [isMobile]);
 
-            // Create a desktop sticky bar
+            // Create desktop sticky bar
             useEffect(function(){
                 if (isMobile || !showDesktopSticky) {
                     var existingBar = document.getElementById('gstore-desktop-sticky-bar');
@@ -858,20 +1010,20 @@
                     document.body.appendChild(stickyBar);
                 }
 
-                // Find a sticky header row and account for the WordPress admin bar
+                // Find sticky header row and account for WordPress admin bar
                 var header = document.querySelector('.whb-sticky-row') || document.querySelector('.whb-general-header') || document.querySelector('header');
                 var headerHeight = header ? header.offsetHeight : 0;
                 var adminBar = document.getElementById('wpadminbar');
                 var adminBarHeight = adminBar ? adminBar.offsetHeight : 0;
                 var totalTopOffset = headerHeight + adminBarHeight;
 
-                // Stick directly below the header (accounting for admin bar) with z-index 99 to stay below cart, search, and navigation
+                // Stick directly below header (accounting for admin bar) with z-index 99 to stay below cart, search, and navigation
                 stickyBar.style.cssText = 'position:fixed;top:' + totalTopOffset + 'px;left:0;right:0;background:white;border-bottom:1px solid #e5e7eb;padding:1rem 2rem;display:flex;align-items:center;justify-content:center;gap:1rem;z-index:99;box-shadow:0 2px 10px rgba(0,0,0,0.1)';
 
                 var container = document.createElement('div');
                 container.style.cssText = 'max-width:80rem;width:100%;display:flex;align-items:center;justify-content:space-between;gap:2rem';
 
-                // Left section: Prices and Product name (swapped order)
+                // Left section: Prices + Product name (swapped order)
                 var leftSection = document.createElement('div');
                 leftSection.style.cssText = 'display:flex;align-items:center;gap:1.5rem';
 
@@ -904,9 +1056,15 @@
                 cartBtn.onclick = function(){ addToCart(null); };
 
                 var buyBtn = document.createElement('button');
-                buyBtn.style.cssText = 'background:white;border:2px solid #d1d5db;color:#374151;font-weight:500;padding:0.75rem 2rem;border-radius:0.5rem;cursor:pointer;font-size:1rem';
+                buyBtn.className = 'buy-now-btn';
+                buyBtn.style.cssText = 'background:white;border:2px solid #d1d5db;color:#374151;font-weight:500;padding:0.75rem 2rem;border-radius:0.5rem;cursor:pointer;font-size:1rem;position:relative;overflow:hidden';
                 buyBtn.textContent = t('buy_now', 'Buy Now') + ' ' + gel(grandTotal);
-                buyBtn.onclick = function(){ addToCart('/checkout/'); };
+                buyBtn.onclick = function(ev){
+                    var btn = ev.currentTarget;
+                    btn.classList.add('animate');
+                    setTimeout(function(){ if(btn) btn.classList.remove('animate'); }, 600);
+                    addToCart('/checkout/');
+                };
 
                 buttonsDiv.appendChild(cartBtn);
                 buttonsDiv.appendChild(buyBtn);
@@ -947,7 +1105,7 @@
 
                         // 2. Hero image + gallery thumbnails + color selectors (colors hidden for laptops)
                         e("div",{key:"image-section",className:"space-y-2"},[
-                            // Hero image with an overlaid vertical gallery (left side, fit to image height)
+                            // Hero image with overlaid vertical gallery (left side, fit to image height)
                             e("div",{key:"hero-gallery",className:"relative",style:{width:'100%'}},[
                                 // Hero image (full width)
                                 e("img",{
@@ -957,7 +1115,7 @@
                                     className:"w-full rounded-lg object-cover",
                                     onLoad:function(ev){ setHeroImageHeight(ev.target.offsetHeight); }
                                 }),
-                                // Gallery thumbnails (overlaid vertically on the left side, centered Y-axis)
+                                // Gallery thumbnails (overlaid vertically on left side, centered Y-axis)
                                 hasGallery && e("div",{key:"gallery",className:"absolute flex flex-col justify-center",style:{top:'50%',left:'8px',transform:'translateY(-50%)'}},[
                                     // Scroll up button (always visible, grayed when disabled)
                                     e("button",{
@@ -994,12 +1152,12 @@
                             cur.deviceType !== 'laptop' && e("div",{key:"colors",className:"flex gap-2 justify-center flex-wrap"},
                                 colors.map(function(c){
                                     var active = (String(c.id)===String(cur.productId));
-                                    var cls = "h-16 w-16 rounded-lg object-cover cursor-pointer border-2 "+(active?"border-blue-600":"border-gray-300");
                                     return e("img",{
                                         key:c.id,
                                         src:c.image,
                                         alt:c.color||'color',
-                                        className:cls,
+                                        className:"h-16 w-16 rounded-lg object-cover cursor-pointer border-2",
+                                        style:{borderColor:active ? (c.hex || '#333') : '#d1d5db',borderStyle:'solid'},
                                         onClick:function(){ switchToProductId(c.id); }
                                     });
                                 })
@@ -1029,12 +1187,12 @@
                             ])
                         ]),
 
-                        // 4. Storage - hides unavailable options and entire section for laptops
+                        // 4. Storage - hide unavailable options and entire section for laptops
                         (function(){
                             var availStorages = ALL_STORAGES.filter(function(st){ return storages[st]; });
                             if (availStorages.length === 0) return null;
                             return e("div",{key:"storage"},[
-                                e("h3",{className:"text-sm font-semibold mb-2 text-center"},t('storage_options_text', 'Storage')),
+                                e("h3",{className:"text-sm font-semibold mb-2"},t('storage_options_text', 'Storage')),
                                 e("div",{className:"flex",style:{gap:'0.5rem',justifyContent:'center'}},
                                     availStorages.map(function(st){
                                         var active = String(st).toLowerCase()===String(cur.storage).toLowerCase();
@@ -1049,7 +1207,7 @@
                             ]);
                         })(),
 
-                        // 5. Condition and Battery Tiers - fixed sizing for up to 3 options
+                        // 5. Condition + Battery Tiers - fixed sizing for up to 3 options
                         e("div",{key:"condition"},[
                             e("h3",{className:"text-sm font-semibold mb-2 text-center"},t('condition_label', 'Condition')),
                             e("div",{key:"condition",className:"flex mb-2",style:{gap:'0.5rem',justifyContent:'center'}},[
@@ -1076,18 +1234,20 @@
                                     var reg = parseFloat(row.regular||0);
                                     var sale = parseFloat(row.sale||0);
                                     var hasSale = (sale > 0 && sale < reg);
+                                    var isLocked = (t === '80-85' && !challengeUnlocked);
                                     var cls = "flex-1 text-center py-2 text-xs font-medium border border-gray-200 ";
                                     if (idx === 0) cls += "rounded-l-lg ";
                                     if (idx === USED_TIERS.length - 1) cls += "rounded-r-lg ";
                                     if (active) cls += "bg-green-600 text-white border-green-600";
-                                    else if (enabled) cls += "bg-white text-gray-700";
+                                    else if (enabled && !isLocked) cls += "bg-white text-gray-700";
+                                    else if (isLocked) cls += "bg-blue-50 text-blue-600 border-blue-200";
                                     else cls += "bg-gray-100 text-gray-400";
                                     return e("button",{
                                         key:t,
                                         className:cls,
                                         disabled:!enabled,
-                                        onClick:function(){ if(enabled) setTier(t); }
-                                    }, (hasSale ? "🔥 " : "") + t + '%');
+                                        onClick:function(){ if(!enabled)return; if(isLocked){startChallenge();}else{setTier(t);} }
+                                    }, (isLocked ? "🔒 " : (hasSale ? "🔥 " : "")) + t + '%');
                                 })
                             )
                         ]),
@@ -1243,36 +1403,25 @@
                     // Sticky bar is rendered outside Shadow DOM via useEffect above
 
                     // Warranty Modal (shared)
-                    showWarrantyModal && e("div",{
-                        key:"warranty-modal",
-                        className:"fixed inset-0 z-50 flex items-center justify-center pt-16",
-                        onClick:function(){ setShowWarrantyModal(false); },
-                        onWheel:handleModalWrapperScroll
-                    },[
-                        e("div",{
-                            key:"modal",
-                            className:"relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 flex flex-col overflow-hidden",
-                            style:{maxHeight:"85vh"},
-                            onClick:function(ev){ ev.stopPropagation(); }
-                        },[
-                            e("div",{key:"header",className:"flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"},[
-                                e("h2",{key:"title",className:"text-xl font-semibold text-gray-900"},"Warranty Information"),
-                                e("button",{
-                                    key:"close",
-                                    className:"text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 p-0",
-                                    onClick:function(){ setShowWarrantyModal(false); }
-                                },[
-                                    e("svg",{xmlns:"http://www.w3.org/2000/svg",className:"h-6 w-6",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor"},[
-                                        e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})
-                                    ])
-                                ])
-                            ]),
-                            e("div",{
-                                key:"content",
-                                ref:modalContentRef,
-                                className:"p-6 text-gray-700 overflow-y-auto flex-1",
-                                dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information is available.</p>'}
-                            })
+                    showWarrantyModal && e("div",{key:"warranty-modal",className:"fixed inset-0 z-50 flex items-center justify-center pt-16",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 flex flex-col overflow-hidden",style:{maxHeight:"85vh"},onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"},[e("h2",{key:"title",className:"text-xl font-semibold text-gray-900"},"Warranty Information"),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 p-0",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{xmlns:"http://www.w3.org/2000/svg",className:"h-6 w-6",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"p-6 text-gray-700 overflow-y-auto flex-1",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
+
+                    // Battery Tier Challenge Modal
+                    (showChallenge === true && challengeScreen !== null) && e("div",{key:"challenge-modal",className:"pointer-events-none fixed inset-0 z-[999] flex items-center justify-center transition-opacity duration-300",onClick:function(){if(challengeScreen==='intro')closeChallenge();}},[
+                        challengeScreen==='intro' && e("div",{key:"intro",className:"pointer-events-auto relative m-4 rounded-xl bg-white shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("div",{key:"title-row",className:"flex items-center justify-between mb-4"},[e("h3",{key:"title",className:"text-4xl font-bold text-blue-600 flex items-center gap-3"},[e("span",{key:"icon"},"🏆"),CHALLENGE_TEXTS.intro_title]),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors",onClick:closeChallenge},e("svg",{className:"w-8 h-8",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})]))]),e("p",{key:"subtitle",className:"text-gray-600 text-xl"},CHALLENGE_TEXTS.intro_desc2)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc1",className:"text-gray-800 text-2xl mb-6 font-semibold"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc3",className:"text-gray-600 text-xl mb-10"},CHALLENGE_TEXTS.intro_desc3),e("div",{key:"buttons",className:"flex gap-4"},[e("button",{key:"start",className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg hover:shadow-xl text-xl",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-5 px-8 rounded-xl transition-colors text-xl",onClick:closeChallenge},CHALLENGE_TEXTS.close_btn)])])
+                        ]),
+                        challengeScreen==='game' && e("div",{key:"game",className:"relative rounded-2xl overflow-hidden shadow-2xl",style:{width:'400px',height:'500px',background:'linear-gradient(to bottom, #7dd3fc, #38bdf8)',cursor:'pointer',border:'3px solid #0284c7'},onClick:jumpBird},[e("img",{key:"bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",className:"absolute",style:{left:'60px',width:'40px',height:'40px',objectFit:'contain',top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"absolute",style:{width:'40px',height:(p.gapY-100)+'px',left:p.x+'px',top:0,background:'#1f2937',borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"absolute",style:{width:'40px',height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',background:'#1f2937',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"absolute top-10 left-2 text-sm font-bold text-white bg-blue-600 px-2 py-1 rounded-lg"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))]),
+                        challengeScreen==='lose' && e("div",{key:"lose",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-red-600 mb-4"},"💥 "+CHALLENGE_TEXTS.lose_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc",className:"text-gray-700 text-2xl mb-10"},CHALLENGE_TEXTS.lose_desc),e("div",{key:"btns",className:"flex gap-4"},[e("button",{key:"retry",className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:startFlappyGame},CHALLENGE_TEXTS.try_again),e("button",{key:"close",className:"bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-5 px-8 rounded-xl transition-colors text-xl",onClick:function(){setShowChallenge(false);setChallengeScreen('intro');}},CHALLENGE_TEXTS.close_btn)])])
+                        ]),
+                        challengeScreen==='level2' && e("div",{key:"level2",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-green-600 mb-4"},"🎉 "+CHALLENGE_TEXTS.level2_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc1",className:"text-gray-700 text-2xl mb-4"},CHALLENGE_TEXTS.level2_desc1),e("p",{key:"desc2",className:"text-gray-700 text-2xl mb-10"},CHALLENGE_TEXTS.level2_desc2),e("button",{key:"continue",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:function(){setChallengeScreen('chess');initChess();}},CHALLENGE_TEXTS.continue_btn)])
+                        ]),
+                        challengeScreen==='chess' && e("div",{key:"chess",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'600px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-indigo-600 mb-4"},"♟️ "+CHALLENGE_TEXTS.chess_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc",className:"text-gray-700 text-2xl mb-6"},CHALLENGE_TEXTS.chess_desc),e("div",{key:"board",className:"grid gap-0 mb-6",style:{gridTemplateColumns:'repeat(8, 1fr)',width:'100%',aspectRatio:'1'}},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;return e("div",{key:i+'-'+j,className:"flex items-center justify-center text-2xl cursor-pointer",style:{background:isLight?'#f0d9b5':'#b58863',aspectRatio:'1'},onClick:function(){}},cell?(cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),e("button",{key:"skip",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:function(){setChallengeScreen('math');}},CHALLENGE_TEXTS.continue_btn+' (სიმულაცია)')])
+                        ]),
+                        challengeScreen==='math' && e("div",{key:"math",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-purple-600 mb-4"},"🧮 "+CHALLENGE_TEXTS.math_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"tries",className:"text-gray-700 text-2xl mb-6"},CHALLENGE_TEXTS.math_tries(mathTries)),e("p",{key:"question",className:"text-gray-900 text-3xl mb-8 font-bold text-center"},CHALLENGE_TEXTS.math_question),e("input",{key:"input",type:"number",value:mathInput,onChange:function(ev){setMathInput(ev.target.value);},className:"border-2 border-gray-300 rounded-xl px-6 py-4 w-full text-center mb-6 text-2xl",placeholder:"შეიყვანე პასუხი"}),e("button",{key:"submit",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl mb-4",onClick:handleMathSubmit},CHALLENGE_TEXTS.submit_btn),mathFeedback && e("p",{key:"feedback",className:"text-xl text-gray-600 text-center"},mathFeedback)])
                         ])
                     ])
                 ]);
@@ -1283,7 +1432,7 @@
                 e("div",{key:"main",className:"max-w-7xl mx-auto p-6 grid lg:grid-cols-2 gap-8"},[
                     // LEFT: Photos + Description + Tabs
                     e("div",{key:"left",className:"space-y-6"},[
-                        // Hero image with an overlaid vertical gallery (left side, fit to image height)
+                        // Hero image with overlaid vertical gallery (left side, fit to image height)
                         e("div",{key:"hero-gallery",className:"relative",style:{width:'100%'}},[
                             // Hero image (full width)
                             e("img",{
@@ -1293,7 +1442,7 @@
                                 className:"w-full rounded-2xl shadow-md object-cover",
                                 onLoad:function(ev){ setHeroImageHeight(ev.target.offsetHeight); }
                             }),
-                            // Gallery thumbnails (overlaid vertically on the left side, centered Y-axis)
+                            // Gallery thumbnails (overlaid vertically on left side, centered Y-axis)
                             hasGallery && e("div",{key:"gallery",className:"absolute flex flex-col justify-center",style:{top:'50%',left:'16px',transform:'translateY(-50%)'}},[
                                 // Scroll up button (always visible, grayed when disabled)
                                 e("button",{
@@ -1332,12 +1481,12 @@
                         cur.deviceType !== 'laptop' && e("div",{key:"thumbs",className:"flex gap-3 overflow-x-auto"},
                             colors.map(function(c){
                                 var active = (String(c.id)===String(cur.productId));
-                                var cls = "h-16 w-16 rounded-lg object-cover cursor-pointer border-2 "+(active?"border-blue-600":"border-gray-200");
                                 return e("img",{
                                     key:c.id,
                                     src:c.image,
                                     alt:c.color||'color',
-                                    className:cls,
+                                    className:"h-16 w-16 rounded-lg object-cover cursor-pointer border-2",
+                                    style:{borderColor:active ? (c.hex || '#333') : '#e5e7eb',borderStyle:'solid'},
                                     onClick:function(){ switchToProductId(c.id); }
                                 });
                             })
@@ -1522,31 +1671,32 @@
                             ]),
 
                             cond==='used' && shouldShowBatteryTier(cur.deviceType, cur.brand) && rules && rules.exists &&
-                            e("div",{},[
-                                e("div",{key:"tiers",className:"flex rounded-lg overflow-hidden"},
-                                    USED_TIERS.map(function(t, idx){
-                                        var pr = rules.pricing || {};
-                                        var row = pr[t] || {};
-                                        var enabled = !!((row.regular && row.regular!=='') || (row.sale && row.sale!==''));
-                                        var active = (tier===t);
-                                        var reg = parseFloat(row.regular||0);
-                                        var sale = parseFloat(row.sale||0);
-                                        var hasSale = (sale > 0 && sale < reg);
-                                        var cls = "flex-1 text-center py-2 text-sm font-medium transition-all border border-gray-200 ";
-                                        if (idx === 0) cls += "rounded-l-lg ";
-                                        if (idx === USED_TIERS.length - 1) cls += "rounded-r-lg ";
-                                        if (active) cls += "bg-green-600 text-white border-green-600";
-                                        else if (enabled) cls += "bg-white text-gray-700 hover:bg-green-50 cursor-pointer";
-                                        else cls += "bg-gray-100 text-gray-400 cursor-not-allowed";
+                            e("div",{},[                                e("div",{key:"tiers",className:"flex rounded-lg overflow-hidden"},
+                                USED_TIERS.map(function(t, idx){
+                                    var pr = rules.pricing || {};
+                                    var row = pr[t] || {};
+                                    var enabled = !!((row.regular && row.regular!=='') || (row.sale && row.sale!==''));
+                                    var active = (tier===t);
+                                    var reg = parseFloat(row.regular||0);
+                                    var sale = parseFloat(row.sale||0);
+                                    var hasSale = (sale > 0 && sale < reg);
+                                    var isLocked = (t === '80-85' && !challengeUnlocked);
+                                    var cls = "flex-1 text-center py-2 text-sm font-medium transition-all border border-gray-200 ";
+                                    if (idx === 0) cls += "rounded-l-lg ";
+                                    if (idx === USED_TIERS.length - 1) cls += "rounded-r-lg ";
+                                    if (active) cls += "bg-green-600 text-white border-green-600";
+                                    else if (enabled && !isLocked) cls += "bg-white text-gray-700 hover:bg-green-50 cursor-pointer";
+                                    else if (isLocked) cls += "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 cursor-pointer";
+                                    else cls += "bg-gray-100 text-gray-400 cursor-not-allowed";
 
-                                        return e("button",{
-                                            key:t,
-                                            className:cls,
-                                            disabled:!enabled,
-                                            onClick:function(){ if(enabled) setTier(t); }
-                                        }, (hasSale ? "🔥 " : "") + t + '%');
-                                    })
-                                ),
+                                    return e("button",{
+                                        key:t,
+                                        className:cls,
+                                        disabled:!enabled,
+                                        onClick:function(){ if(!enabled)return; if(isLocked){startChallenge();}else{setTier(t);} }
+                                    }, (isLocked ? "🔒 " : (hasSale ? "🔥 " : "")) + t + '%');
+                                })
+                            ),
 
                                 // NEW BATTERY - with translation
                                 (function(){
@@ -1554,9 +1704,10 @@
                                     var hasPrice = (nb.regular && nb.regular!=='') || (nb.sale && nb.sale!=='');
                                     if (!hasPrice) return null;
 
-                                    return e("div",{key:"newbat",className:"mt-3"},[
+                                    return e("div",{key:"newbat",className:"mt-3",style:{position:'relative'}},[
                                         e("button",{
                                             className:"w-full py-2 px-4 rounded-lg border text-sm font-medium transition-all " + (newBat ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"),
+                                            style:{paddingRight:newBat?'50px':'1rem'},
                                             onClick:function(){ setNewBat(!newBat); }
                                         }, [
                                             newBat ? "✓ " : "+ ",
@@ -1565,6 +1716,14 @@
                                             batteryPriceBlock.hasSale && e("span",{key:"reg",className:"line-through text-gray-400"},"+₾"+Math.floor(batteryPriceBlock.regular)+" "),
                                             "+₾"+Math.floor(batteryPrice),
                                             ")"
+                                        ]),
+                                        newBat && e("button",{
+                                            key:"remove",
+                                            className:"remove-btn",
+                                            onClick:function(ev){ ev.stopPropagation(); setNewBat(false); }
+                                        },[
+                                            e("span",{key:"sign",className:"remove-sign"},e("svg",{viewBox:"0 0 16 16",height:"16",width:"16",xmlns:"http://www.w3.org/2000/svg"},e("path",{d:"M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"}))),
+                                            e("span",{key:"text",className:"remove-text"},"Remove")
                                         ])
                                     ]);
                                 })()
@@ -1575,15 +1734,28 @@
                         cur.deviceType === 'laptop' && laptopAddons.length > 0 && e("div",{key:"laptop-addons",className:"mt-3",style:{display:'flex',flexWrap:'wrap',gap:'0.5rem'}},
                             laptopAddons.map(function(addon){
                                 var isSelected = selectedAddons.indexOf(addon.key) >= 0;
-                                return e("button",{
-                                        key:addon.key,
-                                        className:"py-2 px-4 rounded-lg border text-sm font-medium transition-all " + (isSelected ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"),
-                                        style:{flex:'1 1 0'},
-                                        onClick:function(){ toggleAddon(addon.key); }
-                                    }, isSelected
-                                        ? "✓ " + addon.label + " (+" + gel(addon.price) + ")"
-                                        : "+ " + addon.label + " (+" + gel(addon.price) + ")"
-                                );
+                                return e("div",{
+                                    key:addon.key,
+                                    style:{flex:'1 1 0',position:'relative'}
+                                },[
+                                    e("button",{
+                                            key:"btn",
+                                            className:"w-full py-2 px-4 rounded-lg border text-sm font-medium transition-all " + (isSelected ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"),
+                                            style:{paddingRight:isSelected?'50px':'1rem'},
+                                            onClick:function(){ toggleAddon(addon.key); }
+                                        }, isSelected
+                                            ? "✓ " + addon.label + " (+" + gel(addon.price) + ")"
+                                            : "+ " + addon.label + " (+" + gel(addon.price) + ")"
+                                    ),
+                                    isSelected && e("button",{
+                                        key:"remove",
+                                        className:"remove-btn",
+                                        onClick:function(ev){ ev.stopPropagation(); toggleAddon(addon.key); }
+                                    },[
+                                        e("span",{key:"sign",className:"remove-sign"},e("svg",{viewBox:"0 0 16 16",height:"16",width:"16",xmlns:"http://www.w3.org/2000/svg"},e("path",{d:"M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"}))),
+                                        e("span",{key:"text",className:"remove-text"},"Remove")
+                                    ])
+                                ]);
                             })
                         ),
 
@@ -1591,44 +1763,58 @@
                         e("div",{key:"cta",className:"flex gap-3 mt-6","data-gstore-cta": "true"},[
                             e("button",{
                                 key:"cart",
-                                className:"flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition-all flex items-center justify-center gap-2",
+                                className:"flex-1 cart-btn-desktop bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg flex items-center justify-center gap-2",
                                 onClick:function(){ addToCart(null); }
                             },[
-                                e(CartIcon,{key:"icon"}),
-                                " " + t('add_to_cart', 'Add to Cart') + " " + gel(grandTotal)
+                                e("span",{key:"icon-container",className:"cart-icon-container"},e(CartIcon)),
+                                e("span",{key:"text",className:"cart-text"}," " + t('add_to_cart', 'Add to Cart') + " " + gel(grandTotal))
                             ]),
                             e("button",{
                                 key:"buy",
-                                className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-all",
-                                onClick:function(){ addToCart('/checkout/'); }
+                                className:"flex-1 buy-now-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg",
+                                onClick:function(ev){
+                                    var btn = ev.currentTarget;
+                                    btn.classList.add('animate');
+                                    setTimeout(function(){ if(btn) btn.classList.remove('animate'); }, 600);
+                                    addToCart('/checkout/');
+                                }
                             }, t('buy_now', 'Buy Now') + " " + gel(grandTotal))
                         ]),
 
                         // FBT - with translations
-                        fbt.length>0 && e("div",{key:"fbt",className:"mt-6 shadow-sm border rounded-lg p-4"},[
+                        fbt.length>0 && e("div",{key:"fbt",className:"mt-6"},[
                             e("h3",{key:"title",className:"text-base font-semibold mb-4"},t('fbt_title', 'Frequently Bought Together')),
-                            e("div",{key:"grid",className:"grid sm:grid-cols-3 gap-3"},
+                            e("div",{key:"grid",className:"grid sm:grid-cols-3 gap-4"},
                                 fbt.map(function(item){
                                     var isSelected = selectedFBT.indexOf(item.id) >= 0;
                                     return e("div",{
                                         key:item.id,
-                                        className:"shadow-sm border rounded-lg p-2 text-center text-sm flex flex-col "+(isSelected?"border-blue-500 bg-blue-50":"border-gray-200")
+                                        className:"fbt-card "+(isSelected?"fbt-card-selected":"")
                                     },[
-                                        e("img",{
-                                            key:"img",
-                                            src:item.image,
-                                            alt:item.title,
-                                            className:"w-full h-24 object-cover rounded-md mb-1"
-                                        }),
-                                        e("p",{key:"name",className:"font-medium flex-1 min-h-[2.5rem] flex items-center justify-center"},item.title),
-                                        e("button",{
-                                                key:"btn",
-                                                className:"mt-2 w-full text-xs py-1 rounded-md border transition-all "+(isSelected?"bg-blue-600 text-white":"bg-white text-gray-700 hover:bg-blue-100"),
-                                                onClick:function(){ toggleFBT(item.id); }
-                                            }, isSelected
-                                                ? t('added_button', '✓ Added (₾{price})', {price: item.price})
-                                                : t('add_button', '+ Add ₾{price}', {price: item.price})
-                                        )
+                                        e("div",{key:"shine",className:"fbt-card__shine"}),
+                                        e("div",{key:"glow",className:"fbt-card__glow"}),
+                                        isSelected && e("div",{key:"badge",className:"fbt-card__badge"},"✓ Added"),
+                                        e("div",{key:"content",className:"fbt-card__content"},[
+                                            e("div",{
+                                                key:"img-wrap",
+                                                className:"fbt-card__image",
+                                                style:{backgroundImage:'url('+item.image+')',backgroundSize:'contain',backgroundRepeat:'no-repeat',backgroundPosition:'center'}
+                                            }),
+                                            e("div",{key:"text",className:"fbt-card__text"},[
+                                                e("h4",{key:"title",className:"fbt-card__title"},item.title)
+                                            ]),
+                                            e("div",{key:"footer",className:"fbt-card__footer"},[
+                                                e("span",{key:"price",className:"fbt-card__price"},"₾"+item.price),
+                                                e("button",{
+                                                    key:"btn",
+                                                    className:"fbt-card__button",
+                                                    onClick:function(){ toggleFBT(item.id); }
+                                                },e("svg",{width:"14",height:"14",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"3"},isSelected?e("path",{d:"M5 13l4 4L19 7"}):[
+                                                    e("line",{key:"h",x1:"12",y1:"5",x2:"12",y2:"19"}),
+                                                    e("line",{key:"v",x1:"5",y1:"12",x2:"19",y2:"12"})
+                                                ]))
+                                            ])
+                                        ])
                                     ]);
                                 })
                             )
@@ -1636,36 +1822,25 @@
                     ]),
 
                     // Warranty Modal
-                    showWarrantyModal && e("div",{
-                        key:"warranty-modal",
-                        className:"fixed inset-0 z-50 flex items-center justify-center pt-16",
-                        onClick:function(){ setShowWarrantyModal(false); },
-                        onWheel:handleModalWrapperScroll
-                    },[
-                        e("div",{
-                            key:"modal",
-                            className:"relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 flex flex-col overflow-hidden",
-                            style:{maxHeight:"85vh"},
-                            onClick:function(ev){ ev.stopPropagation(); }
-                        },[
-                            e("div",{key:"header",className:"flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"},[
-                                e("h2",{key:"title",className:"text-xl font-semibold text-gray-900"},"Warranty Information"),
-                                e("button",{
-                                    key:"close",
-                                    className:"text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 p-0",
-                                    onClick:function(){ setShowWarrantyModal(false); }
-                                },[
-                                    e("svg",{xmlns:"http://www.w3.org/2000/svg",className:"h-6 w-6",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor"},[
-                                        e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})
-                                    ])
-                                ])
-                            ]),
-                            e("div",{
-                                key:"content",
-                                ref:modalContentRef,
-                                className:"p-6 text-gray-700 overflow-y-auto flex-1",
-                                dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information is available.</p>'}
-                            })
+                    showWarrantyModal && e("div",{key:"warranty-modal",className:"fixed inset-0 z-50 flex items-center justify-center pt-16",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 flex flex-col overflow-hidden",style:{maxHeight:"85vh"},onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"},[e("h2",{key:"title",className:"text-xl font-semibold text-gray-900"},"Warranty Information"),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 p-0",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{xmlns:"http://www.w3.org/2000/svg",className:"h-6 w-6",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"p-6 text-gray-700 overflow-y-auto flex-1",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
+
+                    // Battery Tier Challenge Modal (Desktop)
+                    (showChallenge === true && challengeScreen !== null) && e("div",{key:"challenge-modal",className:"pointer-events-none fixed inset-0 z-[999] flex items-center justify-center transition-opacity duration-300",onClick:function(){if(challengeScreen==='intro')closeChallenge();}},[
+                        challengeScreen==='intro' && e("div",{key:"intro",className:"pointer-events-auto relative m-4 rounded-xl bg-white shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("div",{key:"title-row",className:"flex items-center justify-between mb-4"},[e("h3",{key:"title",className:"text-4xl font-bold text-blue-600 flex items-center gap-3"},[e("span",{key:"icon"},"🏆"),CHALLENGE_TEXTS.intro_title]),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors",onClick:closeChallenge},e("svg",{className:"w-8 h-8",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})]))]),e("p",{key:"subtitle",className:"text-gray-600 text-xl"},CHALLENGE_TEXTS.intro_desc2)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc1",className:"text-gray-800 text-2xl mb-6 font-semibold"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc3",className:"text-gray-600 text-xl mb-10"},CHALLENGE_TEXTS.intro_desc3),e("div",{key:"buttons",className:"flex gap-4"},[e("button",{key:"start",className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg hover:shadow-xl text-xl",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-5 px-8 rounded-xl transition-colors text-xl",onClick:closeChallenge},CHALLENGE_TEXTS.close_btn)])])
+                        ]),
+                        challengeScreen==='game' && e("div",{key:"game",className:"relative rounded-2xl overflow-hidden shadow-2xl",style:{width:'400px',height:'500px',background:'linear-gradient(to bottom, #7dd3fc, #38bdf8)',cursor:'pointer',border:'3px solid #0284c7'},onClick:jumpBird},[e("img",{key:"bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",className:"absolute",style:{left:'60px',width:'40px',height:'40px',objectFit:'contain',top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"absolute",style:{width:'40px',height:(p.gapY-100)+'px',left:p.x+'px',top:0,background:'#1f2937',borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"absolute",style:{width:'40px',height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',background:'#1f2937',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"absolute top-10 left-2 text-sm font-bold text-white bg-blue-600 px-2 py-1 rounded-lg"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))]),
+                        challengeScreen==='lose' && e("div",{key:"lose",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-red-600 mb-4"},"💥 "+CHALLENGE_TEXTS.lose_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc",className:"text-gray-700 text-2xl mb-10"},CHALLENGE_TEXTS.lose_desc),e("div",{key:"btns",className:"flex gap-4"},[e("button",{key:"retry",className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:startFlappyGame},CHALLENGE_TEXTS.try_again),e("button",{key:"close",className:"bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-5 px-8 rounded-xl transition-colors text-xl",onClick:function(){setShowChallenge(false);setChallengeScreen('intro');}},CHALLENGE_TEXTS.close_btn)])])
+                        ]),
+                        challengeScreen==='level2' && e("div",{key:"level2",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-green-600 mb-4"},"🎉 "+CHALLENGE_TEXTS.level2_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc1",className:"text-gray-700 text-2xl mb-4"},CHALLENGE_TEXTS.level2_desc1),e("p",{key:"desc2",className:"text-gray-700 text-2xl mb-10"},CHALLENGE_TEXTS.level2_desc2),e("button",{key:"continue",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:function(){setChallengeScreen('chess');initChess();}},CHALLENGE_TEXTS.continue_btn)])
+                        ]),
+                        challengeScreen==='chess' && e("div",{key:"chess",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'600px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-indigo-600 mb-4"},"♟️ "+CHALLENGE_TEXTS.chess_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc",className:"text-gray-700 text-2xl mb-6"},CHALLENGE_TEXTS.chess_desc),e("div",{key:"board",className:"grid gap-0 mb-6",style:{gridTemplateColumns:'repeat(8, 1fr)',width:'100%',aspectRatio:'1'}},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;return e("div",{key:i+'-'+j,className:"flex items-center justify-center text-2xl cursor-pointer",style:{background:isLight?'#f0d9b5':'#b58863',aspectRatio:'1'},onClick:function(){}},cell?(cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),e("button",{key:"skip",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:function(){setChallengeScreen('math');}},CHALLENGE_TEXTS.continue_btn+' (სიმულაცია)')])
+                        ]),
+                        challengeScreen==='math' && e("div",{key:"math",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-purple-600 mb-4"},"🧮 "+CHALLENGE_TEXTS.math_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"tries",className:"text-gray-700 text-2xl mb-6"},CHALLENGE_TEXTS.math_tries(mathTries)),e("p",{key:"question",className:"text-gray-900 text-3xl mb-8 font-bold text-center"},CHALLENGE_TEXTS.math_question),e("input",{key:"input",type:"number",value:mathInput,onChange:function(ev){setMathInput(ev.target.value);},className:"border-2 border-gray-300 rounded-xl px-6 py-4 w-full text-center mb-6 text-2xl",placeholder:"შეიყვანე პასუხი"}),e("button",{key:"submit",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl mb-4",onClick:handleMathSubmit},CHALLENGE_TEXTS.submit_btn),mathFeedback && e("p",{key:"feedback",className:"text-xl text-gray-600 text-center"},mathFeedback)])
                         ])
                     ])
                 ])
@@ -1687,8 +1862,12 @@
 
             // P4 OPTIMIZED: Add missing CSS classes including loading animation and custom min-width classes
             var extraStyle = document.createElement('style');
-            extraStyle.textContent = `.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.inset-0{top:0;right:0;bottom:0;left:0}.left-0{left:0}.right-0{right:0}.bottom-0{bottom:0}.z-50{z-index:50}.border-t{border-top-width:1px}.border-b{border-bottom-width:1px}.bg-opacity-40{--tw-bg-opacity:0.4}.bg-opacity-50{--tw-bg-opacity:0.5}.bg-black{--tw-bg-opacity:1;background-color:rgb(0 0 0/var(--tw-bg-opacity))}.bg-gray-400{--tw-bg-opacity:1;background-color:rgb(156 163 175/var(--tw-bg-opacity))}.bg-gray-200{--tw-bg-opacity:1;background-color:rgb(229 231 235/var(--tw-bg-opacity))}.max-w-2xl{max-width:42rem}.mx-4{margin-left:1rem;margin-right:1rem}.max-h-\[70vh\]{max-height:70vh}.h-6{height:1.5rem}.h-8{height:2rem}.h-14{height:3.5rem}.h-64{height:16rem}.w-6{width:1.5rem}.w-10{width:2.5rem}.w-3\/4{width:75%}.w-1\/2{width:50%}.w-5\/6{width:83.333333%}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-\[7px\]{font-size:7px}.text-\[8px\]{font-size:8px}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.underline{text-decoration-line:underline}.bg-transparent{background-color:transparent}.border-0{border-width:0}.border-2{border-width:2px}.flex-shrink-0{flex-shrink:0}.flex-1{flex:1 1 0%}.flex-col{flex-direction:column}.p-1\.5{padding:0.375rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.pb-24{padding-bottom:6rem}.mb-1{margin-bottom:0.25rem}.mt-auto{margin-top:auto}.leading-tight{line-height:1.25}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-4>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.hover\:text-blue-800:hover{--tw-text-opacity:1;color:rgb(30 64 175/var(--tw-text-opacity))}.hover\:text-gray-600:hover{--tw-text-opacity:1;color:rgb(75 85 99/var(--tw-text-opacity))}.hover\:bg-green-700:hover{--tw-bg-opacity:1;background-color:rgb(21 128 61/var(--tw-bg-opacity))}.hover\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity))}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0/.1),0 8px 10px -6px rgb(0 0 0/.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color),0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}.min-w-\[60px\]{min-width:60px!important}.min-w-\[70px\]{min-width:70px!important}.min-w-\[80px\]{min-width:80px!important}`;
+            extraStyle.textContent = `.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.inset-0{top:0;right:0;bottom:0;left:0}.left-0{left:0}.right-0{right:0}.bottom-0{bottom:0}.z-50{z-index:50}.border-t{border-top-width:1px}.border-b{border-bottom-width:1px}.bg-opacity-40{--tw-bg-opacity:0.4}.bg-opacity-50{--tw-bg-opacity:0.5}.bg-black{--tw-bg-opacity:1;background-color:rgb(0 0 0/var(--tw-bg-opacity))}.bg-gray-400{--tw-bg-opacity:1;background-color:rgb(156 163 175/var(--tw-bg-opacity))}.bg-gray-200{--tw-bg-opacity:1;background-color:rgb(229 231 235/var(--tw-bg-opacity))}.max-w-2xl{max-width:42rem}.mx-4{margin-left:1rem;margin-right:1rem}.max-h-\[70vh\]{max-height:70vh}.h-6{height:1.5rem}.h-8{height:2rem}.h-14{height:3.5rem}.h-64{height:16rem}.w-6{width:1.5rem}.w-10{width:2.5rem}.w-3\/4{width:75%}.w-1\/2{width:50%}.w-5\/6{width:83.333333%}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-\[7px\]{font-size:7px}.text-\[8px\]{font-size:8px}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.underline{text-decoration-line:underline}.bg-transparent{background-color:transparent}.border-0{border-width:0}.border-2{border-width:2px}.flex-shrink-0{flex-shrink:0}.flex-1{flex:1 1 0%}.flex-col{flex-direction:column}.p-1\.5{padding:0.375rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.pb-24{padding-bottom:6rem}.mb-1{margin-bottom:0.25rem}.mt-auto{margin-top:auto}.leading-tight{line-height:1.25}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-4>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.hover\:text-blue-800:hover{--tw-text-opacity:1;color:rgb(30 64 175/var(--tw-text-opacity))}.hover\:text-gray-600:hover{--tw-text-opacity:1;color:rgb(75 85 99/var(--tw-text-opacity))}.hover\:bg-green-700:hover{--tw-bg-opacity:1;background-color:rgb(21 128 61/var(--tw-bg-opacity))}.hover\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity))}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0/.1),0 8px 10px -6px rgb(0 0 0/.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color),0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}.min-w-\[60px\]{min-width:60px!important}.min-w-\[70px\]{min-width:70px!important}.min-w-\[80px\]{min-width:80px!important}.buy-now-btn{position:relative;overflow:hidden;transition:all 0.2s ease}.buy-now-btn:active{transform:scale(0.96)}.buy-now-btn:before,.buy-now-btn:after{position:absolute;content:"";width:150%;left:50%;height:100%;transform:translateX(-50%);z-index:0;background-repeat:no-repeat}.buy-now-btn.animate:before{top:-70%;background-image:radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,transparent 20%,#2563eb 20%,transparent 30%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,transparent 10%,#2563eb 15%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%);background-size:10% 10%,20% 20%,15% 15%,20% 20%,18% 18%,10% 10%,15% 15%,10% 10%,18% 18%;animation:topBubbles 0.6s ease}.buy-now-btn.animate:after{bottom:-70%;background-image:radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,transparent 10%,#2563eb 15%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%);background-size:15% 15%,20% 20%,18% 18%,20% 20%,15% 15%,20% 20%,18% 18%;animation:bottomBubbles 0.6s ease}@media(min-width:1025px){.buy-now-btn:hover:before{top:-70%;background-image:radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,transparent 20%,#2563eb 20%,transparent 30%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,transparent 10%,#2563eb 15%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%);background-size:10% 10%,20% 20%,15% 15%,20% 20%,18% 18%,10% 10%,15% 15%,10% 10%,18% 18%;animation:topBubbles 0.6s ease}.buy-now-btn:hover:after{bottom:-70%;background-image:radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,transparent 10%,#2563eb 15%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%),radial-gradient(circle,#2563eb 20%,transparent 20%);background-size:15% 15%,20% 20%,18% 18%,20% 20%,15% 15%,20% 20%,18% 18%;animation:bottomBubbles 0.6s ease}}@keyframes topBubbles{0%{background-position:5% 90%,10% 90%,10% 90%,15% 90%,25% 90%,25% 90%,40% 90%,55% 90%,70% 90%}50%{background-position:0% 80%,0% 20%,10% 40%,20% 0%,30% 30%,22% 50%,50% 50%,65% 20%,90% 30%}100%{background-position:0% 70%,0% 10%,10% 30%,20% -10%,30% 20%,22% 40%,50% 40%,65% 10%,90% 20%;background-size:0% 0%,0% 0%,0% 0%,0% 0%,0% 0%,0% 0%}}@keyframes bottomBubbles{0%{background-position:10% -10%,30% 10%,55% -10%,70% -10%,85% -10%,70% -10%,70% 0%}50%{background-position:0% 80%,20% 80%,45% 60%,60% 100%,75% 70%,95% 60%,105% 0%}100%{background-position:0% 90%,20% 90%,45% 70%,60% 110%,75% 80%,95% 70%,110% 10%;background-size:0% 0%,0% 0%,0% 0%,0% 0%,0% 0%,0% 0%}}@media(min-width:1025px){.cart-btn-desktop{overflow:hidden;position:relative;transition:all 0.5s}.cart-btn-desktop .cart-icon-container{position:absolute;left:-50px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;z-index:2;transition:all 0.5s}.cart-btn-desktop .cart-text{transition:all 0.5s}.cart-btn-desktop:hover .cart-icon-container{transform:translateX(70px)}.cart-btn-desktop:hover .cart-text{transform:translate(10px,0)}.cart-btn-desktop:active{transform:scale(0.95)}}.remove-btn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:2px solid white;border-radius:50%;cursor:pointer;position:absolute;right:8px;top:50%;transform:translateY(-50%);overflow:visible;transition:all 0.3s;background:transparent}.remove-btn .remove-sign{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;transition:opacity 0.3s}.remove-btn .remove-sign svg{width:12px;fill:white}.remove-btn .remove-text{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;color:white;font-size:0.85em;font-weight:600;transition:opacity 0.3s;white-space:nowrap}.remove-btn:hover{width:80px;border-radius:40px}.remove-btn:hover .remove-sign{opacity:0}.remove-btn:hover .remove-text{opacity:1}.remove-btn:active{transform:translateY(-50%) scale(0.95)}`;
             shadow.appendChild(extraStyle);
+
+            var fbtStyle = document.createElement('style');
+            fbtStyle.textContent = `.fbt-card{width:100%;height:220px;background:#fff;border-radius:20px;position:relative;overflow:hidden;transition:all 0.5s cubic-bezier(0.16,1,0.3,1);box-shadow:0 10px 15px -3px rgba(0,0,0,0.05);border:1px solid rgba(229,231,235,0.8)}.fbt-card__shine{position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,255,255,0) 40%,rgba(255,255,255,0.8) 50%,rgba(255,255,255,0) 60%);opacity:0;transition:opacity 0.3s ease}.fbt-card__glow{position:absolute;inset:-10px;background:radial-gradient(circle at 50% 0%,rgba(37,99,235,0.3) 0%,rgba(37,99,235,0) 70%);opacity:0;transition:opacity 0.5s ease}.fbt-card__content{padding:1.25em;height:100%;display:flex;flex-direction:column;gap:0.75em;position:relative;z-index:2}.fbt-card__badge{position:absolute;top:12px;right:12px;background:#10b981;color:white;padding:0.25em 0.5em;border-radius:999px;font-size:0.7em;font-weight:600;transform:scale(0.8);opacity:0;transition:all 0.4s ease 0.1s;z-index:3}.fbt-card__image{width:100%;height:100px;min-height:100px;max-height:100px;background:#f8f9fa;border-radius:12px;transition:all 0.5s cubic-bezier(0.16,1,0.3,1);position:relative;overflow:hidden;flex-shrink:0}.fbt-card__text{display:flex;flex-direction:column;gap:0.25em;min-height:0;flex-shrink:1;flex-grow:1}.fbt-card__title{color:#1e293b;font-size:0.9em;margin:0;font-weight:700;transition:all 0.3s ease;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;max-height:2.6em}.fbt-card__footer{display:flex;justify-content:space-between;align-items:center;margin-top:auto;flex-shrink:0}.fbt-card__price{color:#1e293b;font-weight:700;font-size:1em;transition:all 0.3s ease}.fbt-card__button{width:28px;height:28px;background:#2563eb;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;transition:all 0.3s ease;transform:scale(0.9);border:none;flex-shrink:0}.fbt-card:hover{transform:translateY(-10px);box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);border-color:rgba(37,99,235,0.2)}.fbt-card:hover .fbt-card__shine{opacity:1;animation:shine 3s infinite}.fbt-card:hover .fbt-card__glow{opacity:1}.fbt-card:hover .fbt-card__image{transform:translateY(-5px) scale(1.03);box-shadow:0 10px 15px -3px rgba(0,0,0,0.1)}.fbt-card:hover .fbt-card__title{color:#2563eb;transform:translateX(2px)}.fbt-card:hover .fbt-card__price{color:#2563eb;transform:translateX(2px)}.fbt-card:hover .fbt-card__button{transform:scale(1);box-shadow:0 0 0 4px rgba(37,99,235,0.2)}.fbt-card:hover .fbt-card__button svg{animation:btnPulse 1.5s infinite}.fbt-card:active{transform:translateY(-5px) scale(0.98)}.fbt-card-selected .fbt-card__badge{transform:scale(1);opacity:1}.fbt-card-selected .fbt-card__button{background:#10b981}@keyframes shine{0%{background-position:-100% 0}100%{background-position:200% 0}}@keyframes btnPulse{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}`;
+            shadow.appendChild(fbtStyle);
 
             var appRoot = document.createElement('div');
             shadow.appendChild(appRoot);

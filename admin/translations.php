@@ -82,7 +82,7 @@ function gstore_translations_page(){
     ?>
     <div class="wrap">
         <h1 class="wp-heading-inline">Translations</h1>
-        <p class="description">Customize text displayed on product pages. Leave empty to use the default English text.</p>
+        <p class="description">Customize text displayed on product pages. Leave empty to use default English text.</p>
         <hr class="wp-header-end" />
 
         <form method="post" action="">
@@ -135,7 +135,7 @@ function gstore_translations_page(){
                                class="regular-text"
                                placeholder="<?php echo esc_attr($defaults['default_shipping']); ?>">
                         <p class="description">
-                            Fallback if the product has no shipping attribute.
+                            Fallback if product has no shipping attribute.
                             Default: <strong><?php echo esc_html($defaults['default_shipping']); ?></strong>
                         </p>
                     </td>
@@ -183,7 +183,7 @@ function gstore_translations_page(){
                                class="large-text"
                                placeholder="<?php echo esc_attr($defaults['warehouse_fallback']); ?>">
                         <p class="description">
-                            Shown when the product has no warehouse attribute (Desktop).
+                            Shown when product has no warehouse attribute (Desktop).
                             Default: <strong><?php echo esc_html($defaults['warehouse_fallback']); ?></strong>
                         </p>
                     </td>
@@ -200,7 +200,7 @@ function gstore_translations_page(){
                                class="regular-text"
                                placeholder="<?php echo esc_attr($defaults['warehouse_mobile_fallback']); ?>">
                         <p class="description">
-                            Shown on mobile when the product has no warehouse attribute (without a label).
+                            Shown on mobile when product has no warehouse attribute (without label).
                             Default: <strong><?php echo esc_html($defaults['warehouse_mobile_fallback']); ?></strong>
                         </p>
                     </td>
@@ -233,7 +233,7 @@ function gstore_translations_page(){
                                value="<?php echo esc_attr($translations['condition_new'] ?? ''); ?>"
                                class="regular-text"
                                placeholder="<?php echo esc_attr($defaults['condition_new']); ?>">
-                        <p class="description">Translation for the "NEW" button. Default: <strong><?php echo esc_html($defaults['condition_new']); ?></strong></p>
+                        <p class="description">Translation for "NEW" button. Default: <strong><?php echo esc_html($defaults['condition_new']); ?></strong></p>
                     </td>
                 </tr>
 
@@ -247,7 +247,7 @@ function gstore_translations_page(){
                                value="<?php echo esc_attr($translations['condition_used'] ?? ''); ?>"
                                class="regular-text"
                                placeholder="<?php echo esc_attr($defaults['condition_used']); ?>">
-                        <p class="description">Translation for the "USED (A)" button. Default: <strong><?php echo esc_html($defaults['condition_used']); ?></strong></p>
+                        <p class="description">Translation for "USED (A)" button. Default: <strong><?php echo esc_html($defaults['condition_used']); ?></strong></p>
                     </td>
                 </tr>
 
@@ -397,8 +397,8 @@ function gstore_translations_page(){
                     <td>
                         <textarea id="default_warranty_content" name="default_warranty_content" rows="4" class="large-text"><?php echo esc_textarea($translations['default_warranty_content'] ?? ''); ?></textarea>
                         <p class="description">
-                            Default warranty text is shown if the model has no specific warranty set.
-                            Default: <strong>1 year limited hardware warranty. Extended warranty options are available at checkout.</strong>
+                            Default warranty text shown if model has no specific warranty set.
+                            Default: <strong>1 year limited hardware warranty. Extended warranty options available at checkout.</strong>
                         </p>
                     </td>
                 </tr>
