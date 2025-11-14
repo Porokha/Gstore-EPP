@@ -625,3 +625,298 @@
 .modal-gap-4 {
     gap: 1rem !important;
 }
+
+/* ===================================
+   CHALLENGE MODAL COMPONENTS
+   =================================== */
+
+.challenge-header {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    padding: 2rem !important;
+    border-radius: 1rem 1rem 0 0 !important;
+    position: relative !important;
+}
+
+.challenge-header-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    padding: 2rem !important;
+    border-radius: 1rem 1rem 0 0 !important;
+    position: relative !important;
+}
+
+.challenge-header-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    padding: 2rem !important;
+    border-radius: 1rem 1rem 0 0 !important;
+    position: relative !important;
+}
+
+.challenge-header-purple {
+    background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%) !important;
+    padding: 2rem !important;
+    border-radius: 1rem 1rem 0 0 !important;
+    position: relative !important;
+}
+
+.challenge-header-content {
+    text-align: center !important;
+    color: #ffffff !important;
+}
+
+.challenge-icon {
+    font-size: 3rem !important;
+    margin-bottom: 0.75rem !important;
+    display: block !important;
+}
+
+.challenge-title {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    margin: 0 !important;
+}
+
+.challenge-body {
+    padding: 1.5rem !important;
+    text-align: center !important;
+}
+
+.challenge-text {
+    font-size: 1rem !important;
+    line-height: 1.625 !important;
+    color: #4b5563 !important;
+    margin: 1.5rem 0 !important;
+}
+
+.challenge-footer {
+    padding: 1.5rem !important;
+    border-top: 1px solid #e5e7eb !important;
+    border-radius: 0 0 1rem 1rem !important;
+}
+
+.challenge-footer-split {
+    display: flex !important;
+    gap: 0.75rem !important;
+}
+
+/* ===================================
+   BUTTON COMPONENTS
+   =================================== */
+
+.gstore-btn {
+    font-weight: 500 !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.875rem !important;
+    padding: 0.625rem 1.25rem !important;
+    text-align: center !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    border: none !important;
+    outline: none !important;
+}
+
+.gstore-btn-primary {
+    flex: 1 !important;
+    color: #ffffff !important;
+    background: #2563eb !important;
+}
+
+.gstore-btn-primary:hover {
+    background: #1d4ed8 !important;
+}
+
+.gstore-btn-primary:focus {
+    ring: 4px !important;
+    ring-color: rgba(37, 99, 235, 0.3) !important;
+}
+
+.gstore-btn-secondary {
+    color: #6b7280 !important;
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+}
+
+.gstore-btn-secondary:hover {
+    background: #f9fafb !important;
+    color: #111827 !important;
+}
+
+.gstore-btn-secondary:focus {
+    ring: 4px !important;
+    ring-color: rgba(209, 213, 219, 0.3) !important;
+}
+
+.gstore-btn-full {
+    width: 100% !important;
+}
+
+/* ===================================
+   GAME AREA (FLAPPY)
+   =================================== */
+
+.game-area {
+    position: relative !important;
+    overflow: hidden !important;
+    width: 100% !important;
+    height: 500px !important;
+    background: linear-gradient(to bottom, #7dd3fc, #38bdf8) !important;
+    cursor: pointer !important;
+}
+
+.game-bird {
+    position: absolute !important;
+    left: 60px !important;
+    width: 40px !important;
+    height: 40px !important;
+    object-fit: contain !important;
+}
+
+.game-pipe {
+    position: absolute !important;
+    width: 40px !important;
+    background: #1f2937 !important;
+}
+
+.game-score {
+    position: absolute !important;
+    top: 1rem !important;
+    left: 1rem !important;
+    font-size: 1.125rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    background: #2563eb !important;
+    padding: 0.375rem 0.75rem !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ===================================
+   CHESS BOARD COMPONENTS
+   =================================== */
+
+.chess-status {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 1rem !important;
+    padding: 0.75rem !important;
+    background: #f9fafb !important;
+    border-radius: 0.5rem !important;
+}
+
+.chess-status-text {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #374151 !important;
+}
+
+.chess-status-moves {
+    font-size: 0.875rem !important;
+    color: #6b7280 !important;
+}
+
+.chess-square {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: opacity 0.15s ease !important;
+    aspect-ratio: 1 !important;
+}
+
+.chess-square:hover {
+    opacity: 0.8 !important;
+}
+
+.chess-square-light {
+    background: #f0d9b5 !important;
+}
+
+.chess-square-dark {
+    background: #b58863 !important;
+}
+
+.chess-square-selected {
+    background: #baca44 !important;
+    border: 3px solid #769656 !important;
+}
+
+.chess-piece {
+    font-size: 2.5rem !important;
+    user-select: none !important;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)) !important;
+}
+
+.chess-hint {
+    font-size: 0.75rem !important;
+    text-align: center !important;
+    color: #6b7280 !important;
+    margin-top: 0.5rem !important;
+}
+
+/* ===================================
+   MATH CHALLENGE COMPONENTS
+   =================================== */
+
+.math-tries {
+    font-size: 0.875rem !important;
+    color: #6b7280 !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.math-question {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    color: #111827 !important;
+    margin: 1.5rem 0 !important;
+}
+
+.math-input {
+    background: #f9fafb !important;
+    border: 1px solid #d1d5db !important;
+    color: #111827 !important;
+    font-size: 0.875rem !important;
+    border-radius: 0.5rem !important;
+    display: block !important;
+    width: 100% !important;
+    padding: 0.625rem !important;
+    text-align: center !important;
+}
+
+.math-input:focus {
+    ring: 2px !important;
+    ring-color: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    outline: none !important;
+}
+
+.math-feedback {
+    font-size: 0.875rem !important;
+    text-align: center !important;
+    color: #4b5563 !important;
+    margin-top: 1rem !important;
+}
+
+/* ===================================
+   WARRANTY MODAL COMPONENTS
+   =================================== */
+
+.warranty-header-content {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1rem !important;
+    justify-content: center !important;
+}
+
+.warranty-icon {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    color: #ffffff !important;
+}
+
+.warranty-title {
+    font-size: 1.5rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    margin: 0 !important;
+}
