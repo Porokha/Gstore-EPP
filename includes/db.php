@@ -7,6 +7,9 @@ function gstore_epp_table_rules(){
 function gstore_epp_table_addons(){
 	global $wpdb; return $wpdb->prefix.'gstore_laptop_addons';
 }
+function gstore_epp_table_analytics(){
+	global $wpdb; return $wpdb->prefix.'gstore_challenge_analytics';
+}
 
 function gstore_epp_create_tables(){
 	global $wpdb;
@@ -39,4 +42,21 @@ function gstore_epp_create_tables(){
         KEY updated_at_idx (updated_at)
     ) $charset;";
 	dbDelta($sql2);
+
+	$sql3 = "CREATE TABLE ".gstore_epp_table_analytics()." (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        product_id BIGINT UNSIGNED NOT NULL,
+        event_type VARCHAR(50) NOT NULL,
+        event_data LONGTEXT NULL,
+        session_id VARCHAR(100) NULL,
+        user_ip VARCHAR(45) NULL,
+        user_agent TEXT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY product_id_idx (product_id),
+        KEY event_type_idx (event_type),
+        KEY session_id_idx (session_id),
+        KEY created_at_idx (created_at)
+    ) $charset;";
+	dbDelta($sql3);
 }

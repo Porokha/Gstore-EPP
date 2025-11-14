@@ -827,7 +827,17 @@ function gstore_challenge_page(){
                 </tr>
                 <tr>
                     <th><label for="math_question">Math Question</label></th>
-                    <td><input type="text" id="math_question" name="math_question" value="<?php echo esc_attr($settings['math_question']); ?>" class="regular-text" /></td>
+                    <td>
+                        <input type="text" id="math_question" name="math_question" value="<?php echo esc_attr($settings['math_question']); ?>" class="regular-text" />
+                        <p class="description">The math question displayed to users (e.g., "რა არის 6 × 7 ?")</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="math_answer">Math Answer (Correct Answer)</label></th>
+                    <td>
+                        <input type="number" id="math_answer" name="math_answer" value="<?php echo esc_attr($settings['math_answer'] ?? '42'); ?>" class="regular-text" step="0.01" />
+                        <p class="description">The correct numerical answer to the math question (e.g., 42 for "6 × 7")</p>
+                    </td>
                 </tr>
                 <tr>
                     <th><label for="submit_btn">Submit Button</label></th>
@@ -877,6 +887,7 @@ function gstore_challenge_default_settings(){
             'chess_title' => 'მეორე დონე: დაამარცხე ჭადრაკში Gstore Chess AI',
             'math_title' => 'დონე მესამე: მათემატიკური პრობლემა',
             'math_question' => 'რა არის 6 × 7 ?',
+            'math_answer' => '42',
             'submit_btn' => 'სცადე',
             'congratulations' => 'გილოცავ',
             'score' => 'ქულა',
@@ -914,6 +925,7 @@ function gstore_handle_save_challenge(){
                 'chess_title' => sanitize_text_field($_POST['chess_title'] ?? ''),
                 'math_title' => sanitize_text_field($_POST['math_title'] ?? ''),
                 'math_question' => sanitize_text_field($_POST['math_question'] ?? ''),
+                'math_answer' => sanitize_text_field($_POST['math_answer'] ?? '42'),
                 'submit_btn' => sanitize_text_field($_POST['submit_btn'] ?? ''),
                 'congratulations' => sanitize_text_field($_POST['congratulations'] ?? ''),
                 'score' => sanitize_text_field($_POST['score'] ?? ''),

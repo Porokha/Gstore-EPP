@@ -1,4 +1,27 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎯 GSTORE EPP - PRODUCT APP (React-based WooCommerce Product Page)
+// ═══════════════════════════════════════════════════════════════════════════════
+// Version: v2024-11-14
+// Total Lines: ~2161
+// Architecture: React 18 + Shadow DOM + WooCommerce REST API
+//
+// 📖 NAVIGATION: See /docs/CODEMAP.md for detailed section map
+// 🔍 Quick Find: Use Ctrl+F (Cmd+F) to search section markers below:
+//    - [SETUP] - Helper functions & utilities
+//    - [STATE] - React state declarations
+//    - [DATA] - Data loading (useEffect hooks)
+//    - [CHALLENGE] - Gamification system (Flappy Bird, Chess, Math)
+//    - [HELPERS] - Calculation & UI helper functions
+//    - [DESKTOP] - Desktop layout (≥1024px)
+//    - [MOBILE] - Mobile layout (<1024px)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 (function(){
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // [SETUP] UTILITY FUNCTIONS (Lines 1-90)
+    // Money formatting, React setup, fetchJSON, translations
+    // ─────────────────────────────────────────────────────────────────────────────
 
     function money(n){ var x = Number(n||0); return isFinite(x) ? Math.floor(x).toString() : "0"; }
     function gel(n){ return "₾" + money(n); }
@@ -228,6 +251,11 @@
             var normalized = String(colorName).toLowerCase().trim();
             return COLOR_MAP[normalized] || '#333';
         }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // [STATE] MAIN APP COMPONENT & STATE MANAGEMENT (Lines 255-486)
+        // React component with 30+ useState hooks for product, UI, and challenge state
+        // ─────────────────────────────────────────────────────────────────────────────
 
         function ProductApp(){
             // Inject modal animations CSS
@@ -460,6 +488,11 @@
                 return function(){ clearTimeout(timer); };
             }, []);
 
+            // ─────────────────────────────────────────────────────────────────────────────
+            // [DATA] DATA LOADING HOOKS (Lines 371-690)
+            // All useEffect hooks for REST API calls and data initialization
+            // ─────────────────────────────────────────────────────────────────────────────
+
             // Load siblings
             useEffect(function(){
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/siblings?product_id=' + cur.productId;
@@ -548,6 +581,37 @@
                 setPipes(function(prev){ return prev.map(function(p){ if (!p.scored && p.x < 60){ setChallengeScore(function(s){ var newScore = s + 10; if (newScore >= targetScore && challengeLevel === 1){ setChallengeLevel(2); setGameRunning(false); setChallengeScreen('level2'); } return newScore; }); return {...p, scored: true}; } return p; }); });
                 for (var i = 0; i < pipes.length; i++){ var p = pipes[i]; if (p.x < 80 && p.x > 20){ if (birdY < p.gapY - gapHalf || birdY > p.gapY + gapHalf){ setGameRunning(false); setChallengeScreen('lose'); return; } } }
             }, [birdY, pipes, challengeScore, challengeLevel, gameRunning, challengeScreen]);
+
+            // Track challenge screen transitions for analytics
+            useEffect(function(){
+                if(!challengeScreen) return;
+                if(challengeScreen === 'level2' && challengeLevel === 2){
+                    trackChallengeEvent('level1_completed', {score: challengeScore});
+                } else if(challengeScreen === 'lose'){
+                    trackChallengeEvent('level1_failed', {score: challengeScore});
+                } else if(challengeScreen === 'math'){
+                    trackChallengeEvent('level2_completed', {});
+                }
+            }, [challengeScreen]);
+
+            // Keyboard controls: ESC to close modals, SPACE for Flappy Bird jump
+            useEffect(function(){
+                function handleKeyPress(e){
+                    // ESC key: Close challenge modal
+                    if (e.key === 'Escape' || e.keyCode === 27){
+                        if (showChallenge && challengeScreen === 'intro'){
+                            closeChallenge();
+                        }
+                    }
+                    // SPACE key: Flappy Bird jump (only during game)
+                    if ((e.key === ' ' || e.keyCode === 32) && challengeScreen === 'game' && gameRunning){
+                        e.preventDefault(); // Prevent page scroll
+                        jump();
+                    }
+                }
+                document.addEventListener('keydown', handleKeyPress);
+                return function(){ document.removeEventListener('keydown', handleKeyPress); };
+            }, [showChallenge, challengeScreen, gameRunning]);
 
             // Search products
             useEffect(function(){
@@ -837,6 +901,12 @@
             // P3 OPTIMIZED: Use reducer action for FBT toggle
             function toggleFBT(id){ dispatch({type: 'TOGGLE_FBT', payload: id}); }
 
+            // ─────────────────────────────────────────────────────────────────────────────
+            // [CHALLENGE] GAMIFICATION SYSTEM (Lines 691-1083)
+            // 3-level challenge: Flappy Bird → Chess → Math
+            // Unlocks 80-85% battery tier pricing on completion
+            // ─────────────────────────────────────────────────────────────────────────────
+
             // Battery Tier Challenge Functions - Load from BOOT.challenge
             var CHALLENGE_TEXTS = BOOT.challenge || {unlock_btn:'დაიმსახურე ყველაზე დაბალი ფასი!',unlocked_btn:'✅ განსაკუთრებული ფასი გახსნილია!',intro_title:'დაიმსახურე ყველაზე დაბალი ფასი!',intro_desc2:'ამას დამსახურება სჭირდება!',intro_desc3:'დაგვამარცხე სამ დონიან თამაშში და მიიღე განსაკუთრებული ფასი.',start_btn:'დაწყება',lose_title:'შენ დამარცხდი',lose_desc:'არ დანებდე, დაგვამარცხე და დაიმსახურე!',try_again:'კიდევ სცადე',level2_title:'შენ გადახვედი მეორე დონეზე!',level2_desc1:'ყოჩაღ, შენ შეძელი და გაიარე პირველი დაბრკოლება.',level2_desc2:'შემდეგი მისია: ჭადრაკი',continue_btn:'გაგრძელება',chess_title:'მეორე დონე: დაამარცხე ჭადრაკში Gstore Chess AI',math_title:'დონე მესამე: მათემატიკური პრობლემა',math_question:'რა არის 6 × 7 ?',submit_btn:'სცადე',congratulations:'გილოცავ',flappy_score:5,chess_difficulty:'2',math_tries:5,score:'ქულა',close_btn:'დახურვა'};
             // Add dynamic functions that can't be stored in database
@@ -857,18 +927,56 @@
             // Initialize Stockfish engine
             var stockfishEngine = null;
             var stockfishReady = false;
+            var stockfishLoading = false; // Track if script is currently loading
             var pendingStockfishMove = null;
             var currentFEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'; // Starting position
             var moveHistory = []; // Track moves in algebraic notation
 
+            // PERFORMANCE: Lazy load Stockfish only when needed (saves 800 KB on page load!)
+            function loadStockfish(callback){
+                // Already loaded
+                if(typeof Stockfish === 'function'){
+                    console.log('✅ Stockfish already loaded');
+                    if(callback) callback();
+                    return;
+                }
+
+                // Currently loading
+                if(stockfishLoading){
+                    console.log('⏳ Stockfish already loading...');
+                    return;
+                }
+
+                stockfishLoading = true;
+                console.log('📦 Loading Stockfish WASM on-demand...');
+
+                var script = document.createElement('script');
+                script.src = BOOT.urls.stockfish || 'https://cdn.jsdelivr.net/npm/stockfish.wasm@0.11.0/stockfish.js';
+                script.async = true;
+
+                script.onload = function(){
+                    console.log('✅ Stockfish script loaded!');
+                    stockfishLoading = false;
+                    if(callback) callback();
+                };
+
+                script.onerror = function(){
+                    console.error('❌ Failed to load Stockfish');
+                    stockfishLoading = false;
+                };
+
+                document.head.appendChild(script);
+            }
+
             function initStockfish(){
                 if(stockfishEngine) return;
                 if(typeof Stockfish !== 'function'){
-                    console.warn('⚠️ Stockfish not available');
+                    console.warn('⚠️ Stockfish not loaded yet, attempting to load...');
+                    loadStockfish(initStockfish); // Retry after loading
                     return;
                 }
                 try{
-                    console.log('🤖 Initializing Stockfish WASM...');
+                    console.log('🤖 Initializing Stockfish WASM engine...');
                     // Call Stockfish() without 'new' - it returns the engine instance
                     stockfishEngine = Stockfish();
 
@@ -878,8 +986,10 @@
                         return;
                     }
 
-                    // WASM version sends messages as strings directly
-                    stockfishEngine.onmessage = function(line){
+                    // WASM version sends message events with .data property
+                    stockfishEngine.onmessage = function(event){
+                        // Handle both event object (WASM) and string (fallback)
+                        var line = (typeof event === 'string') ? event : (event.data || event);
                         console.log('Stockfish:', line);
 
                         if(line.includes('uciok')){
@@ -931,8 +1041,35 @@
                 return fen;
             }
 
-            function startChallenge(){ console.log('🎮 Starting challenge'); setShowChallenge(true); setChallengeScreen('intro'); setChallengeLevel(1); setChallengeScore(0); setMathTries(MATH_MAX_TRIES); setMathInput(''); setMathFeedback(''); initStockfish(); }
-            function closeChallenge(){ console.log('❌ Closing challenge'); setShowChallenge(false); setChallengeScreen(null); }
+            // ─── Analytics Tracking ───
+            function trackChallengeEvent(eventType, eventData){
+                if(!BOOT.ajax || !BOOT.ajax.url) return;
+                fetch(BOOT.ajax.url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'gstore_track_challenge',
+                        product_id: cur.productId,
+                        event_type: eventType,
+                        event_data: JSON.stringify(eventData || {})
+                    })
+                }).catch(function(e){ console.log('Analytics track failed:', e); });
+            }
+
+            function startChallenge(){
+                console.log('🎮 Starting challenge');
+                trackChallengeEvent('challenge_started', {product_title: cur.title});
+                setShowChallenge(true);
+                setChallengeScreen('intro');
+                setChallengeLevel(1);
+                setChallengeScore(0);
+                setMathTries(MATH_MAX_TRIES);
+                setMathInput('');
+                setMathFeedback('');
+                // PERFORMANCE: Lazy load Stockfish only when challenge starts (saves 800 KB!)
+                loadStockfish(initStockfish);
+            }
+            function closeChallenge(){ console.log('❌ Closing challenge'); if(challengeScreen !== 'intro' && !challengeUnlocked) trackChallengeEvent('challenge_abandoned', {screen: challengeScreen}); setShowChallenge(false); setChallengeScreen(null); }
             function startFlappyGame(){ setChallengeScreen('game'); setGameRunning(true); setChallengeScore(0); setBirdY(200); setVelocity(0); setPipes([]); }
             function jumpBird(){ if (!gameRunning) return; setVelocity(-7); }
 
@@ -1049,6 +1186,7 @@
                                 }
 
                                 if(chessInstance.in_checkmate()){
+                                    trackChallengeEvent('level2_failed', {moves: chessGame.moves});
                                     setChessGame(function(prev){return {...prev, gameOver:true, winner:'black', turn:'white', message:'❌ AI won! Try again.'};});
                                     return;
                                 }
@@ -1061,7 +1199,12 @@
                     }
                 }
             }
-            function handleMathSubmit(){ var correctAnswer=42; var userAnswer=parseInt(mathInput,10); if(userAnswer===correctAnswer){ setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! შენ გაქვს '+(mathTries-1)+' მცდელობა'); }else{ setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
+            function handleMathSubmit(){ var correctAnswer=parseFloat(BOOT.challenge.math_answer||'42'); var userAnswer=parseFloat(mathInput); if(userAnswer===correctAnswer){ trackChallengeEvent('level3_completed', {tries_used: (MATH_MAX_TRIES - mathTries + 1)}); trackChallengeEvent('challenge_completed', {total_time: Date.now()}); setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! შენ გაქვს '+(mathTries-1)+' მცდელობა'); }else{ trackChallengeEvent('level3_failed', {tries_used: MATH_MAX_TRIES}); setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
+
+            // ─────────────────────────────────────────────────────────────────────────────
+            // [HELPERS] CALCULATION & UI HELPER FUNCTIONS (Lines 1084-1280)
+            // Pricing, comparison, filtering, and UI component helpers
+            // ─────────────────────────────────────────────────────────────────────────────
 
             function ScoreBar(score, better){
                 var width = Math.max(5, Math.min(100, score * 10));
@@ -1334,7 +1477,11 @@
                 return e(LoadingSkeleton);
             }
 
-            // MOBILE LAYOUT
+            // ═════════════════════════════════════════════════════════════════════════════
+            // [MOBILE] MOBILE LAYOUT (Lines 1896-2150) - Viewport <1024px
+            // Single column: Title → Image → Swatches → Info → Selectors → CTA
+            // ═════════════════════════════════════════════════════════════════════════════
+
             if (isMobile) {
                 console.log('🔍 DEBUG - Mobile Layout:', {
                     deviceType: cur.deviceType,
@@ -1676,7 +1823,11 @@
                 ]);
             }
 
-            // DESKTOP LAYOUT
+            // ═════════════════════════════════════════════════════════════════════════════
+            // [DESKTOP] DESKTOP LAYOUT (Lines 1281-1895) - Viewport ≥1024px
+            // Two-column grid: Left (gallery, description, tabs) | Right (selectors, CTA)
+            // ═════════════════════════════════════════════════════════════════════════════
+
             return e("div",{className:"min-h-screen bg-white"},[
                 e("div",{key:"main",className:"max-w-7xl mx-auto p-6 grid lg:grid-cols-2 gap-8"},[
                     // LEFT: Photos + Description + Tabs
