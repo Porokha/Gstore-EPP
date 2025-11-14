@@ -373,6 +373,7 @@
 
             // Battery Tier Challenge state
             var _useState16 = useState(false); var showChallenge = _useState16[0]; var setShowChallenge = _useState16[1];
+            var _useState16b = useState(false); var showSurrenderWarning = _useState16b[0]; var setShowSurrenderWarning = _useState16b[1];
             var _useState17 = useState(false); var challengeUnlocked = _useState17[0]; var setChallengeUnlocked = _useState17[1];
             var _useState18 = useState(null); var challengeScreen = _useState18[0]; var setChallengeScreen = _useState18[1];
             var _useState19 = useState(1); var challengeLevel = _useState19[0]; var setChallengeLevel = _useState19[1];
@@ -555,67 +556,72 @@
                 }).catch(function(e){ console.error('laptop addons fetch failed', e); });
             }, [cur.deviceType]);
 
-            // Flappy Bird Game Loop with collision detection
+            // Flappy Bird Game Loop - Optimized with refs to reduce re-renders
             useEffect(function(){
                 if (challengeScreen !== 'game' || !gameRunning) return;
                 var gravity = 0.3; var pipeSpeed = 1.6; var frame;
                 var gapHalf = 100;
                 var targetScore = (BOOT.challenge && BOOT.challenge.flappy_score) ? parseInt(BOOT.challenge.flappy_score) * 10 : 50;
-                var currentBirdY = birdY;
-                var currentPipes = pipes;
+                var localBirdY = birdY;
+                var localVelocity = velocity;
+                var localPipes = pipes.slice();
+                var localScore = challengeScore;
+                var running = true;
 
                 var loop = function(){
-                    // Update bird position
-                    setBirdY(function(prev){
-                        currentBirdY = Math.max(0, Math.min(460, prev + velocity));
-                        return currentBirdY;
-                    });
-                    setVelocity(function(v){ return v + gravity; });
+                    if (!running) return;
 
-                    // Update pipes, check scoring and collision
-                    setPipes(function(prev){
-                        var moved = prev.map(function(p){ return {x: p.x - pipeSpeed, gapY: p.gapY, scored: p.scored}; }).filter(function(p){ return p.x > -60; });
-                        if (Math.random() < 0.009){ var gapY = 140 + Math.random() * 180; moved.push({x: 420, gapY: gapY, scored: false}); }
+                    // Update local values
+                    localVelocity += gravity;
+                    localBirdY = Math.max(0, Math.min(460, localBirdY + localVelocity));
 
-                        // Check scoring
-                        moved = moved.map(function(p){
-                            if (!p.scored && p.x < 60){
-                                setChallengeScore(function(s){
-                                    var newScore = s + 10;
-                                    if (newScore >= targetScore && challengeLevel === 1){
-                                        setChallengeLevel(2);
-                                        setGameRunning(false);
-                                        setChallengeScreen('level2');
-                                    }
-                                    return newScore;
-                                });
-                                return {...p, scored: true};
-                            }
-                            return p;
-                        });
+                    // Update pipes
+                    localPipes = localPipes.map(function(p){ return {x: p.x - pipeSpeed, gapY: p.gapY, scored: p.scored}; }).filter(function(p){ return p.x > -60; });
+                    if (Math.random() < 0.009){
+                        var gapY = 140 + Math.random() * 180;
+                        localPipes.push({x: 420, gapY: gapY, scored: false});
+                    }
 
-                        // Check collision
-                        for (var i = 0; i < moved.length; i++){
-                            var p = moved[i];
-                            if (p.x < 80 && p.x > 20){
-                                if (currentBirdY < p.gapY - gapHalf || currentBirdY > p.gapY + gapHalf){
-                                    setGameRunning(false);
-                                    setChallengeScreen('lose');
-                                    cancelAnimationFrame(frame);
-                                    return moved;
-                                }
+                    // Check scoring
+                    for (var i = 0; i < localPipes.length; i++){
+                        var p = localPipes[i];
+                        if (!p.scored && p.x < 60){
+                            p.scored = true;
+                            localScore += 10;
+                            if (localScore >= targetScore && challengeLevel === 1){
+                                running = false;
+                                setBirdY(localBirdY);
+                                setVelocity(localVelocity);
+                                setPipes(localPipes);
+                                setChallengeScore(localScore);
+                                setChallengeLevel(2);
+                                setGameRunning(false);
+                                setChallengeScreen('level2');
+                                return;
                             }
                         }
+                        // Check collision
+                        if (p.x < 80 && p.x > 20){
+                            if (localBirdY < p.gapY - gapHalf || localBirdY > p.gapY + gapHalf){
+                                running = false;
+                                setGameRunning(false);
+                                setChallengeScreen('lose');
+                                return;
+                            }
+                        }
+                    }
 
-                        currentPipes = moved;
-                        return moved;
-                    });
+                    // Batch state updates every frame
+                    setBirdY(localBirdY);
+                    setVelocity(localVelocity);
+                    setPipes(localPipes);
+                    if (localScore !== challengeScore) setChallengeScore(localScore);
 
                     frame = requestAnimationFrame(loop);
                 };
                 frame = requestAnimationFrame(loop);
-                return function(){ cancelAnimationFrame(frame); };
-            }, [challengeScreen, gameRunning, velocity, challengeLevel]);
+                return function(){ running = false; cancelAnimationFrame(frame); };
+            }, [challengeScreen, gameRunning, challengeLevel]);
 
             // Track challenge screen transitions for analytics
             useEffect(function(){
@@ -1856,7 +1862,7 @@
                     showWarrantyModal && e("div",{key:"warranty-modal",className:"gstore-modal-overlay",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"gstore-modal-content",style:{maxWidth:"42rem"},onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"warranty-header"},[e("div",{key:"icon-title",className:"warranty-header-content"},[e("svg",{key:"shield-icon",className:"warranty-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24",xmlns:"http://www.w3.org/2000/svg"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"})]),e("h2",{key:"title",className:"warranty-title"},"Warranty Information")]),e("button",{key:"close",className:"gstore-modal-close",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"warranty-body",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
 
                     // Battery Tier Challenge Modal
-                    (showChallenge === true && challengeScreen !== null) && e("div",{key:"challenge-modal",className:"gstore-modal-overlay",style:{paddingTop:'80px'},onClick:function(){if(challengeScreen==='intro')closeChallenge();}},[
+                    (showChallenge === true && challengeScreen !== null) && e("div",{key:"challenge-modal",className:"gstore-modal-overlay",style:{paddingTop:'80px'},onClick:function(){if(challengeScreen!=='intro')setShowSurrenderWarning(true);else closeChallenge();}},[
                         challengeScreen==='intro' && e("div",{key:"intro",className:"gstore-modal-content",style:{maxWidth:'512px'},onClick:function(ev){ev.stopPropagation();}},[
                             e("div",{key:"header",className:"challenge-header"},[e("button",{key:"close",className:"gstore-modal-close",onClick:closeChallenge},e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])),e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🏆"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.intro_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"desc1",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc2",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc2),e("p",{key:"desc3",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc3)]),e("div",{key:"footer",className:"challenge-footer challenge-footer-split"},[e("button",{key:"start",className:"gstore-btn gstore-btn-primary",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"gstore-btn gstore-btn-secondary",onClick:closeChallenge},CHALLENGE_TEXTS.close_btn)])
                         ]),
@@ -1868,7 +1874,7 @@
                             e("div",{key:"header",className:"challenge-header challenge-header-success"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🎉"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.level2_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"desc1",className:"challenge-text"},CHALLENGE_TEXTS.level2_desc1),e("p",{key:"desc2",className:"challenge-text"},CHALLENGE_TEXTS.level2_desc2)]),e("div",{key:"footer",className:"challenge-footer"},[e("button",{key:"continue",className:"gstore-btn gstore-btn-primary gstore-btn-full",onClick:function(){setChallengeScreen('chess');initChess();}},CHALLENGE_TEXTS.continue_btn)])
                         ]),
                         challengeScreen==='chess' && chessGame && chessBoard.length > 0 && e("div",{key:"chess",className:"gstore-modal-content",style:{maxWidth:'650px'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"challenge-header"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"♟️"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.chess_title)])]),e("div",{key:"body",className:"challenge-body"},[e("div",{key:"status",className:"chess-status"},[e("p",{key:"turn",className:"chess-status-text"},chessGame&&chessGame.gameOver ? chessGame.message : (chessGame&&chessGame.turn==='white' ? '👉 Your turn' : '🤖 AI is thinking...')),e("p",{key:"moves",className:"chess-status-moves"},"Moves: "+(chessGame?chessGame.moves:0))]),e("div",{key:"board",className:"chess-board"},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;var isSelected=chessGame&&chessGame.selectedSquare&&chessGame.selectedSquare.row===i&&chessGame.selectedSquare.col===j;return e("div",{key:i+'-'+j,className:"chess-square"+(isLight?' chess-square-light':' chess-square-dark')+(isSelected?' chess-square-selected':''),onClick:function(){handleChessClick(i,j);}},cell?e("span",{className:"chess-piece"},cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),chessGame&&!chessGame.gameOver && e("p",{key:"hint",className:"chess-hint"},"Click your piece, then click where to move it. Capture the King to win!")])
+                            e("div",{key:"header",className:"challenge-header"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"♟️"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.chess_title)])]),e("div",{key:"body",className:"challenge-body"},[e("div",{key:"status",className:"chess-status"},[e("p",{key:"turn",className:"chess-status-text"},chessGame&&chessGame.gameOver ? chessGame.message : (chessGame&&chessGame.turn==='white' ? '👉 Your turn' : '🤖 AI is thinking...')),e("p",{key:"moves",className:"chess-status-moves"},"Moves: "+(chessGame?chessGame.moves:0))]),e("div",{key:"board",className:"chess-board"},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;var isSelected=chessGame&&chessGame.selectedSquare&&chessGame.selectedSquare.row===i&&chessGame.selectedSquare.col===j;return e("div",{key:i+'-'+j,className:"chess-square"+(isLight?' light':' dark')+(isSelected?' selected':''),onClick:function(){handleChessClick(i,j);}},cell?e("span",{className:"chess-piece"},cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),chessGame&&!chessGame.gameOver && e("p",{key:"hint",className:"chess-hint"},"Click your piece, then click where to move it. Capture the King to win!")])
                         ]),
                         challengeScreen==='math' && e("div",{key:"math",className:"gstore-modal-content",style:{maxWidth:'512px'},onClick:function(ev){ev.stopPropagation();}},[
                             e("div",{key:"header",className:"challenge-header challenge-header-purple"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🧮"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.math_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"tries",className:"math-tries"},CHALLENGE_TEXTS.math_tries(mathTries)),e("p",{key:"question",className:"math-question"},CHALLENGE_TEXTS.math_question),e("input",{key:"input",type:"number",value:mathInput,onChange:function(ev){setMathInput(ev.target.value);},className:"math-input",placeholder:"შეიყვანე პასუხი"}),mathFeedback && e("p",{key:"feedback",className:"math-feedback"},mathFeedback)]),e("div",{key:"footer",className:"challenge-footer"},[e("button",{key:"submit",className:"gstore-btn gstore-btn-primary gstore-btn-full",onClick:handleMathSubmit},CHALLENGE_TEXTS.submit_btn)])
@@ -2431,8 +2437,11 @@
                     // Warranty Modal
                     showWarrantyModal && e("div",{key:"warranty-modal",className:"gstore-modal-overlay",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"gstore-modal-content",style:{maxWidth:"42rem"},onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"warranty-header"},[e("div",{key:"icon-title",className:"warranty-header-content"},[e("svg",{key:"shield-icon",className:"warranty-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24",xmlns:"http://www.w3.org/2000/svg"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"})]),e("h2",{key:"title",className:"warranty-title"},"Warranty Information")]),e("button",{key:"close",className:"gstore-modal-close",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"warranty-body",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
 
+                    // Surrender Warning Modal
+                    showSurrenderWarning && e("div",{key:"surrender-modal",className:"gstore-modal-overlay",onClick:function(){setShowSurrenderWarning(false);}},[e("div",{key:"surrender",className:"surrender-modal",onClick:function(ev){ev.stopPropagation();}},[e("h3",{key:"title",className:"surrender-title"},"ნებდები?"),e("div",{key:"buttons",className:"surrender-buttons"},[e("button",{key:"yes",className:"surrender-btn-yes",onClick:function(){setShowSurrenderWarning(false);setShowChallenge(false);setChallengeScreen('intro');}},"დიახ"),e("button",{key:"no",className:"surrender-btn-no",onClick:function(){setShowSurrenderWarning(false);}},"✕")])])]),
+
                     // Battery Tier Challenge Modal (Desktop)
-                    (showChallenge === true && challengeScreen !== null) && e("div",{key:"challenge-modal",className:"gstore-modal-overlay",onClick:function(){if(challengeScreen==='intro')closeChallenge();}},[
+                    (showChallenge === true && challengeScreen !== null) && e("div",{key:"challenge-modal",className:"gstore-modal-overlay",onClick:function(){if(challengeScreen!=='intro')setShowSurrenderWarning(true);else closeChallenge();}},[
                         challengeScreen==='intro' && e("div",{key:"intro",className:"gstore-modal-content",style:{maxWidth:'512px'},onClick:function(ev){ev.stopPropagation();}},[
                             e("div",{key:"header",className:"challenge-header"},[e("button",{key:"close",className:"gstore-modal-close",onClick:closeChallenge},e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])),e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🏆"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.intro_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"desc1",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc2",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc2),e("p",{key:"desc3",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc3)]),e("div",{key:"footer",className:"challenge-footer challenge-footer-split"},[e("button",{key:"start",className:"gstore-btn gstore-btn-primary",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"gstore-btn gstore-btn-secondary",onClick:closeChallenge},CHALLENGE_TEXTS.close_btn)])
                         ]),
@@ -2444,7 +2453,7 @@
                             e("div",{key:"header",className:"challenge-header challenge-header-success"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🎉"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.level2_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"desc1",className:"challenge-text"},CHALLENGE_TEXTS.level2_desc1),e("p",{key:"desc2",className:"challenge-text"},CHALLENGE_TEXTS.level2_desc2)]),e("div",{key:"footer",className:"challenge-footer"},[e("button",{key:"continue",className:"gstore-btn gstore-btn-primary gstore-btn-full",onClick:function(){setChallengeScreen('chess');initChess();}},CHALLENGE_TEXTS.continue_btn)])
                         ]),
                         challengeScreen==='chess' && chessGame && chessBoard.length > 0 && e("div",{key:"chess",className:"gstore-modal-content",style:{maxWidth:'650px'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"challenge-header"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"♟️"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.chess_title)])]),e("div",{key:"body",className:"challenge-body"},[e("div",{key:"status",className:"chess-status"},[e("p",{key:"turn",className:"chess-status-text"},chessGame&&chessGame.gameOver ? chessGame.message : (chessGame&&chessGame.turn==='white' ? '👉 Your turn' : '🤖 AI is thinking...')),e("p",{key:"moves",className:"chess-status-moves"},"Moves: "+(chessGame?chessGame.moves:0))]),e("div",{key:"board",className:"chess-board"},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;var isSelected=chessGame&&chessGame.selectedSquare&&chessGame.selectedSquare.row===i&&chessGame.selectedSquare.col===j;return e("div",{key:i+'-'+j,className:"chess-square"+(isLight?' chess-square-light':' chess-square-dark')+(isSelected?' chess-square-selected':''),onClick:function(){handleChessClick(i,j);}},cell?e("span",{className:"chess-piece"},cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),chessGame&&!chessGame.gameOver && e("p",{key:"hint",className:"chess-hint"},"Click your piece, then click where to move it. Capture the King to win!")])
+                            e("div",{key:"header",className:"challenge-header"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"♟️"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.chess_title)])]),e("div",{key:"body",className:"challenge-body"},[e("div",{key:"status",className:"chess-status"},[e("p",{key:"turn",className:"chess-status-text"},chessGame&&chessGame.gameOver ? chessGame.message : (chessGame&&chessGame.turn==='white' ? '👉 Your turn' : '🤖 AI is thinking...')),e("p",{key:"moves",className:"chess-status-moves"},"Moves: "+(chessGame?chessGame.moves:0))]),e("div",{key:"board",className:"chess-board"},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;var isSelected=chessGame&&chessGame.selectedSquare&&chessGame.selectedSquare.row===i&&chessGame.selectedSquare.col===j;return e("div",{key:i+'-'+j,className:"chess-square"+(isLight?' light':' dark')+(isSelected?' selected':''),onClick:function(){handleChessClick(i,j);}},cell?e("span",{className:"chess-piece"},cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),chessGame&&!chessGame.gameOver && e("p",{key:"hint",className:"chess-hint"},"Click your piece, then click where to move it. Capture the King to win!")])
                         ]),
                         challengeScreen==='math' && e("div",{key:"math",className:"gstore-modal-content",style:{maxWidth:'512px'},onClick:function(ev){ev.stopPropagation();}},[
                             e("div",{key:"header",className:"challenge-header challenge-header-purple"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🧮"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.math_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"tries",className:"math-tries"},CHALLENGE_TEXTS.math_tries(mathTries)),e("p",{key:"question",className:"math-question"},CHALLENGE_TEXTS.math_question),e("input",{key:"input",type:"number",value:mathInput,onChange:function(ev){setMathInput(ev.target.value);},className:"math-input",placeholder:"შეიყვანე პასუხი"}),mathFeedback && e("p",{key:"feedback",className:"math-feedback"},mathFeedback)]),e("div",{key:"footer",className:"challenge-footer"},[e("button",{key:"submit",className:"gstore-btn gstore-btn-primary gstore-btn-full",onClick:handleMathSubmit},CHALLENGE_TEXTS.submit_btn)])
