@@ -815,44 +815,7 @@
     color: #6b7280 !important;
 }
 
-.chess-square {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    transition: opacity 0.15s ease !important;
-    aspect-ratio: 1 !important;
-}
-
-.chess-square:hover {
-    opacity: 0.8 !important;
-}
-
-.chess-square-light {
-    background: #f0d9b5 !important;
-}
-
-.chess-square-dark {
-    background: #b58863 !important;
-}
-
-.chess-square-selected {
-    background: #baca44 !important;
-    border: 3px solid #769656 !important;
-}
-
-.chess-piece {
-    font-size: 2.5rem !important;
-    user-select: none !important;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)) !important;
-}
-
-.chess-hint {
-    font-size: 0.75rem !important;
-    text-align: center !important;
-    color: #6b7280 !important;
-    margin-top: 0.5rem !important;
-}
+/* Chess board/square/piece styles already defined above at lines 280-327 */
 
 /* ===================================
    MATH CHALLENGE COMPONENTS

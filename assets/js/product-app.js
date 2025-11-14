@@ -555,32 +555,67 @@
                 }).catch(function(e){ console.error('laptop addons fetch failed', e); });
             }, [cur.deviceType]);
 
-            // Flappy Bird Game Loop
+            // Flappy Bird Game Loop with collision detection
             useEffect(function(){
                 if (challengeScreen !== 'game' || !gameRunning) return;
                 var gravity = 0.3; var pipeSpeed = 1.6; var frame;
+                var gapHalf = 100;
+                var targetScore = (BOOT.challenge && BOOT.challenge.flappy_score) ? parseInt(BOOT.challenge.flappy_score) * 10 : 50;
+                var currentBirdY = birdY;
+                var currentPipes = pipes;
+
                 var loop = function(){
-                    setBirdY(function(prev){ return Math.max(0, Math.min(460, prev + velocity)); });
+                    // Update bird position
+                    setBirdY(function(prev){
+                        currentBirdY = Math.max(0, Math.min(460, prev + velocity));
+                        return currentBirdY;
+                    });
                     setVelocity(function(v){ return v + gravity; });
+
+                    // Update pipes, check scoring and collision
                     setPipes(function(prev){
                         var moved = prev.map(function(p){ return {x: p.x - pipeSpeed, gapY: p.gapY, scored: p.scored}; }).filter(function(p){ return p.x > -60; });
                         if (Math.random() < 0.009){ var gapY = 140 + Math.random() * 180; moved.push({x: 420, gapY: gapY, scored: false}); }
+
+                        // Check scoring
+                        moved = moved.map(function(p){
+                            if (!p.scored && p.x < 60){
+                                setChallengeScore(function(s){
+                                    var newScore = s + 10;
+                                    if (newScore >= targetScore && challengeLevel === 1){
+                                        setChallengeLevel(2);
+                                        setGameRunning(false);
+                                        setChallengeScreen('level2');
+                                    }
+                                    return newScore;
+                                });
+                                return {...p, scored: true};
+                            }
+                            return p;
+                        });
+
+                        // Check collision
+                        for (var i = 0; i < moved.length; i++){
+                            var p = moved[i];
+                            if (p.x < 80 && p.x > 20){
+                                if (currentBirdY < p.gapY - gapHalf || currentBirdY > p.gapY + gapHalf){
+                                    setGameRunning(false);
+                                    setChallengeScreen('lose');
+                                    cancelAnimationFrame(frame);
+                                    return moved;
+                                }
+                            }
+                        }
+
+                        currentPipes = moved;
                         return moved;
                     });
+
                     frame = requestAnimationFrame(loop);
                 };
                 frame = requestAnimationFrame(loop);
                 return function(){ cancelAnimationFrame(frame); };
-            }, [challengeScreen, gameRunning, velocity]);
-
-            // Flappy Bird Collision
-            useEffect(function(){
-                if (challengeScreen !== 'game' || !gameRunning) return;
-                var gapHalf = 100;
-                var targetScore = (BOOT.challenge && BOOT.challenge.flappy_score) ? parseInt(BOOT.challenge.flappy_score) * 10 : 50;
-                setPipes(function(prev){ return prev.map(function(p){ if (!p.scored && p.x < 60){ setChallengeScore(function(s){ var newScore = s + 10; if (newScore >= targetScore && challengeLevel === 1){ setChallengeLevel(2); setGameRunning(false); setChallengeScreen('level2'); } return newScore; }); return {...p, scored: true}; } return p; }); });
-                for (var i = 0; i < pipes.length; i++){ var p = pipes[i]; if (p.x < 80 && p.x > 20){ if (birdY < p.gapY - gapHalf || birdY > p.gapY + gapHalf){ setGameRunning(false); setChallengeScreen('lose'); return; } } }
-            }, [birdY, pipes, challengeScore, challengeLevel, gameRunning, challengeScreen]);
+            }, [challengeScreen, gameRunning, velocity, challengeLevel]);
 
             // Track challenge screen transitions for analytics
             useEffect(function(){
@@ -946,7 +981,7 @@
             // PERFORMANCE: Lazy load Stockfish only when needed (saves 800 KB on page load!)
             function loadStockfish(callback){
                 // Already loaded
-                if(typeof Stockfish === 'function'){
+                if(window.Stockfish && typeof window.Stockfish === 'function'){
                     console.log('✅ Stockfish already loaded');
                     if(callback) callback();
                     return;
@@ -968,7 +1003,15 @@
                 script.onload = function(){
                     console.log('✅ Stockfish script loaded!');
                     stockfishLoading = false;
-                    if(callback) callback();
+                    // Wait a bit for WASM to initialize
+                    setTimeout(function(){
+                        if(window.Stockfish){
+                            console.log('✅ Stockfish global found');
+                            if(callback) callback();
+                        } else {
+                            console.error('❌ Stockfish global not found after load');
+                        }
+                    }, 100);
                 };
 
                 script.onerror = function(){
@@ -981,7 +1024,7 @@
 
             function initStockfish(){
                 if(stockfishEngine) return;
-                if(typeof Stockfish !== 'function'){
+                if(!window.Stockfish || typeof window.Stockfish !== 'function'){
                     console.warn('⚠️ Stockfish not loaded yet, attempting to load...');
                     loadStockfish(initStockfish); // Retry after loading
                     return;
@@ -989,7 +1032,7 @@
                 try{
                     console.log('🤖 Initializing Stockfish WASM engine...');
                     // Call Stockfish() without 'new' - it returns the engine instance
-                    stockfishEngine = Stockfish();
+                    stockfishEngine = window.Stockfish();
 
                     if(!stockfishEngine || typeof stockfishEngine.postMessage !== 'function'){
                         console.error('❌ Stockfish API error');
