@@ -703,16 +703,27 @@
                 // Update BOOT.productId to sync with WP admin edit link
                 BOOT.productId = p.id;
 
-                // Update WordPress edit link if it exists (for logged-in admins)
-                var editLink = document.querySelector('.post-edit-link');
-                if (editLink) {
-                    var currentHref = editLink.getAttribute('href');
-                    if (currentHref) {
-                        // Replace the post parameter with the new product ID
-                        var newHref = currentHref.replace(/([?&]post=)\d+/, '$1' + p.id);
-                        editLink.setAttribute('href', newHref);
+                // Update WordPress admin bar edit link if it exists (for logged-in admins)
+                // Try multiple selectors for different WordPress themes/versions
+                var editSelectors = [
+                    '#wp-admin-bar-edit a',           // Standard admin bar
+                    '.post-edit-link',                // Theme edit links
+                    'a[href*="post.php?post="]',      // Generic edit links
+                    '#wp-admin-bar-edit-object a'     // Some WP versions
+                ];
+
+                editSelectors.forEach(function(selector){
+                    var editLink = document.querySelector(selector);
+                    if (editLink) {
+                        var currentHref = editLink.getAttribute('href');
+                        if (currentHref && currentHref.includes('post=')) {
+                            // Replace the post parameter with the new product ID
+                            var newHref = currentHref.replace(/([?&]post=)\d+/, '$1' + p.id);
+                            editLink.setAttribute('href', newHref);
+                            console.log('✅ Updated admin edit link to product ID:', p.id);
+                        }
                     }
-                }
+                });
 
                 setCur({
                     productId: p.id,
