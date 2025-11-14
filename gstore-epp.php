@@ -68,6 +68,7 @@ require_once GSTORE_EPP_DIR.'includes/common/parse.php';
 require_once GSTORE_EPP_DIR.'includes/frontend/enqueue.php';
 require_once GSTORE_EPP_DIR.'includes/rest/routes.php';
 require_once GSTORE_EPP_DIR.'includes/frontend/ajax.php';
+require_once GSTORE_EPP_DIR.'includes/analytics.php';
 require_once GSTORE_EPP_DIR.'admin/menu.php';
 require_once GSTORE_EPP_DIR.'admin/metabox-fbt.php';
 require_once GSTORE_EPP_DIR.'admin/metabox-compare.php';
@@ -75,6 +76,7 @@ require_once GSTORE_EPP_DIR.'admin/typography.php';
 require_once GSTORE_EPP_DIR.'admin/translations.php';
 require_once GSTORE_EPP_DIR.'admin/delivery.php';
 require_once GSTORE_EPP_DIR.'admin/warranty.php';
+require_once GSTORE_EPP_DIR.'admin/analytics-dashboard.php';
 
 // --- Activation: tables + logs dir ---
 register_activation_hook(__FILE__, function(){

@@ -582,6 +582,18 @@
                 for (var i = 0; i < pipes.length; i++){ var p = pipes[i]; if (p.x < 80 && p.x > 20){ if (birdY < p.gapY - gapHalf || birdY > p.gapY + gapHalf){ setGameRunning(false); setChallengeScreen('lose'); return; } } }
             }, [birdY, pipes, challengeScore, challengeLevel, gameRunning, challengeScreen]);
 
+            // Track challenge screen transitions for analytics
+            useEffect(function(){
+                if(!challengeScreen) return;
+                if(challengeScreen === 'level2' && challengeLevel === 2){
+                    trackChallengeEvent('level1_completed', {score: challengeScore});
+                } else if(challengeScreen === 'lose'){
+                    trackChallengeEvent('level1_failed', {score: challengeScore});
+                } else if(challengeScreen === 'math'){
+                    trackChallengeEvent('level2_completed', {});
+                }
+            }, [challengeScreen]);
+
             // Keyboard controls: ESC to close modals, SPACE for Flappy Bird jump
             useEffect(function(){
                 function handleKeyPress(e){
@@ -991,8 +1003,23 @@
                 return fen;
             }
 
-            function startChallenge(){ console.log('🎮 Starting challenge'); setShowChallenge(true); setChallengeScreen('intro'); setChallengeLevel(1); setChallengeScore(0); setMathTries(MATH_MAX_TRIES); setMathInput(''); setMathFeedback(''); initStockfish(); }
-            function closeChallenge(){ console.log('❌ Closing challenge'); setShowChallenge(false); setChallengeScreen(null); }
+            // ─── Analytics Tracking ───
+            function trackChallengeEvent(eventType, eventData){
+                if(!BOOT.ajax || !BOOT.ajax.url) return;
+                fetch(BOOT.ajax.url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'gstore_track_challenge',
+                        product_id: cur.productId,
+                        event_type: eventType,
+                        event_data: JSON.stringify(eventData || {})
+                    })
+                }).catch(function(e){ console.log('Analytics track failed:', e); });
+            }
+
+            function startChallenge(){ console.log('🎮 Starting challenge'); trackChallengeEvent('challenge_started', {product_title: cur.title}); setShowChallenge(true); setChallengeScreen('intro'); setChallengeLevel(1); setChallengeScore(0); setMathTries(MATH_MAX_TRIES); setMathInput(''); setMathFeedback(''); initStockfish(); }
+            function closeChallenge(){ console.log('❌ Closing challenge'); if(challengeScreen !== 'intro' && !challengeUnlocked) trackChallengeEvent('challenge_abandoned', {screen: challengeScreen}); setShowChallenge(false); setChallengeScreen(null); }
             function startFlappyGame(){ setChallengeScreen('game'); setGameRunning(true); setChallengeScore(0); setBirdY(200); setVelocity(0); setPipes([]); }
             function jumpBird(){ if (!gameRunning) return; setVelocity(-7); }
 
@@ -1109,6 +1136,7 @@
                                 }
 
                                 if(chessInstance.in_checkmate()){
+                                    trackChallengeEvent('level2_failed', {moves: chessGame.moves});
                                     setChessGame(function(prev){return {...prev, gameOver:true, winner:'black', turn:'white', message:'❌ AI won! Try again.'};});
                                     return;
                                 }
@@ -1121,7 +1149,7 @@
                     }
                 }
             }
-            function handleMathSubmit(){ var correctAnswer=parseFloat(BOOT.challenge.math_answer||'42'); var userAnswer=parseFloat(mathInput); if(userAnswer===correctAnswer){ setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! შენ გაქვს '+(mathTries-1)+' მცდელობა'); }else{ setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
+            function handleMathSubmit(){ var correctAnswer=parseFloat(BOOT.challenge.math_answer||'42'); var userAnswer=parseFloat(mathInput); if(userAnswer===correctAnswer){ trackChallengeEvent('level3_completed', {tries_used: (MATH_MAX_TRIES - mathTries + 1)}); trackChallengeEvent('challenge_completed', {total_time: Date.now()}); setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! შენ გაქვს '+(mathTries-1)+' მცდელობა'); }else{ trackChallengeEvent('level3_failed', {tries_used: MATH_MAX_TRIES}); setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
 
             // ─────────────────────────────────────────────────────────────────────────────
             // [HELPERS] CALCULATION & UI HELPER FUNCTIONS (Lines 1084-1280)
