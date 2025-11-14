@@ -80,6 +80,15 @@ function gstore_track_challenge_event(){
 		global $wpdb;
 		$table = gstore_epp_table_analytics();
 
+		// Check if table exists - if not, fail silently to avoid 500 errors
+		$table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table'") === $table;
+		if (!$table_exists) {
+			gstore_log_error('analytics_table_missing', ['table' => $table]);
+			// Silent fail - return success to avoid breaking frontend
+			wp_send_json_success(['tracked' => false, 'message' => 'Analytics table not found']);
+			return;
+		}
+
 		$inserted = $wpdb->insert(
 			$table,
 			[
@@ -96,7 +105,8 @@ function gstore_track_challenge_event(){
 
 		if ($inserted === false) {
 			gstore_log_error('analytics_insert_failed', ['error' => $wpdb->last_error]);
-			wp_send_json_error(['message' => 'Database error'], 500);
+			// Silent fail - return success to avoid breaking frontend
+			wp_send_json_success(['tracked' => false, 'message' => 'Database insert failed']);
 			return;
 		}
 
