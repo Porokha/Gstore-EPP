@@ -304,13 +304,20 @@ add_action('wp_enqueue_scripts', function(){
 		true
 	);
 
-	// Register product app with aggressive cache busting
+	// Register product app with MAXIMUM AGGRESSIVE cache busting
+	// Using md5_file() hash instead of filemtime for stronger cache invalidation
 	$js_file = GSTORE_EPP_DIR.'assets/js/product-app.js';
-	$js_url = GSTORE_EPP_URL.'assets/js/product-app.js?v=' . filemtime($js_file);
+	$js_hash = substr(md5_file($js_file), 0, 8); // 8-char hash of file content
+	$js_url = GSTORE_EPP_URL.'assets/js/product-app.js';
+
+	// Version = plugin version + content hash + timestamp
+	// This triple-layer approach ensures cache breaks on ANY change
+	$cache_buster = GSTORE_EPP_VERSION . '.' . $js_hash . '.' . filemtime($js_file);
+
 	wp_register_script('gstore-epp-app',
-		$js_url,
+		$js_url, // Clean URL (no query string - better for CDNs)
 		['react','react-dom','chess-js','stockfish-js'],
-		GSTORE_EPP_VERSION . '.' . filemtime($js_file),
+		$cache_buster, // WordPress handles versioning automatically
 		true
 	);
 
