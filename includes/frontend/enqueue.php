@@ -267,6 +267,7 @@ add_action('wp_enqueue_scripts', function(){
 			'chess_title' => 'მეორე დონე: დაამარცხე ჭადრაკში Gstore Chess AI',
 			'math_title' => 'დონე მესამე: მათემატიკური პრობლემა',
 			'math_question' => 'რა არის 6 × 7 ?',
+			'math_answer' => '42',
 			'submit_btn' => 'სცადე',
 			'congratulations' => 'გილოცავ'
 		]),

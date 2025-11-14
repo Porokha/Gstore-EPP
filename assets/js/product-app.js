@@ -549,6 +549,25 @@
                 for (var i = 0; i < pipes.length; i++){ var p = pipes[i]; if (p.x < 80 && p.x > 20){ if (birdY < p.gapY - gapHalf || birdY > p.gapY + gapHalf){ setGameRunning(false); setChallengeScreen('lose'); return; } } }
             }, [birdY, pipes, challengeScore, challengeLevel, gameRunning, challengeScreen]);
 
+            // Keyboard controls: ESC to close modals, SPACE for Flappy Bird jump
+            useEffect(function(){
+                function handleKeyPress(e){
+                    // ESC key: Close challenge modal
+                    if (e.key === 'Escape' || e.keyCode === 27){
+                        if (showChallenge && challengeScreen === 'intro'){
+                            closeChallenge();
+                        }
+                    }
+                    // SPACE key: Flappy Bird jump (only during game)
+                    if ((e.key === ' ' || e.keyCode === 32) && challengeScreen === 'game' && gameRunning){
+                        e.preventDefault(); // Prevent page scroll
+                        jump();
+                    }
+                }
+                document.addEventListener('keydown', handleKeyPress);
+                return function(){ document.removeEventListener('keydown', handleKeyPress); };
+            }, [showChallenge, challengeScreen, gameRunning]);
+
             // Search products
             useEffect(function(){
                 if (!searchQuery) {
@@ -1061,7 +1080,7 @@
                     }
                 }
             }
-            function handleMathSubmit(){ var correctAnswer=42; var userAnswer=parseInt(mathInput,10); if(userAnswer===correctAnswer){ setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! შენ გაქვს '+(mathTries-1)+' მცდელობა'); }else{ setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
+            function handleMathSubmit(){ var correctAnswer=parseFloat(BOOT.challenge.math_answer||'42'); var userAnswer=parseFloat(mathInput); if(userAnswer===correctAnswer){ setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! შენ გაქვს '+(mathTries-1)+' მცდელობა'); }else{ setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
 
             function ScoreBar(score, better){
                 var width = Math.max(5, Math.min(100, score * 10));
