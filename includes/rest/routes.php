@@ -89,6 +89,16 @@ class GStore_EPP_REST {
 				'warehouse'=>['required'=>false,'type'=>'string','default'=>'tbilisi']
 			]
 		]);
+
+		// Diagnostic: Check attribute storage
+		register_rest_route(self::NS, '/check-attributes', [
+			'methods'=>'GET',
+			'permission_callback'=>'__return_true',
+			'callback'=>[$this,'check_attributes'],
+			'args'=>[
+				'product_id'=>['required'=>true,'type'=>'integer']
+			]
+		]);
 	}
 
 	/* -------------------------
@@ -790,6 +800,139 @@ class GStore_EPP_REST {
 			'laptop_ram'=>$laptop_ram,
 			'laptop_storage'=>$laptop_storage
 		], 200);
+	}
+
+	/* -------------------------
+		DIAGNOSTIC: CHECK ATTRIBUTES
+	--------------------------*/
+	public function check_attributes(WP_REST_Request $r){
+		$pid = absint($r->get_param('product_id'));
+		if (!$pid)
+			return new WP_REST_Response(['ok'=>false,'error'=>'MISSING_PRODUCT_ID'], 400);
+
+		global $wpdb;
+		$product = wc_get_product($pid);
+		if (!$product) {
+			return new WP_REST_Response(['ok'=>false,'error'=>'PRODUCT_NOT_FOUND'], 404);
+		}
+
+		$result = [
+			'ok' => true,
+			'product_id' => $pid,
+			'product_title' => $product->get_title(),
+			'attributes' => [],
+			'pa_model_terms' => [],
+			'pa_brand_terms' => [],
+			'post_meta' => [],
+			'database_query_test' => [],
+			'diagnosis' => []
+		];
+
+		// 1. Get all product attributes
+		$attributes = $product->get_attributes();
+		foreach ($attributes as $attr_name => $attribute) {
+			$result['attributes'][$attr_name] = [
+				'name' => $attribute->get_name(),
+				'is_taxonomy' => $attribute->is_taxonomy(),
+				'visible' => $attribute->get_visible(),
+				'variation' => $attribute->get_variation(),
+				'options' => $attribute->get_options()
+			];
+		}
+
+		// 2. Check pa_model taxonomy terms
+		$model_terms = wc_get_product_terms($pid, 'pa_model', ['fields' => 'all']);
+		if (!empty($model_terms) && !is_wp_error($model_terms)) {
+			foreach ($model_terms as $term) {
+				$result['pa_model_terms'][] = [
+					'term_id' => $term->term_id,
+					'name' => $term->name,
+					'slug' => $term->slug,
+					'taxonomy' => $term->taxonomy
+				];
+			}
+		}
+
+		// 3. Check pa_brand taxonomy terms
+		$brand_terms = wc_get_product_terms($pid, 'pa_brand', ['fields' => 'all']);
+		if (!empty($brand_terms) && !is_wp_error($brand_terms)) {
+			foreach ($brand_terms as $term) {
+				$result['pa_brand_terms'][] = [
+					'term_id' => $term->term_id,
+					'name' => $term->name,
+					'slug' => $term->slug,
+					'taxonomy' => $term->taxonomy
+				];
+			}
+		}
+
+		// 4. Check post meta for attribute storage
+		$meta_keys = ['_product_attributes', 'attribute_pa_model', 'attribute_pa_brand'];
+		foreach ($meta_keys as $key) {
+			$value = get_post_meta($pid, $key, true);
+			if ($value) {
+				$result['post_meta'][$key] = $value;
+			}
+		}
+
+		// 5. Test database query for siblings
+		$ctx = gstore_epp_parse_by_product_id($pid);
+		if ($ctx && $ctx['model']) {
+			$model_slug = sanitize_title($ctx['model']);
+
+			$sql = "
+				SELECT DISTINCT p.ID, p.post_title
+				FROM {$wpdb->posts} p
+				INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+				INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
+				WHERE p.post_type = 'product'
+				AND p.post_status = 'publish'
+				AND tt.taxonomy = 'pa_model'
+				AND t.slug = %s
+				LIMIT 20
+			";
+
+			$products = $wpdb->get_results($wpdb->prepare($sql, $model_slug), ARRAY_A);
+
+			$result['database_query_test'] = [
+				'model_from_parse' => $ctx['model'],
+				'model_slug' => $model_slug,
+				'query' => str_replace('%s', "'" . $model_slug . "'", $sql),
+				'found_count' => count($products),
+				'found_products' => $products
+			];
+		}
+
+		// 6. Diagnosis
+		if (empty($result['pa_model_terms'])) {
+			$result['diagnosis'][] = [
+				'issue' => 'NO_PA_MODEL_TAXONOMY',
+				'severity' => 'CRITICAL',
+				'message' => 'Product does not have pa_model taxonomy term assigned',
+				'solution' => 'Edit product in WordPress admin → Attributes → Model → Select from dropdown (not custom text)'
+			];
+		}
+
+		if (empty($result['database_query_test']['found_products'])) {
+			$result['diagnosis'][] = [
+				'issue' => 'ZERO_SIBLINGS_FOUND',
+				'severity' => 'CRITICAL',
+				'message' => 'Database query found 0 products with matching model taxonomy',
+				'solution' => 'Ensure Model is stored as taxonomy attribute (pa_model), not custom attribute'
+			];
+		}
+
+		if (!empty($result['attributes']['pa_model']) && !$result['attributes']['pa_model']['is_taxonomy']) {
+			$result['diagnosis'][] = [
+				'issue' => 'MODEL_NOT_TAXONOMY',
+				'severity' => 'CRITICAL',
+				'message' => 'Model attribute exists but is not a taxonomy attribute',
+				'solution' => 'Convert Model to global attribute in Products → Attributes'
+			];
+		}
+
+		return new WP_REST_Response($result, 200);
 	}
 
 } // END CLASS
