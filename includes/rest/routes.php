@@ -188,9 +188,12 @@ class GStore_EPP_REST {
 		if (!$pid)
 			return new WP_REST_Response(['ok'=>false,'error'=>'MISSING_PRODUCT_ID'], 400);
 
-		// CHECK CACHE FIRST (1 hour)
+		// DEBUG MODE: Add ?debug=1 to see detailed information
+		$debug_mode = !empty($r->get_param('debug'));
+
+		// CHECK CACHE FIRST (1 hour) - skip cache in debug mode
 		$cache_key = 'gstore_siblings_' . $pid;
-		$cached = get_transient($cache_key);
+		$cached = $debug_mode ? false : get_transient($cache_key);
 
 		if ($cached !== false) {
 			gstore_log_debug('siblings_cache_hit', ['pid'=>$pid]);
@@ -203,6 +206,18 @@ class GStore_EPP_REST {
 		$model = $ctx['model'];
 		$group_key = $ctx['group_key'];
 
+		// DEBUG: Log parsed context
+		gstore_log_debug('siblings_context', [
+			'pid' => $pid,
+			'brand' => $brand,
+			'model' => $model,
+			'group_key' => $group_key,
+			'storage' => $ctx['storage'] ?? '',
+			'color' => $ctx['color'] ?? '',
+			'condition' => $ctx['condition'] ?? '',
+			'device_type' => $ctx['device_type'] ?? ''
+		]);
+
 		// If no model, can't find siblings
 		if (!$model){
 			gstore_log_error('siblings_no_model', ['pid'=>$pid,'ctx'=>$ctx]);
@@ -213,7 +228,7 @@ class GStore_EPP_REST {
 
 		if (!$group_key) {
 			gstore_log_error('siblings_no_group_key', ['pid'=>$pid,'ctx'=>$ctx]);
-			$result = ['ok'=>false,'error'=>'GROUP_KEY_REQUIRED'];
+			$result = ['ok'=>false,'error'=>'GROUP_KEY_REQUIRED','debug'=>$ctx];
 			set_transient($cache_key, $result, HOUR_IN_SECONDS);
 			return new WP_REST_Response($result, 200);
 		}
@@ -239,6 +254,13 @@ class GStore_EPP_REST {
 
 		$product_ids = $wpdb->get_col($wpdb->prepare($sql, $model_slug));
 
+		// DEBUG: Log query results
+		gstore_log_debug('siblings_query_taxonomy', [
+			'model_slug' => $model_slug,
+			'found_ids' => $product_ids,
+			'count' => count($product_ids)
+		]);
+
 		// If no results from taxonomy, try meta query (fallback)
 		if (empty($product_ids)) {
 			$sql = "
@@ -253,9 +275,17 @@ class GStore_EPP_REST {
 			";
 
 			$product_ids = $wpdb->get_col($wpdb->prepare($sql, $model_slug));
+
+			// DEBUG: Log meta query results
+			gstore_log_debug('siblings_query_meta_fallback', [
+				'model_slug' => $model_slug,
+				'found_ids' => $product_ids,
+				'count' => count($product_ids)
+			]);
 		}
 
 		$items = [];
+		$filtered_out = []; // Track products that don't match
 
 		if (!empty($product_ids)){
 			foreach($product_ids as $id){
@@ -264,10 +294,16 @@ class GStore_EPP_REST {
 				// Match by model (case-insensitive)
 				if (strcasecmp($p_model, $model) === 0){
 					$ip = wc_get_product($id);
-					if (!$ip) continue;
+					if (!$ip) {
+						$filtered_out[] = ['id' => $id, 'reason' => 'product_not_found'];
+						continue;
+					}
 
 					// CRITICAL: Skip out-of-stock products
-					if (!$ip->is_in_stock()) continue;
+					if (!$ip->is_in_stock()) {
+						$filtered_out[] = ['id' => $id, 'reason' => 'out_of_stock', 'title' => $ip->get_title()];
+						continue;
+					}
 
 					$img_id = $ip->get_image_id();
 					$hero = $img_id ? wp_get_attachment_image_url($img_id, 'large') : wc_placeholder_img_src('large');
@@ -342,6 +378,14 @@ class GStore_EPP_REST {
 						'hex'=>$color_hex,
 						'image'=>$hero
 					];
+				} else {
+					// Model doesn't match - log it
+					$filtered_out[] = [
+						'id' => $id,
+						'reason' => 'model_mismatch',
+						'expected_model' => $model,
+						'found_model' => $p_model
+					];
 				}
 			}
 		}
@@ -354,15 +398,43 @@ class GStore_EPP_REST {
 			'count'=>count($items)
 		];
 
-		// CACHE FOR 1 HOUR
-		set_transient($cache_key, $result, HOUR_IN_SECONDS);
+		// Add debug info if debug mode is enabled
+		if ($debug_mode) {
+			$result['_debug'] = [
+				'context' => $ctx,
+				'model_slug' => $model_slug ?? '',
+				'queried_product_ids' => $product_ids ?? [],
+				'queried_count' => count($product_ids ?? []),
+				'found_count' => count($items),
+				'filtered_count' => count($filtered_out),
+				'filtered_products' => $filtered_out,
+				'cache_skipped' => true
+			];
+		}
 
+		// CACHE FOR 1 HOUR (don't cache debug responses)
+		if (!$debug_mode) {
+			set_transient($cache_key, $result, HOUR_IN_SECONDS);
+		}
+
+		// DEBUG: Log results including filtered products
 		gstore_log_debug('siblings_found', [
 			'pid'=>$pid,
 			'model'=>$model,
 			'count'=>count($items),
+			'filtered_count'=>count($filtered_out),
+			'filtered_reasons'=>array_count_values(array_column($filtered_out, 'reason')),
 			'cached'=>true
 		]);
+
+		// DEBUG: If no siblings found but products were queried, log why
+		if (empty($items) && !empty($product_ids)) {
+			gstore_log_error('siblings_all_filtered', [
+				'pid' => $pid,
+				'queried_count' => count($product_ids),
+				'filtered_details' => $filtered_out
+			]);
+		}
 
 		return new WP_REST_Response($result, 200);
 	}
