@@ -159,7 +159,7 @@ add_action('wp_enqueue_scripts', function(){
 
 	// No CSS needed - Shadow DOM has inline compiled Tailwind
 
-	// Enqueue React from CDN
+	// Enqueue React from CDN with local fallback
 	wp_enqueue_script('react',
 		'https://unpkg.com/react@18/umd/react.production.min.js',
 		[],
@@ -167,11 +167,33 @@ add_action('wp_enqueue_scripts', function(){
 		true
 	);
 
+	// Add fallback for React if CDN fails
+	wp_add_inline_script('react',
+		'if (typeof React === "undefined") {
+			console.warn("React CDN failed, loading local fallback...");
+			var script = document.createElement("script");
+			script.src = "' . GSTORE_EPP_URL . 'assets/js/react.production.min.js";
+			document.head.appendChild(script);
+		}',
+		'after'
+	);
+
 	wp_enqueue_script('react-dom',
 		'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
 		['react'],
 		'18.2.0',
 		true
+	);
+
+	// Add fallback for ReactDOM if CDN fails
+	wp_add_inline_script('react-dom',
+		'if (typeof ReactDOM === "undefined") {
+			console.warn("ReactDOM CDN failed, loading local fallback...");
+			var script = document.createElement("script");
+			script.src = "' . GSTORE_EPP_URL . 'assets/js/react-dom.production.min.js";
+			document.head.appendChild(script);
+		}',
+		'after'
 	);
 
 	// Parse product context
@@ -247,6 +269,9 @@ add_action('wp_enqueue_scripts', function(){
 			'nonce' => wp_create_nonce('gstore_epp_ajax')
 		],
 		'assetsCss'  => GSTORE_EPP_URL.'assets/css/tw.css',
+		'urls'       => [
+			'stockfish' => 'https://cdn.jsdelivr.net/npm/stockfish.wasm@0.11.0/stockfish.js'
+		],
 		'challenge'  => get_option('gstore_epp_challenge_settings', [
 			'flappy_score' => 5,
 			'chess_difficulty' => '2',
@@ -270,16 +295,7 @@ add_action('wp_enqueue_scripts', function(){
 			'math_answer' => '42',
 			'submit_btn' => 'სცადე',
 			'congratulations' => 'გილოცავ'
-		]),
-		'rest'       => [
-			'base'  => esc_url_raw( rest_url( 'gstore/v1' ) ),
-			'nonce' => wp_create_nonce('wp_rest')
-		],
-		'ajax'       => [
-			'url'   => admin_url('admin-ajax.php'),
-			'nonce' => wp_create_nonce('gstore_epp_ajax')
-		],
-		'assetsCss'  => GSTORE_EPP_URL.'assets/css/tw.css',
+		])
 	];
 
 	// Global URLs for Shadow DOM
@@ -297,13 +313,9 @@ add_action('wp_enqueue_scripts', function(){
 		true // Load in footer after React
 	);
 
-	// Enqueue Stockfish WASM - Official browser-compatible version
-	wp_enqueue_script('stockfish-js',
-		'https://cdn.jsdelivr.net/npm/stockfish.wasm@0.11.0/stockfish.js',
-		['chess-js'],
-		'0.11.0',
-		true
-	);
+	// PERFORMANCE: Stockfish is now lazy-loaded on-demand when challenge starts
+	// This saves 800 KB on initial page load!
+	// URL is passed to frontend via BOOT.urls.stockfish
 
 	// Register product app with MAXIMUM AGGRESSIVE cache busting
 	// Using md5_file() hash instead of filemtime for stronger cache invalidation
@@ -317,7 +329,7 @@ add_action('wp_enqueue_scripts', function(){
 
 	wp_register_script('gstore-epp-app',
 		$js_url, // Clean URL (no query string - better for CDNs)
-		['react','react-dom','chess-js','stockfish-js'],
+		['react','react-dom','chess-js'], // Stockfish removed - lazy loaded
 		$cache_buster, // WordPress handles versioning automatically
 		true
 	);

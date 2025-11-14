@@ -927,18 +927,56 @@
             // Initialize Stockfish engine
             var stockfishEngine = null;
             var stockfishReady = false;
+            var stockfishLoading = false; // Track if script is currently loading
             var pendingStockfishMove = null;
             var currentFEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'; // Starting position
             var moveHistory = []; // Track moves in algebraic notation
 
+            // PERFORMANCE: Lazy load Stockfish only when needed (saves 800 KB on page load!)
+            function loadStockfish(callback){
+                // Already loaded
+                if(typeof Stockfish === 'function'){
+                    console.log('✅ Stockfish already loaded');
+                    if(callback) callback();
+                    return;
+                }
+
+                // Currently loading
+                if(stockfishLoading){
+                    console.log('⏳ Stockfish already loading...');
+                    return;
+                }
+
+                stockfishLoading = true;
+                console.log('📦 Loading Stockfish WASM on-demand...');
+
+                var script = document.createElement('script');
+                script.src = BOOT.urls.stockfish || 'https://cdn.jsdelivr.net/npm/stockfish.wasm@0.11.0/stockfish.js';
+                script.async = true;
+
+                script.onload = function(){
+                    console.log('✅ Stockfish script loaded!');
+                    stockfishLoading = false;
+                    if(callback) callback();
+                };
+
+                script.onerror = function(){
+                    console.error('❌ Failed to load Stockfish');
+                    stockfishLoading = false;
+                };
+
+                document.head.appendChild(script);
+            }
+
             function initStockfish(){
                 if(stockfishEngine) return;
                 if(typeof Stockfish !== 'function'){
-                    console.warn('⚠️ Stockfish not available');
+                    console.warn('⚠️ Stockfish not loaded yet, attempting to load...');
+                    loadStockfish(initStockfish); // Retry after loading
                     return;
                 }
                 try{
-                    console.log('🤖 Initializing Stockfish WASM...');
+                    console.log('🤖 Initializing Stockfish WASM engine...');
                     // Call Stockfish() without 'new' - it returns the engine instance
                     stockfishEngine = Stockfish();
 
@@ -1018,7 +1056,19 @@
                 }).catch(function(e){ console.log('Analytics track failed:', e); });
             }
 
-            function startChallenge(){ console.log('🎮 Starting challenge'); trackChallengeEvent('challenge_started', {product_title: cur.title}); setShowChallenge(true); setChallengeScreen('intro'); setChallengeLevel(1); setChallengeScore(0); setMathTries(MATH_MAX_TRIES); setMathInput(''); setMathFeedback(''); initStockfish(); }
+            function startChallenge(){
+                console.log('🎮 Starting challenge');
+                trackChallengeEvent('challenge_started', {product_title: cur.title});
+                setShowChallenge(true);
+                setChallengeScreen('intro');
+                setChallengeLevel(1);
+                setChallengeScore(0);
+                setMathTries(MATH_MAX_TRIES);
+                setMathInput('');
+                setMathFeedback('');
+                // PERFORMANCE: Lazy load Stockfish only when challenge starts (saves 800 KB!)
+                loadStockfish(initStockfish);
+            }
             function closeChallenge(){ console.log('❌ Closing challenge'); if(challengeScreen !== 'intro' && !challengeUnlocked) trackChallengeEvent('challenge_abandoned', {screen: challengeScreen}); setShowChallenge(false); setChallengeScreen(null); }
             function startFlappyGame(){ setChallengeScreen('game'); setGameRunning(true); setChallengeScore(0); setBirdY(200); setVelocity(0); setPipes([]); }
             function jumpBird(){ if (!gameRunning) return; setVelocity(-7); }
