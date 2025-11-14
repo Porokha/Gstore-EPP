@@ -246,27 +246,58 @@ class GStore_EPP_REST {
 		// OPTIMIZED: Use direct database query instead of WP_Query
 		global $wpdb;
 
-		// Get all products with matching model attribute (limit 200 for safety)
-		$model_slug = sanitize_title($model);
+		// FIX: Get the actual pa_model term from this product instead of generating slug
+		// This fixes the slug mismatch issue (e.g., "s23" vs "s-23")
+		$model_terms = wc_get_product_terms($pid, 'pa_model', ['fields' => 'all']);
+		$model_slug = null;
+		$model_term_id = null;
 
-		$sql = "
-			SELECT DISTINCT p.ID 
-			FROM {$wpdb->posts} p
-			INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-			INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
-			INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
-			WHERE p.post_type = 'product'
-			AND p.post_status = 'publish'
-			AND tt.taxonomy = 'pa_model'
-			AND t.slug = %s
-			LIMIT 200
-		";
+		if (!empty($model_terms) && !is_wp_error($model_terms)) {
+			$model_term = $model_terms[0]; // Use first term
+			$model_slug = $model_term->slug;
+			$model_term_id = $model_term->term_id;
+		}
 
-		$product_ids = $wpdb->get_col($wpdb->prepare($sql, $model_slug));
+		// Fallback: if no taxonomy term found, generate slug from parsed model
+		if (!$model_slug) {
+			$model_slug = sanitize_title($model);
+		}
+
+		// Query by term_id if available (most reliable), otherwise by slug
+		if ($model_term_id) {
+			$sql = "
+				SELECT DISTINCT p.ID
+				FROM {$wpdb->posts} p
+				INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+				WHERE p.post_type = 'product'
+				AND p.post_status = 'publish'
+				AND tt.taxonomy = 'pa_model'
+				AND tt.term_id = %d
+				LIMIT 200
+			";
+			$product_ids = $wpdb->get_col($wpdb->prepare($sql, $model_term_id));
+		} else {
+			$sql = "
+				SELECT DISTINCT p.ID
+				FROM {$wpdb->posts} p
+				INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+				INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
+				WHERE p.post_type = 'product'
+				AND p.post_status = 'publish'
+				AND tt.taxonomy = 'pa_model'
+				AND t.slug = %s
+				LIMIT 200
+			";
+			$product_ids = $wpdb->get_col($wpdb->prepare($sql, $model_slug));
+		}
 
 		// DEBUG: Log query results
 		gstore_log_debug('siblings_query_taxonomy', [
+			'model_term_id' => $model_term_id,
 			'model_slug' => $model_slug,
+			'query_method' => $model_term_id ? 'term_id' : 'slug',
 			'found_ids' => $product_ids,
 			'count' => count($product_ids)
 		]);
@@ -875,30 +906,57 @@ class GStore_EPP_REST {
 			}
 		}
 
-		// 5. Test database query for siblings
+		// 5. Test database query for siblings (matches actual siblings query logic)
 		$ctx = gstore_epp_parse_by_product_id($pid);
 		if ($ctx && $ctx['model']) {
-			$model_slug = sanitize_title($ctx['model']);
+			// Use same logic as siblings query: get term_id from product
+			$model_terms_test = wc_get_product_terms($pid, 'pa_model', ['fields' => 'all']);
+			$model_term_id_test = null;
+			$model_slug_test = sanitize_title($ctx['model']);
 
-			$sql = "
-				SELECT DISTINCT p.ID, p.post_title
-				FROM {$wpdb->posts} p
-				INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
-				INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
-				WHERE p.post_type = 'product'
-				AND p.post_status = 'publish'
-				AND tt.taxonomy = 'pa_model'
-				AND t.slug = %s
-				LIMIT 20
-			";
+			if (!empty($model_terms_test) && !is_wp_error($model_terms_test)) {
+				$model_term_id_test = $model_terms_test[0]->term_id;
+			}
 
-			$products = $wpdb->get_results($wpdb->prepare($sql, $model_slug), ARRAY_A);
+			// Query by term_id (like actual siblings query)
+			if ($model_term_id_test) {
+				$sql = "
+					SELECT DISTINCT p.ID, p.post_title
+					FROM {$wpdb->posts} p
+					INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+					INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+					WHERE p.post_type = 'product'
+					AND p.post_status = 'publish'
+					AND tt.taxonomy = 'pa_model'
+					AND tt.term_id = %d
+					LIMIT 20
+				";
+				$products = $wpdb->get_results($wpdb->prepare($sql, $model_term_id_test), ARRAY_A);
+				$query_display = str_replace('%d', $model_term_id_test, $sql);
+			} else {
+				// Fallback to slug (old method - will fail on slug mismatch)
+				$sql = "
+					SELECT DISTINCT p.ID, p.post_title
+					FROM {$wpdb->posts} p
+					INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+					INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+					INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
+					WHERE p.post_type = 'product'
+					AND p.post_status = 'publish'
+					AND tt.taxonomy = 'pa_model'
+					AND t.slug = %s
+					LIMIT 20
+				";
+				$products = $wpdb->get_results($wpdb->prepare($sql, $model_slug_test), ARRAY_A);
+				$query_display = str_replace('%s', "'" . $model_slug_test . "'", $sql);
+			}
 
 			$result['database_query_test'] = [
 				'model_from_parse' => $ctx['model'],
-				'model_slug' => $model_slug,
-				'query' => str_replace('%s', "'" . $model_slug . "'", $sql),
+				'model_term_id' => $model_term_id_test,
+				'model_slug' => $model_slug_test,
+				'query_method' => $model_term_id_test ? 'term_id' : 'slug',
+				'query' => $query_display,
 				'found_count' => count($products),
 				'found_products' => $products
 			];
@@ -952,30 +1010,33 @@ add_action('save_post_product', function($post_id){
 	// Also clear cache for products in same model
 	$ctx = gstore_epp_parse_by_product_id($post_id);
 	if ($ctx && $ctx['model']) {
-		// Use direct query for performance
 		global $wpdb;
-		$model_slug = sanitize_title($ctx['model']);
 
-		$sql = "
-			SELECT DISTINCT p.ID 
-			FROM {$wpdb->posts} p
-			INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-			INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
-			INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
-			WHERE p.post_type = 'product'
-			AND tt.taxonomy = 'pa_model'
-			AND t.slug = %s
-			LIMIT 200
-		";
+		// FIX: Use actual term_id instead of generated slug to match siblings query
+		$model_terms = wc_get_product_terms($post_id, 'pa_model', ['fields' => 'all']);
+		if (!empty($model_terms) && !is_wp_error($model_terms)) {
+			$model_term_id = $model_terms[0]->term_id;
 
-		$sibling_ids = $wpdb->get_col($wpdb->prepare($sql, $model_slug));
+			$sql = "
+				SELECT DISTINCT p.ID
+				FROM {$wpdb->posts} p
+				INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+				WHERE p.post_type = 'product'
+				AND tt.taxonomy = 'pa_model'
+				AND tt.term_id = %d
+				LIMIT 200
+			";
 
-		foreach($sibling_ids as $id) {
-			delete_transient('gstore_siblings_' . $id);
-			delete_transient('gstore_pricing_' . $id);
-			delete_transient('gstore_fbt_' . $id);
-			delete_transient('gstore_warranty_' . $id);
-			delete_transient('gstore_shipping_' . $id);
+			$sibling_ids = $wpdb->get_col($wpdb->prepare($sql, $model_term_id));
+
+			foreach($sibling_ids as $id) {
+				delete_transient('gstore_siblings_' . $id);
+				delete_transient('gstore_pricing_' . $id);
+				delete_transient('gstore_fbt_' . $id);
+				delete_transient('gstore_warranty_' . $id);
+				delete_transient('gstore_shipping_' . $id);
+			}
 		}
 	}
 }, 10, 1);
