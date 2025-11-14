@@ -272,7 +272,8 @@ add_action('wp_enqueue_scripts', function(){
 		],
 		'assetsCss'  => GSTORE_EPP_URL.'assets/css/tw.css',
 		'urls'       => [
-			'stockfish' => 'https://cdn.jsdelivr.net/npm/stockfish.wasm@0.11.0/stockfish.js'
+			'stockfish' => 'https://cdn.jsdelivr.net/npm/stockfish.wasm@0.11.0/stockfish.js',
+			'assets' => GSTORE_EPP_URL.'assets'
 		],
 		'challenge'  => get_option('gstore_epp_challenge_settings', [
 			'flappy_score' => 5,
