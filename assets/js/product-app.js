@@ -2433,6 +2433,20 @@
             fbtStyle.textContent = `.fbt-card{width:100%;height:220px;background:#fff;border-radius:20px;position:relative;overflow:hidden;transition:all 0.5s cubic-bezier(0.16,1,0.3,1);box-shadow:0 10px 15px -3px rgba(0,0,0,0.05);border:1px solid rgba(229,231,235,0.8)}.fbt-card__shine{position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,255,255,0) 40%,rgba(255,255,255,0.8) 50%,rgba(255,255,255,0) 60%);opacity:0;transition:opacity 0.3s ease}.fbt-card__glow{position:absolute;inset:-10px;background:radial-gradient(circle at 50% 0%,rgba(37,99,235,0.3) 0%,rgba(37,99,235,0) 70%);opacity:0;transition:opacity 0.5s ease}.fbt-card__content{padding:1.25em;height:100%;display:flex;flex-direction:column;gap:0.75em;position:relative;z-index:2}.fbt-card__badge{position:absolute;top:12px;right:12px;background:#10b981;color:white;padding:0.25em 0.5em;border-radius:999px;font-size:0.7em;font-weight:600;transform:scale(0.8);opacity:0;transition:all 0.4s ease 0.1s;z-index:3}.fbt-card__image{width:100%;height:100px;min-height:100px;max-height:100px;background:#f8f9fa;border-radius:12px;transition:all 0.5s cubic-bezier(0.16,1,0.3,1);position:relative;overflow:hidden;flex-shrink:0}.fbt-card__text{display:flex;flex-direction:column;gap:0.25em;min-height:0;flex-shrink:1;flex-grow:1}.fbt-card__title{color:#1e293b;font-size:0.9em;margin:0;font-weight:700;transition:all 0.3s ease;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;max-height:2.6em}.fbt-card__footer{display:flex;justify-content:space-between;align-items:center;margin-top:auto;flex-shrink:0}.fbt-card__price{color:#1e293b;font-weight:700;font-size:1em;transition:all 0.3s ease}.fbt-card__button{width:28px;height:28px;background:#2563eb;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;transition:all 0.3s ease;transform:scale(0.9);border:none;flex-shrink:0}.fbt-card:hover{transform:translateY(-10px);box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);border-color:rgba(37,99,235,0.2)}.fbt-card:hover .fbt-card__shine{opacity:1;animation:shine 3s infinite}.fbt-card:hover .fbt-card__glow{opacity:1}.fbt-card:hover .fbt-card__image{transform:translateY(-5px) scale(1.03);box-shadow:0 10px 15px -3px rgba(0,0,0,0.1)}.fbt-card:hover .fbt-card__title{color:#2563eb;transform:translateX(2px)}.fbt-card:hover .fbt-card__price{color:#2563eb;transform:translateX(2px)}.fbt-card:hover .fbt-card__button{transform:scale(1);box-shadow:0 0 0 4px rgba(37,99,235,0.2)}.fbt-card:hover .fbt-card__button svg{animation:btnPulse 1.5s infinite}.fbt-card:active{transform:translateY(-5px) scale(0.98)}.fbt-card-selected .fbt-card__badge{transform:scale(1);opacity:1}.fbt-card-selected .fbt-card__button{background:#10b981}@keyframes shine{0%{background-position:-100% 0}100%{background-position:200% 0}}@keyframes btnPulse{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}`;
             shadow.appendChild(fbtStyle);
 
+            // Load and inject modal styles from external CSS file
+            var modalCssUrl = GSTORE_BOOT.urls.assets + '/css/modal-styles.css';
+            fetch(modalCssUrl)
+                .then(function(response) { return response.text(); })
+                .then(function(css) {
+                    var modalStyle = document.createElement('style');
+                    modalStyle.textContent = css;
+                    shadow.appendChild(modalStyle);
+                    console.log('✅ Modal styles loaded into Shadow DOM');
+                })
+                .catch(function(error) {
+                    console.warn('⚠️ Could not load modal styles:', error);
+                });
+
             var appRoot = document.createElement('div');
             shadow.appendChild(appRoot);
 
