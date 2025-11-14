@@ -897,8 +897,10 @@
                         return;
                     }
 
-                    // WASM version sends messages as strings directly
-                    stockfishEngine.onmessage = function(line){
+                    // WASM version sends message events with .data property
+                    stockfishEngine.onmessage = function(event){
+                        // Handle both event object (WASM) and string (fallback)
+                        var line = (typeof event === 'string') ? event : (event.data || event);
                         console.log('Stockfish:', line);
 
                         if(line.includes('uciok')){
