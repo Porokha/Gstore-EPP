@@ -1288,9 +1288,9 @@
                 return function(){ window.removeEventListener('resize', handleResize); };
             }, []);
 
-            // Create sticky bar outside Shadow DOM for mobile
+            // Create sticky bar outside Shadow DOM for mobile (hide for out of stock)
             useEffect(function(){
-                if (!isMobile) {
+                if (!isMobile || !BOOT.inStock) {
                     // Remove sticky bar if exists
                     var existingBar = document.getElementById('gstore-mobile-sticky-bar');
                     if (existingBar) existingBar.remove();
@@ -1354,12 +1354,12 @@
                 };
             }, [isMobile, priceBlock, gel, t, addToCart]);
 
-            // Desktop sticky bar - show when scrolled past original CTA buttons
+            // Desktop sticky bar - show when scrolled past original CTA buttons (hide for out of stock)
             var _s19 = useState(false);
             var showDesktopSticky = _s19[0]; var setShowDesktopSticky = _s19[1];
 
             useEffect(function(){
-                if (isMobile) {
+                if (isMobile || !BOOT.inStock) {
                     setShowDesktopSticky(false);
                     return;
                 }
@@ -1555,7 +1555,7 @@
                                     }, "↓")
                                 ])
                             ]),
-                            cur.deviceType !== 'laptop' && e("div",{key:"colors",className:"flex gap-2 justify-center flex-wrap"},
+                            BOOT.inStock && cur.deviceType !== 'laptop' && e("div",{key:"colors",className:"flex gap-2 justify-center flex-wrap"},
                                 colors.map(function(c){
                                     var active = (String(c.id)===String(cur.productId));
                                     return e("img",{
@@ -1888,8 +1888,8 @@
                             ])
                         ]),
 
-                        // Color thumbnail row (hidden for laptops)
-                        cur.deviceType !== 'laptop' && e("div",{key:"thumbs",className:"flex gap-3 overflow-x-auto"},
+                        // Color thumbnail row (hidden for laptops and out of stock)
+                        BOOT.inStock && cur.deviceType !== 'laptop' && e("div",{key:"thumbs",className:"flex gap-3 overflow-x-auto"},
                             colors.map(function(c){
                                 var active = (String(c.id)===String(cur.productId));
                                 return e("img",{
@@ -2053,8 +2053,62 @@
                             ])
                         ]),
 
-                        // Storage - hide unavailable options and entire section for laptops
-                        (function(){
+                        // OUT OF STOCK ALERT - Georgian warning when product is not in stock
+                        !BOOT.inStock ? e("div",{key:"out-of-stock-alert",className:"mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg"},[
+                            // Header with icon and title
+                            e("div",{key:"header",className:"flex items-center gap-2 mb-2"},[
+                                // Warning icon (SVG)
+                                e("svg",{
+                                    key:"icon",
+                                    className:"h-5 w-5 text-yellow-600",
+                                    fill:"currentColor",
+                                    viewBox:"0 0 20 20"
+                                },
+                                    e("path",{
+                                        fillRule:"evenodd",
+                                        d:"M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z",
+                                        clipRule:"evenodd"
+                                    })
+                                ),
+                                e("span",{key:"title",className:"font-medium text-yellow-800"},"ყურადღება, მოცემული მოდელი ამ ეტაპზე მარაგში არ გვაქვს!")
+                            ]),
+                            // Description
+                            e("div",{key:"description",className:"mb-4 mt-2 text-sm text-yellow-700"},"თუ მხოლოდ ეს მოდელი გსურთ, შეგიძლიათ დაგვიკავშირდეთ და მხოლოდ თქვენთვის სასწაულს ჩავიდენთ. ან შეგიძლიათ, სხვა შეარჩიოთ"),
+                            // Buttons
+                            e("div",{key:"buttons",className:"flex gap-2"},[
+                                // "შეარჩიე სხვა" button → /shop
+                                e("a",{
+                                    key:"shop",
+                                    href:"/shop",
+                                    className:"inline-flex items-center gap-2 rounded-lg bg-yellow-600 px-3 py-1.5 text-center text-sm font-medium text-white hover:bg-yellow-700 focus:ring-4 focus:ring-yellow-300"
+                                },[
+                                    // Eye icon
+                                    e("svg",{
+                                        key:"icon",
+                                        className:"h-4 w-4",
+                                        fill:"currentColor",
+                                        viewBox:"0 0 20 20"
+                                    },
+                                        e("path",{d:"M10 12a2 2 0 100-4 2 2 0 000 4z"}),
+                                        e("path",{
+                                            fillRule:"evenodd",
+                                            d:"M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z",
+                                            clipRule:"evenodd"
+                                        })
+                                    ),
+                                    "შეარჩიე სხვა"
+                                ]),
+                                // "მთავარი" button → home
+                                e("a",{
+                                    key:"home",
+                                    href:"/",
+                                    className:"rounded-lg border border-yellow-600 bg-transparent px-3 py-1.5 text-center text-sm font-medium text-yellow-700 hover:bg-yellow-700 hover:text-white focus:ring-4 focus:ring-yellow-300"
+                                },"მთავარი")
+                            ])
+                        ]) : null,
+
+                        // Storage - hide unavailable options and entire section for laptops (ONLY show if in stock)
+                        BOOT.inStock && (function(){
                             var availStorages = ALL_STORAGES.filter(function(st){ return storages[st]; });
                             if (availStorages.length === 0) return null;
                             return e("div",{key:"storage",className:"mt-4"},[
@@ -2073,8 +2127,8 @@
                             ]);
                         })(),
 
-                        // Condition + Battery Tier
-                        e("div",{key:"condition",className:"mt-4"},[
+                        // Condition + Battery Tier (ONLY show if in stock)
+                        BOOT.inStock && e("div",{key:"condition",className:"mt-4"},[
                             e("h3",{className:"text-sm font-semibold mb-2"},t('condition_label', 'Condition')),
                             e("div",{className:"flex gap-2 mb-3"},[
                                 CondButton(conditionNewText,'new', avail.hasNew),
@@ -2142,8 +2196,8 @@
                             ])
                         ]),
 
-                        // Laptop Add-ons (RAM/Storage) - Desktop
-                        cur.deviceType === 'laptop' && laptopAddons.length > 0 && e("div",{key:"laptop-addons",className:"mt-3",style:{display:'flex',flexWrap:'wrap',gap:'0.5rem'}},
+                        // Laptop Add-ons (RAM/Storage) - Desktop (ONLY show if in stock)
+                        BOOT.inStock && cur.deviceType === 'laptop' && laptopAddons.length > 0 && e("div",{key:"laptop-addons",className:"mt-3",style:{display:'flex',flexWrap:'wrap',gap:'0.5rem'}},
                             laptopAddons.map(function(addon){
                                 var isSelected = selectedAddons.indexOf(addon.key) >= 0;
                                 return e("div",{
@@ -2171,8 +2225,8 @@
                             })
                         ),
 
-                        // CTAs - with translations
-                        e("div",{key:"cta",className:"flex gap-3 mt-6","data-gstore-cta": "true"},[
+                        // CTAs - with translations (hide for out of stock products)
+                        BOOT.inStock && e("div",{key:"cta",className:"flex gap-3 mt-6","data-gstore-cta": "true"},[
                             e("button",{
                                 key:"cart",
                                 className:"flex-1 cart-btn-desktop bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg flex items-center justify-center gap-2",
@@ -2193,8 +2247,8 @@
                             }, t('buy_now', 'Buy Now') + " " + gel(grandTotal))
                         ]),
 
-                        // FBT - with translations
-                        fbt.length>0 && e("div",{key:"fbt",className:"mt-6"},[
+                        // FBT - with translations (hide for out of stock)
+                        BOOT.inStock && fbt.length>0 && e("div",{key:"fbt",className:"mt-6"},[
                             e("h3",{key:"title",className:"text-base font-semibold mb-4"},t('fbt_title', 'Frequently Bought Together')),
                             e("div",{key:"grid",className:"grid sm:grid-cols-3 gap-4"},
                                 fbt.map(function(item){

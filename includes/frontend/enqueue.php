@@ -256,6 +256,8 @@ add_action('wp_enqueue_scripts', function(){
 		'gallery'    => $gallery,
 		'shippingTime' => $shipping_time,
 		'warehouse'  => $warehouse,
+		'inStock'    => $product->is_in_stock(),
+		'stockStatus' => $product->get_stock_status(),
 		'description' => $product->get_description(),
 		'shortDescription' => $product->get_short_description(),
 		'warrantyContent' => get_option('gstore_epp_warranty_content', ''),
