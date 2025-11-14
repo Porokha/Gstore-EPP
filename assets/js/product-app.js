@@ -2053,16 +2053,39 @@
                             ])
                         ]),
 
-                        // OUT OF STOCK ALERT - Georgian warning when product is not in stock
-                        !BOOT.inStock ? e("div",{key:"out-of-stock-alert",className:"mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg"},[
+                        // OUT OF STOCK ALERT - Georgian warning (Flowbite design with forced styles)
+                        !BOOT.inStock ? e("div",{
+                            key:"out-of-stock-alert",
+                            style:{
+                                marginTop:'1.5rem',
+                                padding:'1rem',
+                                backgroundColor:'#fef3c7',
+                                border:'1px solid #fcd34d',
+                                borderRadius:'0.5rem'
+                            }
+                        },[
                             // Header with icon and title
-                            e("div",{key:"header",className:"flex items-center gap-2 mb-2"},[
-                                // Warning icon (SVG)
+                            e("div",{
+                                key:"header",
+                                style:{
+                                    display:'flex',
+                                    alignItems:'center',
+                                    gap:'0.5rem',
+                                    marginBottom:'0.5rem'
+                                }
+                            },[
+                                // Warning icon (proper size)
                                 e("svg",{
                                     key:"icon",
-                                    className:"h-5 w-5 text-yellow-600",
+                                    style:{
+                                        width:'1.25rem',
+                                        height:'1.25rem',
+                                        color:'#d97706',
+                                        flexShrink:'0'
+                                    },
                                     fill:"currentColor",
-                                    viewBox:"0 0 20 20"
+                                    viewBox:"0 0 20 20",
+                                    xmlns:"http://www.w3.org/2000/svg"
                                 },
                                     e("path",{
                                         fillRule:"evenodd",
@@ -2070,39 +2093,114 @@
                                         clipRule:"evenodd"
                                     })
                                 ),
-                                e("span",{key:"title",className:"font-medium text-yellow-800"},"ყურადღება, მოცემული მოდელი ამ ეტაპზე მარაგში არ გვაქვს!")
+                                e("span",{
+                                    key:"title",
+                                    style:{
+                                        fontWeight:'500',
+                                        color:'#92400e',
+                                        fontSize:'0.875rem',
+                                        lineHeight:'1.25rem'
+                                    }
+                                },"ყურადღება, მოცემული მოდელი ამ ეტაპზე მარაგში არ გვაქვს!")
                             ]),
                             // Description
-                            e("div",{key:"description",className:"mb-4 mt-2 text-sm text-yellow-700"},"თუ მხოლოდ ეს მოდელი გსურთ, შეგიძლიათ დაგვიკავშირდეთ და მხოლოდ თქვენთვის სასწაულს ჩავიდენთ. ან შეგიძლიათ, სხვა შეარჩიოთ"),
+                            e("div",{
+                                key:"description",
+                                style:{
+                                    marginBottom:'1rem',
+                                    marginTop:'0.5rem',
+                                    fontSize:'0.875rem',
+                                    lineHeight:'1.25rem',
+                                    color:'#b45309'
+                                }
+                            },"თუ მხოლოდ ეს მოდელი გსურთ, შეგიძლიათ დაგვიკავშირდეთ და მხოლოდ თქვენთვის სასწაულს ჩავიდენთ. ან შეგიძლიათ, სხვა შეარჩიოთ"),
                             // Buttons
-                            e("div",{key:"buttons",className:"flex gap-2"},[
+                            e("div",{
+                                key:"buttons",
+                                style:{
+                                    display:'flex',
+                                    gap:'0.5rem',
+                                    flexWrap:'wrap'
+                                }
+                            },[
                                 // "შეარჩიე სხვა" button → /shop
                                 e("a",{
                                     key:"shop",
                                     href:"/shop",
-                                    className:"inline-flex items-center gap-2 rounded-lg bg-yellow-600 px-3 py-1.5 text-center text-sm font-medium text-white hover:bg-yellow-700 focus:ring-4 focus:ring-yellow-300"
+                                    style:{
+                                        display:'inline-flex',
+                                        alignItems:'center',
+                                        gap:'0.5rem',
+                                        borderRadius:'0.5rem',
+                                        backgroundColor:'#d97706',
+                                        paddingLeft:'0.75rem',
+                                        paddingRight:'0.75rem',
+                                        paddingTop:'0.375rem',
+                                        paddingBottom:'0.375rem',
+                                        textAlign:'center',
+                                        fontSize:'0.75rem',
+                                        lineHeight:'1rem',
+                                        fontWeight:'500',
+                                        color:'#ffffff',
+                                        textDecoration:'none',
+                                        cursor:'pointer',
+                                        border:'none'
+                                    },
+                                    onMouseOver:function(e){ e.currentTarget.style.backgroundColor='#b45309'; },
+                                    onMouseOut:function(e){ e.currentTarget.style.backgroundColor='#d97706'; }
                                 },[
                                     // Eye icon
                                     e("svg",{
                                         key:"icon",
-                                        className:"h-4 w-4",
+                                        style:{
+                                            width:'1rem',
+                                            height:'1rem',
+                                            marginLeft:'-0.125rem',
+                                            marginRight:'0.5rem',
+                                            flexShrink:'0'
+                                        },
                                         fill:"currentColor",
-                                        viewBox:"0 0 20 20"
-                                    },
+                                        viewBox:"0 0 20 20",
+                                        xmlns:"http://www.w3.org/2000/svg"
+                                    },[
                                         e("path",{d:"M10 12a2 2 0 100-4 2 2 0 000 4z"}),
                                         e("path",{
                                             fillRule:"evenodd",
                                             d:"M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z",
                                             clipRule:"evenodd"
                                         })
-                                    ),
+                                    ]),
                                     "შეარჩიე სხვა"
                                 ]),
                                 // "მთავარი" button → home
                                 e("a",{
                                     key:"home",
                                     href:"/",
-                                    className:"rounded-lg border border-yellow-600 bg-transparent px-3 py-1.5 text-center text-sm font-medium text-yellow-700 hover:bg-yellow-700 hover:text-white focus:ring-4 focus:ring-yellow-300"
+                                    style:{
+                                        borderRadius:'0.5rem',
+                                        border:'1px solid #d97706',
+                                        backgroundColor:'transparent',
+                                        paddingLeft:'0.75rem',
+                                        paddingRight:'0.75rem',
+                                        paddingTop:'0.375rem',
+                                        paddingBottom:'0.375rem',
+                                        textAlign:'center',
+                                        fontSize:'0.75rem',
+                                        lineHeight:'1rem',
+                                        fontWeight:'500',
+                                        color:'#b45309',
+                                        textDecoration:'none',
+                                        cursor:'pointer',
+                                        display:'inline-block'
+                                    },
+                                    onMouseOver:function(e){
+                                        e.currentTarget.style.backgroundColor='#b45309';
+                                        e.currentTarget.style.color='#ffffff';
+                                    },
+                                    onMouseOut:function(e){
+                                        e.currentTarget.style.backgroundColor='transparent';
+                                        e.currentTarget.style.color='#b45309';
+                                    }
                                 },"მთავარი")
                             ])
                         ]) : null,
