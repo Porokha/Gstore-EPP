@@ -1,4 +1,27 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎯 GSTORE EPP - PRODUCT APP (React-based WooCommerce Product Page)
+// ═══════════════════════════════════════════════════════════════════════════════
+// Version: v2024-11-14
+// Total Lines: ~2161
+// Architecture: React 18 + Shadow DOM + WooCommerce REST API
+//
+// 📖 NAVIGATION: See /docs/CODEMAP.md for detailed section map
+// 🔍 Quick Find: Use Ctrl+F (Cmd+F) to search section markers below:
+//    - [SETUP] - Helper functions & utilities
+//    - [STATE] - React state declarations
+//    - [DATA] - Data loading (useEffect hooks)
+//    - [CHALLENGE] - Gamification system (Flappy Bird, Chess, Math)
+//    - [HELPERS] - Calculation & UI helper functions
+//    - [DESKTOP] - Desktop layout (≥1024px)
+//    - [MOBILE] - Mobile layout (<1024px)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 (function(){
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // [SETUP] UTILITY FUNCTIONS (Lines 1-90)
+    // Money formatting, React setup, fetchJSON, translations
+    // ─────────────────────────────────────────────────────────────────────────────
 
     function money(n){ var x = Number(n||0); return isFinite(x) ? Math.floor(x).toString() : "0"; }
     function gel(n){ return "₾" + money(n); }
@@ -228,6 +251,11 @@
             var normalized = String(colorName).toLowerCase().trim();
             return COLOR_MAP[normalized] || '#333';
         }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // [STATE] MAIN APP COMPONENT & STATE MANAGEMENT (Lines 255-486)
+        // React component with 30+ useState hooks for product, UI, and challenge state
+        // ─────────────────────────────────────────────────────────────────────────────
 
         function ProductApp(){
             // Inject modal animations CSS
@@ -459,6 +487,11 @@
                 }, 500); // Minimum loading time for smooth UX
                 return function(){ clearTimeout(timer); };
             }, []);
+
+            // ─────────────────────────────────────────────────────────────────────────────
+            // [DATA] DATA LOADING HOOKS (Lines 371-690)
+            // All useEffect hooks for REST API calls and data initialization
+            // ─────────────────────────────────────────────────────────────────────────────
 
             // Load siblings
             useEffect(function(){
@@ -856,6 +889,12 @@
             // P3 OPTIMIZED: Use reducer action for FBT toggle
             function toggleFBT(id){ dispatch({type: 'TOGGLE_FBT', payload: id}); }
 
+            // ─────────────────────────────────────────────────────────────────────────────
+            // [CHALLENGE] GAMIFICATION SYSTEM (Lines 691-1083)
+            // 3-level challenge: Flappy Bird → Chess → Math
+            // Unlocks 80-85% battery tier pricing on completion
+            // ─────────────────────────────────────────────────────────────────────────────
+
             // Battery Tier Challenge Functions - Load from BOOT.challenge
             var CHALLENGE_TEXTS = BOOT.challenge || {unlock_btn:'დაიმსახურე ყველაზე დაბალი ფასი!',unlocked_btn:'✅ განსაკუთრებული ფასი გახსნილია!',intro_title:'დაიმსახურე ყველაზე დაბალი ფასი!',intro_desc2:'ამას დამსახურება სჭირდება!',intro_desc3:'დაგვამარცხე სამ დონიან თამაშში და მიიღე განსაკუთრებული ფასი.',start_btn:'დაწყება',lose_title:'შენ დამარცხდი',lose_desc:'არ დანებდე, დაგვამარცხე და დაიმსახურე!',try_again:'კიდევ სცადე',level2_title:'შენ გადახვედი მეორე დონეზე!',level2_desc1:'ყოჩაღ, შენ შეძელი და გაიარე პირველი დაბრკოლება.',level2_desc2:'შემდეგი მისია: ჭადრაკი',continue_btn:'გაგრძელება',chess_title:'მეორე დონე: დაამარცხე ჭადრაკში Gstore Chess AI',math_title:'დონე მესამე: მათემატიკური პრობლემა',math_question:'რა არის 6 × 7 ?',submit_btn:'სცადე',congratulations:'გილოცავ',flappy_score:5,chess_difficulty:'2',math_tries:5,score:'ქულა',close_btn:'დახურვა'};
             // Add dynamic functions that can't be stored in database
@@ -1083,6 +1122,11 @@
                 }
             }
             function handleMathSubmit(){ var correctAnswer=parseFloat(BOOT.challenge.math_answer||'42'); var userAnswer=parseFloat(mathInput); if(userAnswer===correctAnswer){ setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! შენ გაქვს '+(mathTries-1)+' მცდელობა'); }else{ setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
+
+            // ─────────────────────────────────────────────────────────────────────────────
+            // [HELPERS] CALCULATION & UI HELPER FUNCTIONS (Lines 1084-1280)
+            // Pricing, comparison, filtering, and UI component helpers
+            // ─────────────────────────────────────────────────────────────────────────────
 
             function ScoreBar(score, better){
                 var width = Math.max(5, Math.min(100, score * 10));
@@ -1355,7 +1399,11 @@
                 return e(LoadingSkeleton);
             }
 
-            // MOBILE LAYOUT
+            // ═════════════════════════════════════════════════════════════════════════════
+            // [MOBILE] MOBILE LAYOUT (Lines 1896-2150) - Viewport <1024px
+            // Single column: Title → Image → Swatches → Info → Selectors → CTA
+            // ═════════════════════════════════════════════════════════════════════════════
+
             if (isMobile) {
                 console.log('🔍 DEBUG - Mobile Layout:', {
                     deviceType: cur.deviceType,
@@ -1697,7 +1745,11 @@
                 ]);
             }
 
-            // DESKTOP LAYOUT
+            // ═════════════════════════════════════════════════════════════════════════════
+            // [DESKTOP] DESKTOP LAYOUT (Lines 1281-1895) - Viewport ≥1024px
+            // Two-column grid: Left (gallery, description, tabs) | Right (selectors, CTA)
+            // ═════════════════════════════════════════════════════════════════════════════
+
             return e("div",{className:"min-h-screen bg-white"},[
                 e("div",{key:"main",className:"max-w-7xl mx-auto p-6 grid lg:grid-cols-2 gap-8"},[
                     // LEFT: Photos + Description + Tabs
