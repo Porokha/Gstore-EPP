@@ -3,7 +3,7 @@
 Plugin Name: Gstore — Enhanced Product Page React Based
 Plugin URI: https://gstore.ge
 Description: React-powered WooCommerce product page with unified pricing rules, add-ons, typography settings, translations, and debug tools.
-Version: 7.0.0
+Version: 7.0.1
 Author: Porokha
 Author URI: https://gstore.ge
 Update URI: https://github.com/Porokha/gstore-EPP
@@ -57,7 +57,7 @@ add_filter('pre_set_site_transient_update_plugins', function($transient){
 
 if (!defined('ABSPATH')) { exit; }
 
-define('GSTORE_EPP_VERSION', '2.5.3');
+define('GSTORE_EPP_VERSION', '7.0.1');
 define('GSTORE_EPP_DIR', plugin_dir_path(__FILE__));
 define('GSTORE_EPP_URL', plugin_dir_url(__FILE__));
 
@@ -81,4 +81,3 @@ register_activation_hook(__FILE__, function(){
 	gstore_epp_create_tables();
 	gstore_epp_ensure_logs_dir();
 });
-

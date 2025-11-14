@@ -266,6 +266,9 @@ class GStore_EPP_REST {
 					$ip = wc_get_product($id);
 					if (!$ip) continue;
 
+					// CRITICAL: Skip out-of-stock products
+					if (!$ip->is_in_stock()) continue;
+
 					$img_id = $ip->get_image_id();
 					$hero = $img_id ? wp_get_attachment_image_url($img_id, 'large') : wc_placeholder_img_src('large');
 

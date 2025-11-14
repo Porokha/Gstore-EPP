@@ -86,3 +86,86 @@ add_action('woocommerce_before_calculate_totals', function($cart){
 		}
 	}
 }, 20);
+
+/** Display custom meta in cart **/
+add_filter('woocommerce_get_item_data', function($item_data, $cart_item){
+	if (empty($cart_item)) return $item_data;
+
+	// Condition
+	if (!empty($cart_item['gstore_cond'])){
+		$cond_label = strtoupper($cart_item['gstore_cond']);
+		if ($cart_item['gstore_cond'] === 'used') $cond_label = 'USED (A)';
+		$item_data[] = [
+			'key' => __('Condition', 'gstore-epp'),
+			'value' => $cond_label
+		];
+	}
+
+	// Battery Tier (only for used condition)
+	if (!empty($cart_item['gstore_tier']) && $cart_item['gstore_cond'] === 'used'){
+		$item_data[] = [
+			'key' => __('Battery Health', 'gstore-epp'),
+			'value' => $cart_item['gstore_tier'] . '%'
+		];
+	}
+
+	// New Battery
+	if (!empty($cart_item['gstore_new_battery']) && $cart_item['gstore_new_battery'] === 'yes'){
+		$item_data[] = [
+			'key' => __('New Battery', 'gstore-epp'),
+			'value' => __('Added', 'gstore-epp')
+		];
+	}
+
+	// Laptop Add-ons
+	if (!empty($cart_item['gstore_addons']) && is_array($cart_item['gstore_addons'])){
+		$addons = $cart_item['gstore_addons'];
+		if (!empty($addons['ram'])){
+			$item_data[] = [
+				'key' => __('RAM Upgrade', 'gstore-epp'),
+				'value' => $addons['ram']['label'] ?? $addons['ram']['value']
+			];
+		}
+		if (!empty($addons['storage'])){
+			$item_data[] = [
+				'key' => __('Storage Upgrade', 'gstore-epp'),
+				'value' => $addons['storage']['label'] ?? $addons['storage']['value']
+			];
+		}
+	}
+
+	return $item_data;
+}, 10, 2);
+
+/** Save custom meta to order items **/
+add_action('woocommerce_checkout_create_order_line_item', function($item, $cart_item_key, $values, $order){
+	if (empty($values)) return;
+
+	// Save condition
+	if (!empty($values['gstore_cond'])){
+		$cond_label = strtoupper($values['gstore_cond']);
+		if ($values['gstore_cond'] === 'used') $cond_label = 'USED (A)';
+		$item->add_meta_data(__('Condition', 'gstore-epp'), $cond_label, true);
+	}
+
+	// Save battery tier
+	if (!empty($values['gstore_tier']) && $values['gstore_cond'] === 'used'){
+		$item->add_meta_data(__('Battery Health', 'gstore-epp'), $values['gstore_tier'] . '%', true);
+	}
+
+	// Save new battery
+	if (!empty($values['gstore_new_battery']) && $values['gstore_new_battery'] === 'yes'){
+		$item->add_meta_data(__('New Battery', 'gstore-epp'), __('Added', 'gstore-epp'), true);
+	}
+
+	// Save laptop add-ons
+	if (!empty($values['gstore_addons']) && is_array($values['gstore_addons'])){
+		$addons = $values['gstore_addons'];
+		if (!empty($addons['ram'])){
+			$item->add_meta_data(__('RAM Upgrade', 'gstore-epp'), $addons['ram']['label'] ?? $addons['ram']['value'], true);
+		}
+		if (!empty($addons['storage'])){
+			$item->add_meta_data(__('Storage Upgrade', 'gstore-epp'), $addons['storage']['label'] ?? $addons['storage']['value'], true);
+		}
+	}
+}, 10, 4);

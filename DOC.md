@@ -1,4 +1,4 @@
-# 🎯 Gstore EPP - Complete Technical Documentation (v5.3.0)
+# 🎯 Gstore EPP - Complete Technical Documentation (v7.0.0)
 
 **Last Updated:** November 12, 2025  
 **Plugin Version:** 5.3.0  
@@ -141,7 +141,7 @@ const [tier80Unlocked, setTier80Unlocked] = useState(false);
 ```javascript
 useEffect(() => {
     if (challengeScreen !== 'game') return;
-    
+
     const interval = setInterval(() => {
         // Update bird position
         setBirdY(y => {
@@ -149,15 +149,15 @@ useEffect(() => {
             setBirdVel(newVel);
             return y + newVel;
         });
-        
+
         // Move pipes left
         setPipes(pipes => pipes.map(p => ({...p, x: p.x - 2})));
-        
+
         // Check collisions
         // Check score
         // Spawn new pipes
     }, 16); // ~60 FPS
-    
+
     return () => clearInterval(interval);
 }, [challengeScreen, birdY, birdVel, pipes]);
 ```
@@ -167,7 +167,7 @@ useEffect(() => {
 function checkCollision() {
     // Bird off screen
     if (birdY < 0 || birdY > 500) return true;
-    
+
     // Bird hits pipe
     pipes.forEach(pipe => {
         if (pipe.x < 100 && pipe.x > 20) {
@@ -176,7 +176,7 @@ function checkCollision() {
             }
         }
     });
-    
+
     return false;
 }
 ```
@@ -210,7 +210,7 @@ const initChess = () => {
 ```javascript
 function handleMathSubmit() {
     const answer = parseInt(mathInput);
-    
+
     if (answer === 15) {
         setTier80Unlocked(true);
         setShowChallenge(false);
@@ -219,7 +219,7 @@ function handleMathSubmit() {
         setTier('80-85');
     } else {
         setMathTries(mathTries + 1);
-        
+
         if (mathTries >= 2) {
             // Failed all attempts
             setMathFeedback('სამწუხაროდ, ცდეთ ვერ გაიარეს.');
@@ -248,8 +248,8 @@ function handleMathSubmit() {
 **Modal Structure (All Screens):**
 ```javascript
 e("div", {className: "pointer-events-auto bg-white rounded-xl shadow-2xl",
-          style: {width:'90%', maxWidth:'500px', minWidth:'500px',
-                  boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'}}, [
+    style: {width:'90%', maxWidth:'500px', minWidth:'500px',
+        boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'}}, [
     // Header
     e("div", {className: "bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"}, [
         e("h2", {className: "text-4xl font-bold text-blue-600 mb-4"}, title)
@@ -501,25 +501,25 @@ function ProductApp() {
     const [cond, setCond] = useState('new');              // NEW/USED condition
     const [fbt, setFbt] = useState([]);                   // FBT products
     const [selectedFBT, setSelectedFBT] = useState([]);   // Selected FBT IDs
-    
+
     // EFFECTS
     useEffect(() => {
         // Load siblings from REST API
         fetch(`/wp-json/gstore/v1/siblings?product_id=${productId}`)
     }, []);
-    
+
     useEffect(() => {
         // Load pricing rules (storage-specific)
         fetch(`/wp-json/gstore/v1/pricing?product_id=${productId}`)
     }, []);
-    
+
     useEffect(() => {
         // Auto-apply default tier when switching to USED
         if (cond === 'used' && rules?.default_condition) {
             setTier(rules.default_condition);
         }
     }, [cond, rules]);
-    
+
     // RENDER
     return (
         <div className="max-w-7xl mx-auto p-6 grid lg:grid-cols-2 gap-8">
@@ -804,30 +804,30 @@ const priceBlock = useMemo(() => {
     let reg = parseFloat(cur.regular || cur.price || 0);
     let sale = parseFloat(cur.sale || 0);
     let showSale = (sale > 0 && sale < reg) ? sale : null;
-    
+
     // If NEW or no rules, use WooCommerce price
     if (!rules || !rules.exists || cond === 'new') {
         let base = showSale != null ? sale : reg;
         return {base: base, reg: reg, sale: showSale, hasSale: !!showSale};
     }
-    
+
     // If USED and tier selected, use pricing rule
     if (tier) {
         let chosen = rules.pricing[tier] || {};
         let r = parseFloat(chosen.regular || 0);
         let s = parseFloat(chosen.sale || 0);
         let base = (s > 0 && s < r) ? s : r;
-        
+
         // Add new battery if checked
         if (cur.deviceType === 'phone' && newBat) {
             let nb = rules.pricing['new_battery'] || {};
             let add = parseFloat((nb.sale && nb.sale !== '') ? nb.sale : (nb.regular || 0));
             if (isFinite(add)) base += add;
         }
-        
+
         return {base: base, reg: r, sale: (s > 0 && s < r) ? s : null, hasSale: (s > 0 && s < r)};
     }
-    
+
     // No tier selected, show WooCommerce price
     let base = showSale != null ? sale : reg;
     return {base: base, reg: reg, sale: showSale, hasSale: !!showSale};
@@ -1001,14 +1001,14 @@ All user-facing text can be customized without code changes.
 function t(key, fallback, replacements) {
     var translations = BOOT.translations || {};
     var text = translations[key] || fallback;
-    
+
     // Replace placeholders like {amount}, {price}, {condition}
     if (replacements) {
         Object.keys(replacements).forEach(function(placeholder) {
             text = text.replace(new RegExp('{' + placeholder + '}', 'g'), replacements[placeholder]);
         });
     }
-    
+
     return text;
 }
 
@@ -1135,7 +1135,7 @@ e("div", {className: "flex items-center gap-2"}, [
 const batteryHealth = useMemo(() => {
     if (cond === 'new') return '100%';
     if (!tier) return '100%';
-    
+
     // tier is like "80-85", "90-95", etc.
     // Use midpoint for display
     const parts = tier.split('-');
@@ -1222,7 +1222,7 @@ e("div", {key: "storage"}, [
             e("h3", {}, "Add RAM"),
             // Fetch from Global Add-ons, render checkboxes
         ]),
-        
+
         // Render laptop storage options
         e("div", {}, [
             e("h3", {}, "Add Storage"),
@@ -1253,7 +1253,7 @@ e("div", {key: "storage"}, [
 
 **Current CSS:**
 ```css
-#gstore-epp-shadow-host { 
+#gstore-epp-shadow-host {
     z-index: 999999 !important;
     position: relative !important;
 }
@@ -1262,7 +1262,7 @@ e("div", {key: "storage"}, [
 **Required Fix:**
 ```css
 /* Remove excessive z-index */
-#gstore-epp-shadow-host { 
+#gstore-epp-shadow-host {
     z-index: auto; /* or z-index: 1 */
     position: relative;
 }

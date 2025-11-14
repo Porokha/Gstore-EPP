@@ -247,6 +247,38 @@ add_action('wp_enqueue_scripts', function(){
 			'nonce' => wp_create_nonce('gstore_epp_ajax')
 		],
 		'assetsCss'  => GSTORE_EPP_URL.'assets/css/tw.css',
+		'challenge'  => get_option('gstore_epp_challenge_settings', [
+			'flappy_score' => 5,
+			'chess_difficulty' => '2',
+			'math_tries' => 5,
+			'unlock_btn' => 'დაიმსახურე ყველაზე დაბალი ფასი!',
+			'unlocked_btn' => '✅ განსაკუთრებული ფასი გახსნილია!',
+			'intro_title' => 'დაიმსახურე ყველაზე დაბალი ფასი!',
+			'intro_desc2' => 'ამას დამსახურება სჭირდება!',
+			'intro_desc3' => 'დაგვამარცხე სამ დონიან თამაშში და მიიღე განსაკუთრებული ფასი.',
+			'start_btn' => 'დაწყება',
+			'lose_title' => 'შენ დამარცხდი',
+			'lose_desc' => 'არ დანებდე, დაგვამარცხე და დაიმსახურე!',
+			'try_again' => 'კიდევ სცადე',
+			'level2_title' => 'შენ გადახვედი მეორე დონეზე!',
+			'level2_desc1' => 'ყოჩაღ, შენ შეძელი და გაიარე პირველი დაბრკოლება.',
+			'level2_desc2' => 'შემდეგი მისია: ჭადრაკი',
+			'continue_btn' => 'გაგრძელება',
+			'chess_title' => 'მეორე დონე: დაამარცხე ჭადრაკში Gstore Chess AI',
+			'math_title' => 'დონე მესამე: მათემატიკური პრობლემა',
+			'math_question' => 'რა არის 6 × 7 ?',
+			'submit_btn' => 'სცადე',
+			'congratulations' => 'გილოცავ'
+		]),
+		'rest'       => [
+			'base'  => esc_url_raw( rest_url( 'gstore/v1' ) ),
+			'nonce' => wp_create_nonce('wp_rest')
+		],
+		'ajax'       => [
+			'url'   => admin_url('admin-ajax.php'),
+			'nonce' => wp_create_nonce('gstore_epp_ajax')
+		],
+		'assetsCss'  => GSTORE_EPP_URL.'assets/css/tw.css',
 	];
 
 	// Global URLs for Shadow DOM
@@ -256,12 +288,28 @@ add_action('wp_enqueue_scripts', function(){
 		'after'
 	);
 
+	// Enqueue chess.js for proper chess rules (using jsdelivr for reliability)
+	wp_enqueue_script('chess-js',
+		'https://cdn.jsdelivr.net/npm/chess.js@0.10.3/chess.min.js',
+		['react','react-dom'],
+		'0.10.3',
+		true // Load in footer after React
+	);
+
+	// Enqueue Stockfish WASM - Official browser-compatible version
+	wp_enqueue_script('stockfish-js',
+		'https://cdn.jsdelivr.net/npm/stockfish.wasm@0.11.0/stockfish.js',
+		['chess-js'],
+		'0.11.0',
+		true
+	);
+
 	// Register product app with aggressive cache busting
 	$js_file = GSTORE_EPP_DIR.'assets/js/product-app.js';
 	$js_url = GSTORE_EPP_URL.'assets/js/product-app.js?v=' . filemtime($js_file);
 	wp_register_script('gstore-epp-app',
 		$js_url,
-		['react','react-dom'],
+		['react','react-dom','chess-js','stockfish-js'],
 		GSTORE_EPP_VERSION . '.' . filemtime($js_file),
 		true
 	);

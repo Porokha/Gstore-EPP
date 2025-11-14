@@ -11,6 +11,7 @@ add_action('admin_menu', function(){
 
     add_submenu_page('gstore_root','Pricing Rules','Pricing Rules','manage_woocommerce','gstore_rules','gstore_rules_page');
     add_submenu_page('gstore_root','Global Add-ons','Global Add-ons','manage_woocommerce','gstore_addons','gstore_addons_page');
+    add_submenu_page('gstore_root','Challenge Game','Challenge Game','manage_woocommerce','gstore_challenge','gstore_challenge_page');
     add_submenu_page('gstore_root','Debug & Logging','Debug & Logging','manage_woocommerce','gstore_debug','gstore_debug_page');
     add_submenu_page('gstore_root','Maintenance','Maintenance','manage_woocommerce','gstore_maint','gstore_maint_page');
 });
@@ -22,6 +23,8 @@ add_action('admin_post_gstore_clear_rules','gstore_handle_clear_rules');
 add_action('admin_post_gstore_clear_pricing_cache','gstore_handle_clear_pricing_cache');
 add_action('admin_post_gstore_save_addons','gstore_handle_save_addons');
 add_action('admin_post_gstore_save_debug','gstore_handle_save_debug');
+add_action('admin_post_gstore_save_challenge','gstore_handle_save_challenge');
+add_action('admin_post_gstore_reset_challenge','gstore_handle_reset_challenge');
 
 // --- Pricing Rules UI
 function gstore_rules_page(){
@@ -33,11 +36,14 @@ function gstore_fetch_models_without_rule(){
     global $wpdb;
     $table = gstore_epp_table_rules();
 
+    // Limit to 500 products for performance
     $q = new WP_Query([
             'post_type'=>'product',
-            'posts_per_page'=>-1,
+            'posts_per_page'=>500,
             'post_status'=>'publish',
-            'fields'=>'ids'
+            'fields'=>'ids',
+            'orderby'=>'modified',
+            'order'=>'DESC'
     ]);
 
     $all = [];
@@ -709,3 +715,231 @@ add_action('admin_post_gstore_clear_caches', function(){
         exit;
     }
 });
+
+// --- Challenge Game Settings
+function gstore_challenge_page(){
+    $settings = get_option('gstore_epp_challenge_settings', gstore_challenge_default_settings());
+
+    if (!empty($_GET['updated'])) {
+        echo '<div class="notice notice-success is-dismissible"><p>Settings saved successfully.</p></div>';
+    }
+    ?>
+    <div class="wrap">
+        <h1 class="wp-heading-inline">Challenge Game Settings</h1>
+        <hr class="wp-header-end" />
+
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <?php wp_nonce_field('gstore_save_challenge','gstore_save_challenge_nonce'); ?>
+            <input type="hidden" name="action" value="gstore_save_challenge" />
+
+            <h2>Game Difficulty</h2>
+            <table class="form-table">
+                <tr>
+                    <th><label for="flappy_score">Flappy Bird Score to Advance</label></th>
+                    <td>
+                        <input type="number" id="flappy_score" name="flappy_score" value="<?php echo esc_attr($settings['flappy_score']); ?>" min="1" max="100" />
+                        <p class="description">Score required to pass level 1 (default: 5)</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="chess_difficulty">Chess AI Difficulty (Stockfish Depth)</label></th>
+                    <td>
+                        <select id="chess_difficulty" name="chess_difficulty">
+                            <option value="1" <?php selected($settings['chess_difficulty'], '1'); ?>>Very Easy (Depth 1)</option>
+                            <option value="2" <?php selected($settings['chess_difficulty'], '2'); ?>>Easy (Depth 2)</option>
+                            <option value="3" <?php selected($settings['chess_difficulty'], '3'); ?>>Medium (Depth 3)</option>
+                            <option value="4" <?php selected($settings['chess_difficulty'], '4'); ?>>Hard (Depth 4)</option>
+                            <option value="5" <?php selected($settings['chess_difficulty'], '5'); ?>>Very Hard (Depth 5)</option>
+                        </select>
+                        <p class="description">Stockfish search depth - higher is harder (default: 2 - Easy)</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="math_tries">Math Challenge Attempts</label></th>
+                    <td>
+                        <input type="number" id="math_tries" name="math_tries" value="<?php echo esc_attr($settings['math_tries']); ?>" min="1" max="10" />
+                        <p class="description">Number of attempts for math challenge (default: 5)</p>
+                    </td>
+                </tr>
+            </table>
+
+            <h2>Translations (Georgian)</h2>
+            <table class="form-table">
+                <tr>
+                    <th><label for="unlock_btn">Unlock Button Text</label></th>
+                    <td><input type="text" id="unlock_btn" name="unlock_btn" value="<?php echo esc_attr($settings['unlock_btn']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="unlocked_btn">Unlocked Button Text</label></th>
+                    <td><input type="text" id="unlocked_btn" name="unlocked_btn" value="<?php echo esc_attr($settings['unlocked_btn']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="intro_title">Intro Title</label></th>
+                    <td><input type="text" id="intro_title" name="intro_title" value="<?php echo esc_attr($settings['intro_title']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="intro_desc2">Intro Description 2</label></th>
+                    <td><input type="text" id="intro_desc2" name="intro_desc2" value="<?php echo esc_attr($settings['intro_desc2']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="intro_desc3">Intro Description 3</label></th>
+                    <td><input type="text" id="intro_desc3" name="intro_desc3" value="<?php echo esc_attr($settings['intro_desc3']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="start_btn">Start Button</label></th>
+                    <td><input type="text" id="start_btn" name="start_btn" value="<?php echo esc_attr($settings['start_btn']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="lose_title">Lose Title</label></th>
+                    <td><input type="text" id="lose_title" name="lose_title" value="<?php echo esc_attr($settings['lose_title']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="lose_desc">Lose Description</label></th>
+                    <td><input type="text" id="lose_desc" name="lose_desc" value="<?php echo esc_attr($settings['lose_desc']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="try_again">Try Again Button</label></th>
+                    <td><input type="text" id="try_again" name="try_again" value="<?php echo esc_attr($settings['try_again']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="level2_title">Level 2 Title</label></th>
+                    <td><input type="text" id="level2_title" name="level2_title" value="<?php echo esc_attr($settings['level2_title']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="level2_desc1">Level 2 Description 1</label></th>
+                    <td><input type="text" id="level2_desc1" name="level2_desc1" value="<?php echo esc_attr($settings['level2_desc1']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="level2_desc2">Level 2 Description 2</label></th>
+                    <td><input type="text" id="level2_desc2" name="level2_desc2" value="<?php echo esc_attr($settings['level2_desc2']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="continue_btn">Continue Button</label></th>
+                    <td><input type="text" id="continue_btn" name="continue_btn" value="<?php echo esc_attr($settings['continue_btn']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="chess_title">Chess Title</label></th>
+                    <td><input type="text" id="chess_title" name="chess_title" value="<?php echo esc_attr($settings['chess_title']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="math_title">Math Title</label></th>
+                    <td><input type="text" id="math_title" name="math_title" value="<?php echo esc_attr($settings['math_title']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="math_question">Math Question</label></th>
+                    <td><input type="text" id="math_question" name="math_question" value="<?php echo esc_attr($settings['math_question']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="submit_btn">Submit Button</label></th>
+                    <td><input type="text" id="submit_btn" name="submit_btn" value="<?php echo esc_attr($settings['submit_btn']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="congratulations">Congratulations</label></th>
+                    <td><input type="text" id="congratulations" name="congratulations" value="<?php echo esc_attr($settings['congratulations']); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="score">Score Label</label></th>
+                    <td><input type="text" id="score" name="score" value="<?php echo esc_attr($settings['score'] ?? 'ქულა'); ?>" class="regular-text" /></td>
+                </tr>
+                <tr>
+                    <th><label for="close_btn">Close Button</label></th>
+                    <td><input type="text" id="close_btn" name="close_btn" value="<?php echo esc_attr($settings['close_btn'] ?? 'დახურვა'); ?>" class="regular-text" /></td>
+                </tr>
+            </table>
+
+            <p class="submit">
+                <button type="submit" class="button button-primary button-large">Save Settings</button>
+                <a class="button button-large" href="<?php echo esc_url( wp_nonce_url(admin_url('admin-post.php?action=gstore_reset_challenge'), 'gstore_reset_challenge') ); ?>" onclick="return confirm('Reset to default values?');">Reset to Defaults</a>
+            </p>
+        </form>
+    </div>
+    <?php
+}
+
+function gstore_challenge_default_settings(){
+    return [
+            'flappy_score' => 5,
+            'chess_difficulty' => '2',
+            'math_tries' => 5,
+            'unlock_btn' => 'დაიმსახურე ყველაზე დაბალი ფასი!',
+            'unlocked_btn' => '✅ განსაკუთრებული ფასი გახსნილია!',
+            'intro_title' => 'დაიმსახურე ყველაზე დაბალი ფასი!',
+            'intro_desc2' => 'ამას დამსახურება სჭირდება!',
+            'intro_desc3' => 'დაგვამარცხე სამ დონიან თამაშში და მიიღე განსაკუთრებული ფასი.',
+            'start_btn' => 'დაწყება',
+            'lose_title' => 'შენ დამარცხდი',
+            'lose_desc' => 'არ დანებდე, დაგვამარცხე და დაიმსახურე!',
+            'try_again' => 'კიდევ სცადე',
+            'level2_title' => 'შენ გადახვედი მეორე დონეზე!',
+            'level2_desc1' => 'ყოჩაღ, შენ შეძელი და გაიარე პირველი დაბრკოლება.',
+            'level2_desc2' => 'შემდეგი მისია: ჭადრაკი',
+            'continue_btn' => 'გაგრძელება',
+            'chess_title' => 'მეორე დონე: დაამარცხე ჭადრაკში Gstore Chess AI',
+            'math_title' => 'დონე მესამე: მათემატიკური პრობლემა',
+            'math_question' => 'რა არის 6 × 7 ?',
+            'submit_btn' => 'სცადე',
+            'congratulations' => 'გილოცავ',
+            'score' => 'ქულა',
+            'close_btn' => 'დახურვა'
+    ];
+}
+
+function gstore_handle_save_challenge(){
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die('Unauthorized', 'Error', ['response'=>403]);
+    }
+
+    if (!isset($_POST['gstore_save_challenge_nonce']) || !wp_verify_nonce($_POST['gstore_save_challenge_nonce'], 'gstore_save_challenge')) {
+        wp_die('Nonce verification failed', 'Error', ['response'=>403]);
+    }
+
+    try{
+        $settings = [
+                'flappy_score' => max(1, min(100, absint($_POST['flappy_score'] ?? 5))),
+                'chess_difficulty' => sanitize_text_field($_POST['chess_difficulty'] ?? '2'),
+                'math_tries' => max(1, min(10, absint($_POST['math_tries'] ?? 5))),
+                'unlock_btn' => sanitize_text_field($_POST['unlock_btn'] ?? ''),
+                'unlocked_btn' => sanitize_text_field($_POST['unlocked_btn'] ?? ''),
+                'intro_title' => sanitize_text_field($_POST['intro_title'] ?? ''),
+                'intro_desc2' => sanitize_text_field($_POST['intro_desc2'] ?? ''),
+                'intro_desc3' => sanitize_text_field($_POST['intro_desc3'] ?? ''),
+                'start_btn' => sanitize_text_field($_POST['start_btn'] ?? ''),
+                'lose_title' => sanitize_text_field($_POST['lose_title'] ?? ''),
+                'lose_desc' => sanitize_text_field($_POST['lose_desc'] ?? ''),
+                'try_again' => sanitize_text_field($_POST['try_again'] ?? ''),
+                'level2_title' => sanitize_text_field($_POST['level2_title'] ?? ''),
+                'level2_desc1' => sanitize_text_field($_POST['level2_desc1'] ?? ''),
+                'level2_desc2' => sanitize_text_field($_POST['level2_desc2'] ?? ''),
+                'continue_btn' => sanitize_text_field($_POST['continue_btn'] ?? ''),
+                'chess_title' => sanitize_text_field($_POST['chess_title'] ?? ''),
+                'math_title' => sanitize_text_field($_POST['math_title'] ?? ''),
+                'math_question' => sanitize_text_field($_POST['math_question'] ?? ''),
+                'submit_btn' => sanitize_text_field($_POST['submit_btn'] ?? ''),
+                'congratulations' => sanitize_text_field($_POST['congratulations'] ?? ''),
+                'score' => sanitize_text_field($_POST['score'] ?? ''),
+                'close_btn' => sanitize_text_field($_POST['close_btn'] ?? '')
+        ];
+
+        update_option('gstore_epp_challenge_settings', $settings, false);
+
+        wp_safe_redirect( admin_url('admin.php?page=gstore_challenge&updated=1') );
+        exit;
+
+    } catch(\Throwable $e){
+        wp_safe_redirect( admin_url('admin.php?page=gstore_challenge&err=1') );
+        exit;
+    }
+}
+
+function gstore_handle_reset_challenge(){
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die('Unauthorized', 'Error', ['response'=>403]);
+    }
+
+    check_admin_referer('gstore_reset_challenge');
+
+    delete_option('gstore_epp_challenge_settings');
+
+    wp_safe_redirect( admin_url('admin.php?page=gstore_challenge&updated=1') );
+    exit;
+}

@@ -23,7 +23,9 @@ function gstore_epp_create_tables(){
         warranty_text TEXT NULL,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
-        UNIQUE KEY group_key_uniq (group_key)
+        UNIQUE KEY group_key_uniq (group_key),
+        KEY device_type_idx (device_type),
+        KEY updated_at_idx (updated_at)
     ) $charset;";
 	dbDelta($sql1);
 
@@ -33,7 +35,8 @@ function gstore_epp_create_tables(){
         data_json LONGTEXT NULL,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
-        UNIQUE KEY scope_uniq (scope)
+        UNIQUE KEY scope_uniq (scope),
+        KEY updated_at_idx (updated_at)
     ) $charset;";
 	dbDelta($sql2);
 }

@@ -230,6 +230,16 @@
         }
 
         function ProductApp(){
+            // Inject modal animations CSS
+            useEffect(function(){
+                if(!document.getElementById('modal-animations')){
+                    var style = document.createElement('style');
+                    style.id = 'modal-animations';
+                    style.textContent = '@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}';
+                    document.head.appendChild(style);
+                }
+            }, []);
+
             // P3 OPTIMIZED: Consolidated state management with useReducer
             var useReducer = React.useReducer;
 
@@ -452,23 +462,27 @@
 
             // Load siblings
             useEffect(function(){
-                var url = BOOT.rest.base.replace(/\/+$/,'') + '/siblings?product_id=' + BOOT.productId;
+                var url = BOOT.rest.base.replace(/\/+$/,'') + '/siblings?product_id=' + cur.productId;
                 fetchJSON(url).then(function(j){
                     if (j && j.ok){ setSiblings(j.siblings||[]); }
                 }).catch(function(e){ console.error('siblings fetch failed', e); });
-            }, []);
+            }, [cur.productId]);
 
             // Load the pricing and set default tier - reload when product changes
             useEffect(function(){
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/pricing?product_id=' + cur.productId;
                 fetchJSON(url).then(function(j){
                     setRules(j);
-                    // Set default tier immediately when rules load for used products
-                    if (j && j.exists && j.default_condition && cond==='used'){
-                        setTier(j.default_condition);
+                    // Set default tier only if tier is null (product just switched)
+                    var currentCond = (cur.condition||'').toLowerCase();
+                    if (j && j.exists && j.default_condition && currentCond==='used'){
+                        setTier(function(prevTier){
+                            // Only set default if no tier is currently selected
+                            return prevTier === null ? j.default_condition : prevTier;
+                        });
                     }
                 }).catch(function(e){ console.error('pricing fetch failed', e); });
-            }, [cur.productId, cond]);
+            }, [cur.productId, cur.condition]);
 
             // Load FBT - reload when product changes (storage switch)
             useEffect(function(){
@@ -530,7 +544,8 @@
             useEffect(function(){
                 if (challengeScreen !== 'game' || !gameRunning) return;
                 var gapHalf = 100;
-                setPipes(function(prev){ return prev.map(function(p){ if (!p.scored && p.x < 60){ setChallengeScore(function(s){ var newScore = s + 10; if (newScore >= 100 && challengeLevel === 1){ setChallengeLevel(2); setGameRunning(false); setChallengeScreen('level2'); } return newScore; }); return {...p, scored: true}; } return p; }); });
+                var targetScore = (BOOT.challenge && BOOT.challenge.flappy_score) ? parseInt(BOOT.challenge.flappy_score) * 10 : 50;
+                setPipes(function(prev){ return prev.map(function(p){ if (!p.scored && p.x < 60){ setChallengeScore(function(s){ var newScore = s + 10; if (newScore >= targetScore && challengeLevel === 1){ setChallengeLevel(2); setGameRunning(false); setChallengeScreen('level2'); } return newScore; }); return {...p, scored: true}; } return p; }); });
                 for (var i = 0; i < pipes.length; i++){ var p = pipes[i]; if (p.x < 80 && p.x > 20){ if (birdY < p.gapY - gapHalf || birdY > p.gapY + gapHalf){ setGameRunning(false); setChallengeScreen('lose'); return; } } }
             }, [birdY, pipes, challengeScore, challengeLevel, gameRunning, challengeScreen]);
 
@@ -620,6 +635,21 @@
             function switchToProductId(id){
                 var p = siblings.find(function(x){ return Number(x.id)===Number(id); });
                 if (!p) return;
+
+                // Update BOOT.productId to sync with WP admin edit link
+                BOOT.productId = p.id;
+
+                // Update WordPress edit link if it exists (for logged-in admins)
+                var editLink = document.querySelector('.post-edit-link');
+                if (editLink) {
+                    var currentHref = editLink.getAttribute('href');
+                    if (currentHref) {
+                        // Replace the post parameter with the new product ID
+                        var newHref = currentHref.replace(/([?&]post=)\d+/, '$1' + p.id);
+                        editLink.setAttribute('href', newHref);
+                    }
+                }
+
                 setCur({
                     productId: p.id,
                     title: p.title,
@@ -637,12 +667,10 @@
                 var newCond = ((p.condition||'').toLowerCase()==='new') ? 'new':'used';
                 setCond(newCond);
                 setNewBat(false);
+                setSelectedAddons([]);
 
-                if (newCond === 'used' && rules && rules.exists && rules.default_condition) {
-                    setTier(rules.default_condition);
-                } else {
-                    setTier(null);
-                }
+                // Always reset tier immediately to prevent price mismatch
+                setTier(null);
 
                 try { window.history.replaceState({}, "", p.permalink); } catch(e){}
             }
@@ -658,14 +686,14 @@
                 if (p) switchToProductId(p.id);
             }
 
-            // SMART DEFAULT: Auto-select first available storage when condition changes
+            // SMART DEFAULT: Auto-select storage when condition changes
             useEffect(function(){
                 var availableStorages = Object.keys(storages);
                 if (availableStorages.length > 0) {
-                    var currentAvailable = storages[cur.storage];
-                    if (!currentAvailable) {
-                        switchStorage(availableStorages[0]);
-                    }
+                    // Always switch to matching product when condition changes
+                    // If current storage exists in new condition, use it; otherwise use first available
+                    var targetStorage = storages[cur.storage] ? cur.storage : availableStorages[0];
+                    switchStorage(targetStorage);
                 }
             }, [cond]);
 
@@ -674,7 +702,10 @@
                 var sale = parseFloat(cur.sale||0);
                 var showSale = (sale>0 && sale<reg) ? sale : null;
 
-                if (!rules || !rules.exists || cond==='new'){
+                // Use cur.condition instead of cond state to avoid sync issues
+                var currentCondition = (cur.condition||'').toLowerCase();
+
+                if (!rules || !rules.exists || currentCondition==='new'){
                     var base = showSale!=null ? sale : reg;
                     return {base:base||0, reg:reg||0, sale:showSale, hasSale:!!showSale};
                 }
@@ -699,7 +730,7 @@
                 // This was causing double-charging
 
                 return {base:base4||0, reg:r||0, sale:(s>0 && s<r)?s:null, hasSale:(s>0 && s<r)};
-            }, [cur, rules, tier, newBat, cond]);
+            }, [cur.productId, cur.price, cur.regular, cur.sale, cur.storage, cur.condition, rules, tier, newBat]);
 
             var batteryPriceBlock = useMemo(function(){
                 if (!rules || !rules.exists || !rules.pricing) return {price:0, regular:0, sale:null, hasSale:false};
@@ -799,21 +830,238 @@
                     className:cls,
                     style:{width:'90px'},
                     disabled:!enabled,
-                    onClick:function(){ if(enabled) setCond(key); }
+                    onClick:function(){ if(enabled){ setTier(null); setNewBat(false); setCond(key); } }
                 }, lbl);
             }
 
             // P3 OPTIMIZED: Use reducer action for FBT toggle
             function toggleFBT(id){ dispatch({type: 'TOGGLE_FBT', payload: id}); }
 
-            // Battery Tier Challenge Functions
-            var CHALLENGE_TEXTS = {unlock_btn:'დაიმსახურე ყველაზე დაბალი ფასი!',unlocked_btn:'✅ განსაკუთრებული ფასი გახსნილია!',intro_title:'დაიმსახურე ყველაზე დაბალი ფასი!',intro_desc1:function(title){return 'შენ ცდილობ იყიდო '+title+' ყველაზე დაბალ ფასად!';},intro_desc2:'ამას დამსახურება სჭირდება!',intro_desc3:'დაგვამარცხე სამ დონიან თამაშში და მიიღე განსაკუთრებული ფასი.',start_btn:'დაწყება',score:'ქულა',lose_title:'შენ დამარცხდი',lose_desc:'არ დანებდე, დაგვამარცხე და დაიმსახურე!',try_again:'კიდევ სცადე',close_btn:'დანებდი',level2_title:'შენ გადახვედი მეორე დონეზე!',level2_desc1:'ყოჩაღ, შენ შეძელი და გაიარე პირველი დაბრკოლება.',level2_desc2:'შემდეგი მისია: ჭადრაკი',continue_btn:'გაგრძელება',chess_title:'მეორე დონე: დაამარცხე ჭადრაკში Gstore Chess AI',chess_desc:'დაგვამარცხე!',math_title:'დონე მესამე: მათემატიკური პრობლემა',math_tries:function(n){return 'შენ გაქვს '+n+' მცდელობა';},math_question:'რა არის 6 × 7 ?',submit_btn:'სცადე',congratulations:'გილოცავ'};
-            function startChallenge(){ console.log('🎮 Starting challenge'); setShowChallenge(true); setChallengeScreen('intro'); setChallengeLevel(1); setChallengeScore(0); setMathTries(5); setMathInput(''); setMathFeedback(''); }
+            // Battery Tier Challenge Functions - Load from BOOT.challenge
+            var CHALLENGE_TEXTS = BOOT.challenge || {unlock_btn:'დაიმსახურე ყველაზე დაბალი ფასი!',unlocked_btn:'✅ განსაკუთრებული ფასი გახსნილია!',intro_title:'დაიმსახურე ყველაზე დაბალი ფასი!',intro_desc2:'ამას დამსახურება სჭირდება!',intro_desc3:'დაგვამარცხე სამ დონიან თამაშში და მიიღე განსაკუთრებული ფასი.',start_btn:'დაწყება',lose_title:'შენ დამარცხდი',lose_desc:'არ დანებდე, დაგვამარცხე და დაიმსახურე!',try_again:'კიდევ სცადე',level2_title:'შენ გადახვედი მეორე დონეზე!',level2_desc1:'ყოჩაღ, შენ შეძელი და გაიარე პირველი დაბრკოლება.',level2_desc2:'შემდეგი მისია: ჭადრაკი',continue_btn:'გაგრძელება',chess_title:'მეორე დონე: დაამარცხე ჭადრაკში Gstore Chess AI',math_title:'დონე მესამე: მათემატიკური პრობლემა',math_question:'რა არის 6 × 7 ?',submit_btn:'სცადე',congratulations:'გილოცავ',flappy_score:5,chess_difficulty:'2',math_tries:5,score:'ქულა',close_btn:'დახურვა'};
+            // Add dynamic functions that can't be stored in database
+            CHALLENGE_TEXTS.intro_desc1 = function(title){ return 'შენ ცდილობ იყიდო ' + title + ' ყველაზე დაბალ ფასად!'; };
+            CHALLENGE_TEXTS.math_tries = function(tries){ return 'შენ გაქვს ' + tries + ' მცდელობა'; };
+            // Ensure score is always available
+            if(!CHALLENGE_TEXTS.score) CHALLENGE_TEXTS.score = 'ქულა';
+
+            var FLAPPY_TARGET_SCORE = parseInt(CHALLENGE_TEXTS.flappy_score) || 5;
+            var CHESS_DIFFICULTY = parseInt(CHALLENGE_TEXTS.chess_difficulty) || 2;
+            var MATH_MAX_TRIES = parseInt(CHALLENGE_TEXTS.math_tries) || 5;
+
+            // Chess.js instance for proper chess rules - use ref to persist across renders
+            var useRef = React.useRef;
+            var chessInstanceRef = useRef(null);
+            var chessInstance = chessInstanceRef.current;
+
+            // Initialize Stockfish engine
+            var stockfishEngine = null;
+            var stockfishReady = false;
+            var pendingStockfishMove = null;
+            var currentFEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'; // Starting position
+            var moveHistory = []; // Track moves in algebraic notation
+
+            function initStockfish(){
+                if(stockfishEngine) return;
+                if(typeof Stockfish !== 'function'){
+                    console.warn('⚠️ Stockfish not available');
+                    return;
+                }
+                try{
+                    console.log('🤖 Initializing Stockfish WASM...');
+                    // Call Stockfish() without 'new' - it returns the engine instance
+                    stockfishEngine = Stockfish();
+
+                    if(!stockfishEngine || typeof stockfishEngine.postMessage !== 'function'){
+                        console.error('❌ Stockfish API error');
+                        stockfishEngine = null;
+                        return;
+                    }
+
+                    // WASM version sends messages as strings directly
+                    stockfishEngine.onmessage = function(line){
+                        console.log('Stockfish:', line);
+
+                        if(line.includes('uciok')){
+                            stockfishReady = true;
+                            var skillLevel = Math.max(0, Math.min(20, CHESS_DIFFICULTY * 4));
+                            console.log('✅ Stockfish ready! Skill level: ' + skillLevel);
+                            stockfishEngine.postMessage('setoption name Skill Level value ' + skillLevel);
+                            stockfishEngine.postMessage('ucinewgame');
+                        }
+
+                        if(line.includes('bestmove') && pendingStockfishMove){
+                            var match = line.match(/bestmove\s+([a-h][1-8])([a-h][1-8])/);
+                            if(match){
+                                var from = {row: 8 - parseInt(match[1][1]), col: match[1].charCodeAt(0) - 97};
+                                var to = {row: 8 - parseInt(match[2][1]), col: match[2].charCodeAt(0) - 97};
+                                console.log('👍 Stockfish move:', match[1] + match[2]);
+                                pendingStockfishMove({from:from, to:to});
+                                pendingStockfishMove = null;
+                            }
+                        }
+                    };
+
+                    stockfishEngine.postMessage('uci');
+                } catch(e){
+                    console.error('❌ Stockfish init error:', e);
+                    stockfishEngine = null;
+                    stockfishReady = false;
+                }
+            }
+
+            function boardToFEN(board, turn){
+                var fen = '';
+                for(var r=0; r<8; r++){
+                    var empty = 0;
+                    for(var c=0; c<8; c++){
+                        var p = board[r][c];
+                        if(!p){
+                            empty++;
+                        } else {
+                            if(empty > 0){ fen += empty; empty = 0; }
+                            var piece = p.piece;
+                            fen += (p.color === 'white' ? piece.toUpperCase() : piece);
+                        }
+                    }
+                    if(empty > 0) fen += empty;
+                    if(r < 7) fen += '/';
+                }
+                fen += ' ' + (turn === 'white' ? 'w' : 'b') + ' KQkq - 0 1';
+                return fen;
+            }
+
+            function startChallenge(){ console.log('🎮 Starting challenge'); setShowChallenge(true); setChallengeScreen('intro'); setChallengeLevel(1); setChallengeScore(0); setMathTries(MATH_MAX_TRIES); setMathInput(''); setMathFeedback(''); initStockfish(); }
             function closeChallenge(){ console.log('❌ Closing challenge'); setShowChallenge(false); setChallengeScreen(null); }
             function startFlappyGame(){ setChallengeScreen('game'); setGameRunning(true); setChallengeScore(0); setBirdY(200); setVelocity(0); setPipes([]); }
             function jumpBird(){ if (!gameRunning) return; setVelocity(-7); }
-            function initChess(){ var board=[]; var pieces=['r','n','b','q','k','b','n','r']; var pawns=['p','p','p','p','p','p','p','p']; board.push(pieces.map(function(p){return{piece:p,color:'black'};})); board.push(pawns.map(function(p){return{piece:p,color:'black'};})); for(var i=0;i<4;i++)board.push(Array(8).fill(null)); board.push(pawns.map(function(p){return{piece:p,color:'white'};})); board.push(pieces.map(function(p){return{piece:p,color:'white'};})); setChessBoard(board); setChessGame({turn:'white',moves:0,gameOver:false,winner:null}); }
-            function handleMathSubmit(){ var correctAnswer=42; var userAnswer=parseInt(mathInput,10); if(userAnswer===correctAnswer){ setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! '+CHALLENGE_TEXTS.math_tries(mathTries-1)); }else{ setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
+
+            // Chess game with chess.js + Stockfish AI
+            function initChess(){
+                console.log('🔍 Attempting to initialize chess...');
+                if(typeof window.Chess === 'undefined'){
+                    console.error('❌ Chess.js not available. Waiting...');
+                    setTimeout(function(){ initChess(); }, 500); // Retry after 500ms
+                    return;
+                }
+                console.log('✅ Chess.js found, creating instance...');
+                chessInstanceRef.current = new window.Chess();
+                console.log('✅ Chess instance created:', chessInstanceRef.current);
+
+                // Initialize board from starting position
+                updateBoardFromFEN(chessInstanceRef.current.fen());
+
+                // Initialize game state
+                setChessGame({turn:'white',moves:0,gameOver:false,winner:null,selectedSquare:null,message:''});
+                console.log('♟️ Chess initialized successfully!');
+            }
+            function updateBoardFromFEN(fen){
+                var parts = fen.split(' ');
+                var rows = parts[0].split('/');
+                var board = [];
+                for(var i=0; i<8; i++){
+                    var row = [];
+                    var chars = rows[i];
+                    for(var j=0; j<chars.length; j++){
+                        var c = chars[j];
+                        if(c >= '1' && c <= '8'){
+                            var empty = parseInt(c);
+                            for(var k=0; k<empty; k++) row.push(null);
+                        } else {
+                            var color = (c === c.toUpperCase()) ? 'white' : 'black';
+                            var piece = c.toLowerCase();
+                            row.push({piece:piece, color:color});
+                        }
+                    }
+                    board.push(row);
+                }
+                setChessBoard(board);
+            }
+
+            // Convert row/col to algebraic notation (e.g., e2, e4)
+            function toAlgebraic(row, col){
+                return String.fromCharCode(97 + col) + (8 - row);
+            }
+
+            function makeAIMove(callback){
+                var chessInstance = chessInstanceRef.current;
+                if(!chessInstance) return callback(null);
+
+                if(stockfishReady && stockfishEngine){
+                    pendingStockfishMove = function(move){
+                        var result = chessInstance.move({from: move.from, to: move.to, promotion: 'q'});
+                        if(result){
+                            updateBoardFromFEN(chessInstance.fen());
+                            callback(result);
+                        } else {
+                            callback(null);
+                        }
+                    };
+                    stockfishEngine.postMessage('position fen ' + chessInstance.fen());
+                    stockfishEngine.postMessage('go depth ' + CHESS_DIFFICULTY);
+                } else {
+                    // Fallback: random legal move from chess.js
+                    var moves = chessInstance.moves({verbose: true});
+                    if(moves.length === 0) return callback(null);
+                    var move = moves[Math.floor(Math.random() * moves.length)];
+                    chessInstance.move(move);
+                    updateBoardFromFEN(chessInstance.fen());
+                    callback(move);
+                }
+            }
+
+            function handleChessClick(row,col){
+                var chessInstance = chessInstanceRef.current;
+                console.log('👆 Chess click:', {row:row, col:col, chessGame:chessGame, hasInstance:!!chessInstance});
+                if(!chessGame || chessGame.gameOver || chessGame.turn!=='white' || !chessInstance){
+                    console.log('⚠️ Click blocked:', {hasGame:!!chessGame, gameOver:chessGame?.gameOver, turn:chessGame?.turn, hasInstance:!!chessInstance});
+                    return;
+                }
+
+                if(chessGame.selectedSquare === null){
+                    var piece = chessBoard[row][col];
+                    if(piece && piece.color === 'white'){
+                        setChessGame({...chessGame, selectedSquare:{row:row,col:col}});
+                    }
+                } else {
+                    var from = toAlgebraic(chessGame.selectedSquare.row, chessGame.selectedSquare.col);
+                    var to = toAlgebraic(row, col);
+
+                    var move = chessInstance.move({from: from, to: to, promotion: 'q'});
+
+                    if(move){
+                        updateBoardFromFEN(chessInstance.fen());
+
+                        if(chessInstance.in_checkmate()){
+                            setChessGame({...chessGame, gameOver:true, winner:'white', selectedSquare:null, message:'✅ You won!'});
+                            setTimeout(function(){ setChallengeScreen('math'); }, 2000);
+                            return;
+                        }
+
+                        setChessGame({...chessGame, turn:'black', selectedSquare:null, moves:chessGame.moves+1});
+
+                        setTimeout(function(){
+                            makeAIMove(function(aiMove){
+                                if(!aiMove || chessInstance.in_checkmate()){
+                                    setChessGame(function(prev){return {...prev, gameOver:true, winner:'white', message:'✅ You won!'};});
+                                    setTimeout(function(){ setChallengeScreen('math'); }, 2000);
+                                    return;
+                                }
+
+                                if(chessInstance.in_checkmate()){
+                                    setChessGame(function(prev){return {...prev, gameOver:true, winner:'black', turn:'white', message:'❌ AI won! Try again.'};});
+                                    return;
+                                }
+
+                                setChessGame(function(prev){return {...prev, turn:'white', moves:prev.moves+1};});
+                            });
+                        }, 500);
+                    } else {
+                        setChessGame({...chessGame, selectedSquare:null});
+                    }
+                }
+            }
+            function handleMathSubmit(){ var correctAnswer=42; var userAnswer=parseInt(mathInput,10); if(userAnswer===correctAnswer){ setMathFeedback('✅ '+CHALLENGE_TEXTS.congratulations); setTimeout(function(){ setChallengeUnlocked(true); setShowChallenge(false); setTier('80-85'); },2000); }else{ if(mathTries>1){ setMathTries(mathTries-1); setMathFeedback('❌ არასწორია! შენ გაქვს '+(mathTries-1)+' მცდელობა'); }else{ setMathFeedback('❌ მცდელობები ამოიწურა!'); setTimeout(function(){ setShowChallenge(false); setChallengeScreen('intro'); },2000); } } }
 
             function ScoreBar(score, better){
                 var width = Math.max(5, Math.min(100, score * 10));
@@ -1211,17 +1459,17 @@
                         e("div",{key:"condition"},[
                             e("h3",{className:"text-sm font-semibold mb-2 text-center"},t('condition_label', 'Condition')),
                             e("div",{key:"condition",className:"flex mb-2",style:{gap:'0.5rem',justifyContent:'center'}},[
-                                avail.hasNew && e("button",{
+                                e("button",{
                                     key:"new",
                                     className:"text-center py-2 text-sm font-medium border border-gray-200 rounded-lg "+(cond==='new'?"bg-blue-600 text-white border-blue-600":"bg-white text-gray-700"),
                                     style:{width:'90px'},
-                                    onClick:function(){ setCond('new'); }
+                                    onClick:function(){ setTier(null); setNewBat(false); setCond('new'); }
                                 }, conditionNewText),
                                 avail.hasUsed && e("button",{
                                     key:"used",
                                     className:"text-center py-2 text-sm font-medium border border-gray-200 rounded-lg "+(cond==='used'?"bg-blue-600 text-white border-blue-600":"bg-white text-gray-700"),
                                     style:{width:'90px'},
-                                    onClick:function(){ setCond('used'); }
+                                    onClick:function(){ setTier(null); setNewBat(false); setCond('used'); }
                                 }, conditionUsedText)
                             ]),
                             cond==='used' && shouldShowBatteryTier(cur.deviceType, cur.brand) && rules && rules.exists &&
@@ -1234,13 +1482,14 @@
                                     var reg = parseFloat(row.regular||0);
                                     var sale = parseFloat(row.sale||0);
                                     var hasSale = (sale > 0 && sale < reg);
-                                    var isLocked = (t === '80-85' && !challengeUnlocked);
+                                    // Only show lock if tier has pricing AND user hasn't unlocked it
+                                    var isLocked = (t === '80-85' && enabled && !challengeUnlocked);
                                     var cls = "flex-1 text-center py-2 text-xs font-medium border border-gray-200 ";
                                     if (idx === 0) cls += "rounded-l-lg ";
                                     if (idx === USED_TIERS.length - 1) cls += "rounded-r-lg ";
                                     if (active) cls += "bg-green-600 text-white border-green-600";
                                     else if (enabled && !isLocked) cls += "bg-white text-gray-700";
-                                    else if (isLocked) cls += "bg-blue-50 text-blue-600 border-blue-200";
+                                    else if (isLocked) cls += "bg-blue-50 text-blue-600 border-blue-200 cursor-pointer hover:bg-blue-100";
                                     else cls += "bg-gray-100 text-gray-400";
                                     return e("button",{
                                         key:t,
@@ -1403,25 +1652,25 @@
                     // Sticky bar is rendered outside Shadow DOM via useEffect above
 
                     // Warranty Modal (shared)
-                    showWarrantyModal && e("div",{key:"warranty-modal",className:"fixed inset-0 z-50 flex items-center justify-center pt-16",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 flex flex-col overflow-hidden",style:{maxHeight:"85vh"},onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"},[e("h2",{key:"title",className:"text-xl font-semibold text-gray-900"},"Warranty Information"),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 p-0",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{xmlns:"http://www.w3.org/2000/svg",className:"h-6 w-6",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"p-6 text-gray-700 overflow-y-auto flex-1",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
+                    showWarrantyModal && e("div",{key:"warranty-modal",className:"fixed inset-0 z-50 flex items-center justify-center pt-16",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 flex flex-col overflow-hidden",style:{maxHeight:"85vh",paddingTop:"20px"},onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"},[e("h2",{key:"title",className:"text-xl font-semibold text-gray-900"},"Warranty Information"),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 p-0",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{xmlns:"http://www.w3.org/2000/svg",className:"h-6 w-6",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"p-6 text-gray-700 overflow-y-auto flex-1 text-center",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
 
                     // Battery Tier Challenge Modal
-                    (showChallenge === true && challengeScreen !== null) && e("div",{key:"challenge-modal",className:"pointer-events-none fixed inset-0 z-[999] flex items-center justify-center transition-opacity duration-300",onClick:function(){if(challengeScreen==='intro')closeChallenge();}},[
-                        challengeScreen==='intro' && e("div",{key:"intro",className:"pointer-events-auto relative m-4 rounded-xl bg-white shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("div",{key:"title-row",className:"flex items-center justify-between mb-4"},[e("h3",{key:"title",className:"text-4xl font-bold text-blue-600 flex items-center gap-3"},[e("span",{key:"icon"},"🏆"),CHALLENGE_TEXTS.intro_title]),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors",onClick:closeChallenge},e("svg",{className:"w-8 h-8",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})]))]),e("p",{key:"subtitle",className:"text-gray-600 text-xl"},CHALLENGE_TEXTS.intro_desc2)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc1",className:"text-gray-800 text-2xl mb-6 font-semibold"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc3",className:"text-gray-600 text-xl mb-10"},CHALLENGE_TEXTS.intro_desc3),e("div",{key:"buttons",className:"flex gap-4"},[e("button",{key:"start",className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg hover:shadow-xl text-xl",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-5 px-8 rounded-xl transition-colors text-xl",onClick:closeChallenge},CHALLENGE_TEXTS.close_btn)])])
+                    (showChallenge === true && challengeScreen !== null) && e("div",{key:"challenge-modal",className:"fixed inset-0 z-[999] flex items-center justify-center p-4",style:{background:'transparent',animation:'fadeIn 0.2s ease-out',paddingTop:'80px'},onClick:function(){if(challengeScreen==='intro')closeChallenge();}},[
+                        challengeScreen==='intro' && e("div",{key:"intro",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'512px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"relative p-6 border-b border-gray-200 rounded-t-lg"},[e("button",{key:"close",className:"absolute top-4 right-4 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-lg p-1.5 transition-colors",onClick:closeChallenge},e("svg",{className:"w-5 h-5",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])),e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"🏆"),e("h3",{key:"title",className:"text-2xl font-bold text-gray-900"},CHALLENGE_TEXTS.intro_title)])]),e("div",{key:"body",className:"p-6 space-y-6 text-center"},[e("p",{key:"desc1",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc2",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.intro_desc2),e("p",{key:"desc3",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.intro_desc3)]),e("div",{key:"footer",className:"flex items-center gap-3 p-6 border-t border-gray-200 rounded-b-lg"},[e("button",{key:"start",className:"flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10",onClick:closeChallenge},CHALLENGE_TEXTS.close_btn)])
                         ]),
-                        challengeScreen==='game' && e("div",{key:"game",className:"relative rounded-2xl overflow-hidden shadow-2xl",style:{width:'400px',height:'500px',background:'linear-gradient(to bottom, #7dd3fc, #38bdf8)',cursor:'pointer',border:'3px solid #0284c7'},onClick:jumpBird},[e("img",{key:"bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",className:"absolute",style:{left:'60px',width:'40px',height:'40px',objectFit:'contain',top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"absolute",style:{width:'40px',height:(p.gapY-100)+'px',left:p.x+'px',top:0,background:'#1f2937',borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"absolute",style:{width:'40px',height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',background:'#1f2937',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"absolute top-10 left-2 text-sm font-bold text-white bg-blue-600 px-2 py-1 rounded-lg"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))]),
-                        challengeScreen==='lose' && e("div",{key:"lose",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-red-600 mb-4"},"💥 "+CHALLENGE_TEXTS.lose_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc",className:"text-gray-700 text-2xl mb-10"},CHALLENGE_TEXTS.lose_desc),e("div",{key:"btns",className:"flex gap-4"},[e("button",{key:"retry",className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:startFlappyGame},CHALLENGE_TEXTS.try_again),e("button",{key:"close",className:"bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-5 px-8 rounded-xl transition-colors text-xl",onClick:function(){setShowChallenge(false);setChallengeScreen('intro');}},CHALLENGE_TEXTS.close_btn)])])
+                        challengeScreen==='game' && e("div",{key:"game",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'450px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"🐦"),e("h3",{key:"title",className:"text-2xl font-bold text-gray-900"},"Flappy Gstore")])]),e("div",{key:"game-area",className:"relative overflow-hidden",style:{width:'100%',height:'500px',background:'linear-gradient(to bottom, #7dd3fc, #38bdf8)',cursor:'pointer'},onClick:jumpBird},[e("img",{key:"bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",className:"absolute",style:{left:'60px',width:'40px',height:'40px',objectFit:'contain',top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"absolute",style:{width:'40px',height:(p.gapY-100)+'px',left:p.x+'px',top:0,background:'#1f2937',borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"absolute",style:{width:'40px',height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',background:'#1f2937',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"absolute top-4 left-4 text-lg font-bold text-white bg-blue-600 px-3 py-1.5 rounded-lg shadow-lg"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))])]),
+                        challengeScreen==='lose' && e("div",{key:"lose",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'512px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"💥"),e("h3",{key:"title",className:"text-2xl font-bold text-red-600"},CHALLENGE_TEXTS.lose_title)])]),e("div",{key:"body",className:"p-6 space-y-6 text-center"},[e("p",{key:"desc",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.lose_desc)]),e("div",{key:"footer",className:"flex items-center gap-3 p-6 border-t border-gray-200 rounded-b-lg"},[e("button",{key:"retry",className:"flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center",onClick:startFlappyGame},CHALLENGE_TEXTS.try_again),e("button",{key:"close",className:"text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10",onClick:function(){setShowChallenge(false);setChallengeScreen('intro');}},CHALLENGE_TEXTS.close_btn)])
                         ]),
-                        challengeScreen==='level2' && e("div",{key:"level2",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-green-600 mb-4"},"🎉 "+CHALLENGE_TEXTS.level2_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc1",className:"text-gray-700 text-2xl mb-4"},CHALLENGE_TEXTS.level2_desc1),e("p",{key:"desc2",className:"text-gray-700 text-2xl mb-10"},CHALLENGE_TEXTS.level2_desc2),e("button",{key:"continue",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:function(){setChallengeScreen('chess');initChess();}},CHALLENGE_TEXTS.continue_btn)])
+                        challengeScreen==='level2' && e("div",{key:"level2",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'512px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"🎉"),e("h3",{key:"title",className:"text-2xl font-bold text-green-600"},CHALLENGE_TEXTS.level2_title)])]),e("div",{key:"body",className:"p-6 space-y-6 text-center"},[e("p",{key:"desc1",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.level2_desc1),e("p",{key:"desc2",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.level2_desc2)]),e("div",{key:"footer",className:"flex items-center p-6 border-t border-gray-200 rounded-b-lg"},[e("button",{key:"continue",className:"w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center",onClick:function(){setChallengeScreen('chess');initChess();}},CHALLENGE_TEXTS.continue_btn)])
                         ]),
-                        challengeScreen==='chess' && e("div",{key:"chess",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'600px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-indigo-600 mb-4"},"♟️ "+CHALLENGE_TEXTS.chess_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc",className:"text-gray-700 text-2xl mb-6"},CHALLENGE_TEXTS.chess_desc),e("div",{key:"board",className:"grid gap-0 mb-6",style:{gridTemplateColumns:'repeat(8, 1fr)',width:'100%',aspectRatio:'1'}},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;return e("div",{key:i+'-'+j,className:"flex items-center justify-center text-2xl cursor-pointer",style:{background:isLight?'#f0d9b5':'#b58863',aspectRatio:'1'},onClick:function(){}},cell?(cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),e("button",{key:"skip",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:function(){setChallengeScreen('math');}},CHALLENGE_TEXTS.continue_btn+' (სიმულაცია)')])
+                        challengeScreen==='chess' && chessGame && chessBoard.length > 0 && e("div",{key:"chess",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'650px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"♟️"),e("h3",{key:"title",className:"text-2xl font-bold text-gray-900"},CHALLENGE_TEXTS.chess_title)])]),e("div",{key:"body",className:"p-6"},[e("div",{key:"status",className:"flex justify-between items-center mb-4 p-3 bg-gray-50 rounded-lg"},[e("p",{key:"turn",className:"text-sm font-medium text-gray-700"},chessGame&&chessGame.gameOver ? chessGame.message : (chessGame&&chessGame.turn==='white' ? '👉 Your turn' : '🤖 AI is thinking...')),e("p",{key:"moves",className:"text-sm text-gray-500"},"Moves: "+(chessGame?chessGame.moves:0))]),e("div",{key:"board",className:"grid gap-0 mb-4 mx-auto rounded-lg overflow-hidden shadow-md",style:{gridTemplateColumns:'repeat(8, 1fr)',width:'100%',maxWidth:'500px',aspectRatio:'1'}},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;var isSelected=chessGame&&chessGame.selectedSquare&&chessGame.selectedSquare.row===i&&chessGame.selectedSquare.col===j;var bgColor=isSelected?'#baca44':(isLight?'#f0d9b5':'#b58863');return e("div",{key:i+'-'+j,className:"flex items-center justify-center text-3xl cursor-pointer transition-colors hover:opacity-80",style:{background:bgColor,aspectRatio:'1',border:isSelected?'3px solid #769656':'none',fontWeight:'bold'},onClick:function(){handleChessClick(i,j);}},cell?(cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),chessGame&&!chessGame.gameOver && e("p",{key:"hint",className:"text-xs text-center text-gray-500"},"Click your piece, then click where to move it. Capture the King to win!")])
                         ]),
-                        challengeScreen==='math' && e("div",{key:"math",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-purple-600 mb-4"},"🧮 "+CHALLENGE_TEXTS.math_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"tries",className:"text-gray-700 text-2xl mb-6"},CHALLENGE_TEXTS.math_tries(mathTries)),e("p",{key:"question",className:"text-gray-900 text-3xl mb-8 font-bold text-center"},CHALLENGE_TEXTS.math_question),e("input",{key:"input",type:"number",value:mathInput,onChange:function(ev){setMathInput(ev.target.value);},className:"border-2 border-gray-300 rounded-xl px-6 py-4 w-full text-center mb-6 text-2xl",placeholder:"შეიყვანე პასუხი"}),e("button",{key:"submit",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl mb-4",onClick:handleMathSubmit},CHALLENGE_TEXTS.submit_btn),mathFeedback && e("p",{key:"feedback",className:"text-xl text-gray-600 text-center"},mathFeedback)])
+                        challengeScreen==='math' && e("div",{key:"math",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'512px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"🧮"),e("h3",{key:"title",className:"text-2xl font-bold text-purple-600"},CHALLENGE_TEXTS.math_title)])]),e("div",{key:"body",className:"p-6 space-y-6 text-center"},[e("p",{key:"tries",className:"text-sm text-gray-500"},CHALLENGE_TEXTS.math_tries(mathTries)),e("p",{key:"question",className:"text-2xl font-bold text-gray-900"},CHALLENGE_TEXTS.math_question),e("input",{key:"input",type:"number",value:mathInput,onChange:function(ev){setMathInput(ev.target.value);},className:"bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 text-center",placeholder:"შეიყვანე პასუხი"}),mathFeedback && e("p",{key:"feedback",className:"text-sm text-center text-gray-600"},mathFeedback)]),e("div",{key:"footer",className:"flex items-center p-6 border-t border-gray-200 rounded-b-lg"},[e("button",{key:"submit",className:"w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center",onClick:handleMathSubmit},CHALLENGE_TEXTS.submit_btn)])
                         ])
                     ])
                 ]);
@@ -1554,7 +1803,7 @@
                                                 onClick:function(){ setShowSearch(true); }
                                             },[
                                                 e("span",{key:"icon",className:"text-2xl"},"⊕"),
-                                                e("span",{key:"label",className:"font-medium"},t('add_to_compare', 'Add Product to Compare'))
+                                                e("span",{key:"label",className:"font-semibold"},t('add_to_compare', 'Add Product to Compare'))
                                             ]),
 
                                         // Search dropdown
@@ -1680,7 +1929,8 @@
                                     var reg = parseFloat(row.regular||0);
                                     var sale = parseFloat(row.sale||0);
                                     var hasSale = (sale > 0 && sale < reg);
-                                    var isLocked = (t === '80-85' && !challengeUnlocked);
+                                    // Only show lock if tier has pricing AND user hasn't unlocked it
+                                    var isLocked = (t === '80-85' && enabled && !challengeUnlocked);
                                     var cls = "flex-1 text-center py-2 text-sm font-medium transition-all border border-gray-200 ";
                                     if (idx === 0) cls += "rounded-l-lg ";
                                     if (idx === USED_TIERS.length - 1) cls += "rounded-r-lg ";
@@ -1722,7 +1972,7 @@
                                             className:"remove-btn",
                                             onClick:function(ev){ ev.stopPropagation(); setNewBat(false); }
                                         },[
-                                            e("span",{key:"sign",className:"remove-sign"},e("svg",{viewBox:"0 0 16 16",height:"16",width:"16",xmlns:"http://www.w3.org/2000/svg"},e("path",{d:"M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"}))),
+                                            e("span",{key:"sign",className:"remove-sign"},e("svg",{viewBox:"0 0 16 16",height:"16",width:"16",xmlns:"http://www.w3.org/2000/svg"},e("path",{d:"M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"}))),
                                             e("span",{key:"text",className:"remove-text"},"Remove")
                                         ])
                                     ]);
@@ -1752,7 +2002,7 @@
                                         className:"remove-btn",
                                         onClick:function(ev){ ev.stopPropagation(); toggleAddon(addon.key); }
                                     },[
-                                        e("span",{key:"sign",className:"remove-sign"},e("svg",{viewBox:"0 0 16 16",height:"16",width:"16",xmlns:"http://www.w3.org/2000/svg"},e("path",{d:"M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"}))),
+                                        e("span",{key:"sign",className:"remove-sign"},e("svg",{viewBox:"0 0 16 16",height:"16",width:"16",xmlns:"http://www.w3.org/2000/svg"},e("path",{d:"M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"}))),
                                         e("span",{key:"text",className:"remove-text"},"Remove")
                                     ])
                                 ]);
@@ -1822,25 +2072,25 @@
                     ]),
 
                     // Warranty Modal
-                    showWarrantyModal && e("div",{key:"warranty-modal",className:"fixed inset-0 z-50 flex items-center justify-center pt-16",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 flex flex-col overflow-hidden",style:{maxHeight:"85vh"},onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"},[e("h2",{key:"title",className:"text-xl font-semibold text-gray-900"},"Warranty Information"),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 p-0",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{xmlns:"http://www.w3.org/2000/svg",className:"h-6 w-6",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"p-6 text-gray-700 overflow-y-auto flex-1",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
+                    showWarrantyModal && e("div",{key:"warranty-modal",className:"fixed inset-0 z-50 flex items-center justify-center pt-16",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 flex flex-col overflow-hidden",style:{maxHeight:"85vh",paddingTop:"20px"},onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0"},[e("h2",{key:"title",className:"text-xl font-semibold text-gray-900"},"Warranty Information"),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 p-0",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{xmlns:"http://www.w3.org/2000/svg",className:"h-6 w-6",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"p-6 text-gray-700 overflow-y-auto flex-1 text-center",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
 
                     // Battery Tier Challenge Modal (Desktop)
                     (showChallenge === true && challengeScreen !== null) && e("div",{key:"challenge-modal",className:"pointer-events-none fixed inset-0 z-[999] flex items-center justify-center transition-opacity duration-300",onClick:function(){if(challengeScreen==='intro')closeChallenge();}},[
-                        challengeScreen==='intro' && e("div",{key:"intro",className:"pointer-events-auto relative m-4 rounded-xl bg-white shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("div",{key:"title-row",className:"flex items-center justify-between mb-4"},[e("h3",{key:"title",className:"text-4xl font-bold text-blue-600 flex items-center gap-3"},[e("span",{key:"icon"},"🏆"),CHALLENGE_TEXTS.intro_title]),e("button",{key:"close",className:"text-gray-400 hover:text-gray-600 transition-colors",onClick:closeChallenge},e("svg",{className:"w-8 h-8",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})]))]),e("p",{key:"subtitle",className:"text-gray-600 text-xl"},CHALLENGE_TEXTS.intro_desc2)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc1",className:"text-gray-800 text-2xl mb-6 font-semibold"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc3",className:"text-gray-600 text-xl mb-10"},CHALLENGE_TEXTS.intro_desc3),e("div",{key:"buttons",className:"flex gap-4"},[e("button",{key:"start",className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg hover:shadow-xl text-xl",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-5 px-8 rounded-xl transition-colors text-xl",onClick:closeChallenge},CHALLENGE_TEXTS.close_btn)])])
+                        challengeScreen==='intro' && e("div",{key:"intro",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'512px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"relative p-6 border-b border-gray-200 rounded-t-lg"},[e("button",{key:"close",className:"absolute top-4 right-4 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-lg p-1.5 transition-colors",onClick:closeChallenge},e("svg",{className:"w-5 h-5",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])),e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"🏆"),e("h3",{key:"title",className:"text-2xl font-bold text-gray-900"},CHALLENGE_TEXTS.intro_title)])]),e("div",{key:"body",className:"p-6 space-y-6 text-center"},[e("p",{key:"desc1",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc2",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.intro_desc2),e("p",{key:"desc3",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.intro_desc3)]),e("div",{key:"footer",className:"flex items-center gap-3 p-6 border-t border-gray-200 rounded-b-lg"},[e("button",{key:"start",className:"flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10",onClick:closeChallenge},CHALLENGE_TEXTS.close_btn)])
                         ]),
-                        challengeScreen==='game' && e("div",{key:"game",className:"relative rounded-2xl overflow-hidden shadow-2xl",style:{width:'400px',height:'500px',background:'linear-gradient(to bottom, #7dd3fc, #38bdf8)',cursor:'pointer',border:'3px solid #0284c7'},onClick:jumpBird},[e("img",{key:"bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",className:"absolute",style:{left:'60px',width:'40px',height:'40px',objectFit:'contain',top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"absolute",style:{width:'40px',height:(p.gapY-100)+'px',left:p.x+'px',top:0,background:'#1f2937',borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"absolute",style:{width:'40px',height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',background:'#1f2937',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"absolute top-10 left-2 text-sm font-bold text-white bg-blue-600 px-2 py-1 rounded-lg"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))]),
-                        challengeScreen==='lose' && e("div",{key:"lose",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-red-600 mb-4"},"💥 "+CHALLENGE_TEXTS.lose_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc",className:"text-gray-700 text-2xl mb-10"},CHALLENGE_TEXTS.lose_desc),e("div",{key:"btns",className:"flex gap-4"},[e("button",{key:"retry",className:"flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:startFlappyGame},CHALLENGE_TEXTS.try_again),e("button",{key:"close",className:"bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-5 px-8 rounded-xl transition-colors text-xl",onClick:function(){setShowChallenge(false);setChallengeScreen('intro');}},CHALLENGE_TEXTS.close_btn)])])
+                        challengeScreen==='game' && e("div",{key:"game",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'450px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"🐦"),e("h3",{key:"title",className:"text-2xl font-bold text-gray-900"},"Flappy Gstore")])]),e("div",{key:"game-area",className:"relative overflow-hidden",style:{width:'100%',height:'500px',background:'linear-gradient(to bottom, #7dd3fc, #38bdf8)',cursor:'pointer'},onClick:jumpBird},[e("img",{key:"bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",className:"absolute",style:{left:'60px',width:'40px',height:'40px',objectFit:'contain',top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"absolute",style:{width:'40px',height:(p.gapY-100)+'px',left:p.x+'px',top:0,background:'#1f2937',borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"absolute",style:{width:'40px',height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',background:'#1f2937',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"absolute top-4 left-4 text-lg font-bold text-white bg-blue-600 px-3 py-1.5 rounded-lg shadow-lg"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))])]),
+                        challengeScreen==='lose' && e("div",{key:"lose",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'512px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"💥"),e("h3",{key:"title",className:"text-2xl font-bold text-red-600"},CHALLENGE_TEXTS.lose_title)])]),e("div",{key:"body",className:"p-6 space-y-6 text-center"},[e("p",{key:"desc",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.lose_desc)]),e("div",{key:"footer",className:"flex items-center gap-3 p-6 border-t border-gray-200 rounded-b-lg"},[e("button",{key:"retry",className:"flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center",onClick:startFlappyGame},CHALLENGE_TEXTS.try_again),e("button",{key:"close",className:"text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10",onClick:function(){setShowChallenge(false);setChallengeScreen('intro');}},CHALLENGE_TEXTS.close_btn)])
                         ]),
-                        challengeScreen==='level2' && e("div",{key:"level2",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-green-600 mb-4"},"🎉 "+CHALLENGE_TEXTS.level2_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc1",className:"text-gray-700 text-2xl mb-4"},CHALLENGE_TEXTS.level2_desc1),e("p",{key:"desc2",className:"text-gray-700 text-2xl mb-10"},CHALLENGE_TEXTS.level2_desc2),e("button",{key:"continue",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:function(){setChallengeScreen('chess');initChess();}},CHALLENGE_TEXTS.continue_btn)])
+                        challengeScreen==='level2' && e("div",{key:"level2",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'512px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"🎉"),e("h3",{key:"title",className:"text-2xl font-bold text-green-600"},CHALLENGE_TEXTS.level2_title)])]),e("div",{key:"body",className:"p-6 space-y-6 text-center"},[e("p",{key:"desc1",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.level2_desc1),e("p",{key:"desc2",className:"text-base leading-relaxed text-gray-600"},CHALLENGE_TEXTS.level2_desc2)]),e("div",{key:"footer",className:"flex items-center p-6 border-t border-gray-200 rounded-b-lg"},[e("button",{key:"continue",className:"w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center",onClick:function(){setChallengeScreen('chess');initChess();}},CHALLENGE_TEXTS.continue_btn)])
                         ]),
-                        challengeScreen==='chess' && e("div",{key:"chess",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'600px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-indigo-600 mb-4"},"♟️ "+CHALLENGE_TEXTS.chess_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"desc",className:"text-gray-700 text-2xl mb-6"},CHALLENGE_TEXTS.chess_desc),e("div",{key:"board",className:"grid gap-0 mb-6",style:{gridTemplateColumns:'repeat(8, 1fr)',width:'100%',aspectRatio:'1'}},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;return e("div",{key:i+'-'+j,className:"flex items-center justify-center text-2xl cursor-pointer",style:{background:isLight?'#f0d9b5':'#b58863',aspectRatio:'1'},onClick:function(){}},cell?(cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),e("button",{key:"skip",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl",onClick:function(){setChallengeScreen('math');}},CHALLENGE_TEXTS.continue_btn+' (სიმულაცია)')])
+                        challengeScreen==='chess' && chessGame && chessBoard.length > 0 && e("div",{key:"chess",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'650px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"♟️"),e("h3",{key:"title",className:"text-2xl font-bold text-gray-900"},CHALLENGE_TEXTS.chess_title)])]),e("div",{key:"body",className:"p-6"},[e("div",{key:"status",className:"flex justify-between items-center mb-4 p-3 bg-gray-50 rounded-lg"},[e("p",{key:"turn",className:"text-sm font-medium text-gray-700"},chessGame&&chessGame.gameOver ? chessGame.message : (chessGame&&chessGame.turn==='white' ? '👉 Your turn' : '🤖 AI is thinking...')),e("p",{key:"moves",className:"text-sm text-gray-500"},"Moves: "+(chessGame?chessGame.moves:0))]),e("div",{key:"board",className:"grid gap-0 mb-4 mx-auto rounded-lg overflow-hidden shadow-md",style:{gridTemplateColumns:'repeat(8, 1fr)',width:'100%',maxWidth:'500px',aspectRatio:'1'}},chessBoard.flatMap(function(row,i){return row.map(function(cell,j){var isLight=(i+j)%2===0;var isSelected=chessGame&&chessGame.selectedSquare&&chessGame.selectedSquare.row===i&&chessGame.selectedSquare.col===j;var bgColor=isSelected?'#baca44':(isLight?'#f0d9b5':'#b58863');return e("div",{key:i+'-'+j,className:"flex items-center justify-center text-3xl cursor-pointer transition-colors hover:opacity-80",style:{background:bgColor,aspectRatio:'1',border:isSelected?'3px solid #769656':'none',fontWeight:'bold'},onClick:function(){handleChessClick(i,j);}},cell?(cell.color==='white'?'♙♘♗♖♕♔'.charAt('pnbrqk'.indexOf(cell.piece)):'♟♞♝♜♛♚'.charAt('pnbrqk'.indexOf(cell.piece))):'');});})),chessGame&&!chessGame.gameOver && e("p",{key:"hint",className:"text-xs text-center text-gray-500"},"Click your piece, then click where to move it. Capture the King to win!")])
                         ]),
-                        challengeScreen==='math' && e("div",{key:"math",className:"pointer-events-auto bg-white rounded-xl shadow-2xl",style:{width:'90%',maxWidth:'500px',minWidth:'500px',boxShadow:'0 20px 60px rgba(0, 0, 0, 0.3)'},onClick:function(ev){ev.stopPropagation();}},[
-                            e("div",{key:"header",className:"bg-white px-8 py-8 rounded-t-xl border-b-2 border-gray-100"},[e("h2",{key:"title",className:"text-4xl font-bold text-purple-600 mb-4"},"🧮 "+CHALLENGE_TEXTS.math_title)]),e("div",{key:"content",className:"p-8"},[e("p",{key:"tries",className:"text-gray-700 text-2xl mb-6"},CHALLENGE_TEXTS.math_tries(mathTries)),e("p",{key:"question",className:"text-gray-900 text-3xl mb-8 font-bold text-center"},CHALLENGE_TEXTS.math_question),e("input",{key:"input",type:"number",value:mathInput,onChange:function(ev){setMathInput(ev.target.value);},className:"border-2 border-gray-300 rounded-xl px-6 py-4 w-full text-center mb-6 text-2xl",placeholder:"შეიყვანე პასუხი"}),e("button",{key:"submit",className:"w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl transition-colors shadow-lg text-xl mb-4",onClick:handleMathSubmit},CHALLENGE_TEXTS.submit_btn),mathFeedback && e("p",{key:"feedback",className:"text-xl text-gray-600 text-center"},mathFeedback)])
+                        challengeScreen==='math' && e("div",{key:"math",className:"pointer-events-auto w-full rounded-lg bg-white shadow-xl border border-gray-200",style:{maxWidth:'512px',animation:'slideUp 0.3s ease-out'},onClick:function(ev){ev.stopPropagation();}},[
+                            e("div",{key:"header",className:"p-6 border-b border-gray-200 rounded-t-lg"},[e("div",{key:"title-wrapper",className:"text-center"},[e("div",{key:"icon",className:"text-5xl mb-3"},"🧮"),e("h3",{key:"title",className:"text-2xl font-bold text-purple-600"},CHALLENGE_TEXTS.math_title)])]),e("div",{key:"body",className:"p-6 space-y-6 text-center"},[e("p",{key:"tries",className:"text-sm text-gray-500"},CHALLENGE_TEXTS.math_tries(mathTries)),e("p",{key:"question",className:"text-2xl font-bold text-gray-900"},CHALLENGE_TEXTS.math_question),e("input",{key:"input",type:"number",value:mathInput,onChange:function(ev){setMathInput(ev.target.value);},className:"bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 text-center",placeholder:"შეიყვანე პასუხი"}),mathFeedback && e("p",{key:"feedback",className:"text-sm text-center text-gray-600"},mathFeedback)]),e("div",{key:"footer",className:"flex items-center p-6 border-t border-gray-200 rounded-b-lg"},[e("button",{key:"submit",className:"w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center",onClick:handleMathSubmit},CHALLENGE_TEXTS.submit_btn)])
                         ])
                     ])
                 ])
@@ -1881,12 +2131,30 @@
         }
     }
 
+    // Wait for React to be fully loaded with retry logic
+    function waitForReact(callback, retries) {
+        retries = retries || 0;
+        if (window.React && window.ReactDOM) {
+            console.log('✅ GSTORE EPP: React loaded, mounting...');
+            callback();
+        } else if (retries < 50) { // 5 seconds max (50 * 100ms)
+            console.log('⏳ GSTORE EPP: Waiting for React... (attempt ' + (retries + 1) + ')');
+            setTimeout(function(){ waitForReact(callback, retries + 1); }, 100);
+        } else {
+            console.error('❌ GSTORE EPP: React failed to load after 5 seconds');
+            var host = document.getElementById('gstore-epp-shadow-host');
+            if (host) {
+                host.innerHTML = '<div style="padding:40px;text-align:center;color:#dc2626;background:#fee2e2;border-radius:8px;margin:20px;"><h3 style="margin:0 0 10px 0;">⚠️ Failed to Load Product Page</h3><p style="margin:0;">React libraries failed to load. Please check your internet connection and refresh the page.</p></div>';
+            }
+        }
+    }
+
     if (document.readyState === 'loading') {
         console.log('⏳ GSTORE EPP: Waiting for DOMContentLoaded...');
-        document.addEventListener('DOMContentLoaded', mount);
+        document.addEventListener('DOMContentLoaded', function(){ waitForReact(mount); });
     } else {
-        console.log('✅ GSTORE EPP: DOM ready, mounting now...');
-        mount();
+        console.log('✅ GSTORE EPP: DOM ready, waiting for React...');
+        waitForReact(mount);
     }
 
     console.log('📜 GSTORE EPP: Script loaded successfully');
