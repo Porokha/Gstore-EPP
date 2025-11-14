@@ -177,16 +177,16 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    background: #f3f4f6 !important;
+    background: rgba(239, 68, 68, 0.9) !important;
     border: none !important;
     cursor: pointer !important;
-    color: #6b7280 !important;
+    color: #ffffff !important;
     transition: all 0.15s ease !important;
 }
 
 .gstore-modal-close:hover {
-    background: #e5e7eb !important;
-    color: #111827 !important;
+    background: #dc2626 !important;
+    transform: scale(1.1) !important;
 }
 
 .gstore-modal-close svg {
@@ -497,8 +497,14 @@
 .warranty-header {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
     color: #ffffff !important;
-    padding: 2rem !important;
+    padding: 1.5rem !important;
     border-radius: 1rem 1rem 0 0 !important;
+}
+
+@media (min-width: 1024px) {
+    .warranty-modal-desktop {
+        max-width: 56rem !important;
+    }
 }
 
 .warranty-header h2 {
@@ -557,28 +563,44 @@
    =================================== */
 
 @media (max-width: 640px) {
+    .gstore-modal-overlay {
+        padding: 0.5rem !important;
+        padding-top: 60px !important;
+        padding-bottom: 80px !important;
+    }
+
     .gstore-modal-content {
-        margin: 0 0.5rem !important;
-        max-height: 95vh !important;
+        margin: 0 !important;
+        max-height: calc(100vh - 140px) !important;
+        overflow-y: auto !important;
     }
 
-    .gstore-modal-header,
-    .gstore-modal-body,
-    .gstore-modal-footer {
+    .challenge-header,
+    .challenge-header-success,
+    .challenge-header-danger,
+    .challenge-header-purple {
         padding: 1rem !important;
     }
 
-    .challenge-intro {
-        padding: 1.5rem !important;
-    }
-
-    .challenge-canvas {
-        height: 300px !important;
-    }
-
-    .math-problem {
-        font-size: 1.5rem !important;
+    .challenge-body {
         padding: 1rem !important;
+    }
+
+    .challenge-footer {
+        padding: 1rem !important;
+    }
+
+    .game-area {
+        height: 350px !important;
+    }
+
+    .challenge-icon {
+        font-size: 2rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .challenge-title {
+        font-size: 1.25rem !important;
     }
 }
 
@@ -882,4 +904,57 @@
     font-weight: 600 !important;
     color: #ffffff !important;
     margin: 0 !important;
+}
+
+/* Surrender Warning Modal */
+.surrender-modal {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+    border: 2px solid #f59e0b !important;
+    padding: 1.5rem !important;
+    border-radius: 0.75rem !important;
+    text-align: center !important;
+    max-width: 24rem !important;
+}
+
+.surrender-title {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #92400e !important;
+    margin-bottom: 0.75rem !important;
+}
+
+.surrender-buttons {
+    display: flex !important;
+    gap: 0.75rem !important;
+    margin-top: 1rem !important;
+}
+
+.surrender-btn-yes {
+    flex: 1 !important;
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    padding: 0.625rem 1.25rem !important;
+    border-radius: 0.5rem !important;
+    font-weight: 500 !important;
+    border: none !important;
+    cursor: pointer !important;
+}
+
+.surrender-btn-yes:hover {
+    background: #b91c1c !important;
+}
+
+.surrender-btn-no {
+    flex: 1 !important;
+    background: #16a34a !important;
+    color: #ffffff !important;
+    padding: 0.625rem 1.25rem !important;
+    border-radius: 0.5rem !important;
+    font-weight: 500 !important;
+    border: none !important;
+    cursor: pointer !important;
+}
+
+.surrender-btn-no:hover {
+    background: #15803d !important;
 }
