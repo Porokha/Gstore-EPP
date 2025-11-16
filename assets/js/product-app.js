@@ -556,10 +556,13 @@
                 }).catch(function(e){ console.error('laptop addons fetch failed', e); });
             }, [cur.deviceType]);
 
-            // Flappy Bird Game Loop - Optimized with refs to reduce re-renders
+            // Flappy Bird Game Loop - Optimized for performance
             useEffect(function(){
                 if (challengeScreen !== 'game' || !gameRunning) return;
-                var gravity = 0.3; var pipeSpeed = 1.6; var frame;
+                var isMobile = window.innerWidth < 768;
+                var gravity = 0.3;
+                var pipeSpeed = isMobile ? 1.2 : 1.6; // Slower on mobile
+                var frame;
                 var gapHalf = 100;
                 var targetScore = (BOOT.challenge && BOOT.challenge.flappy_score) ? parseInt(BOOT.challenge.flappy_score) * 10 : 50;
                 var localBirdY = birdY;
@@ -567,9 +570,11 @@
                 var localPipes = pipes.slice();
                 var localScore = challengeScore;
                 var running = true;
+                var frameCount = 0;
 
                 var loop = function(){
                     if (!running) return;
+                    frameCount++;
 
                     // Update local values
                     localVelocity += gravity;
@@ -615,17 +620,19 @@
                         }
                     }
 
-                    // Batch state updates every frame
-                    setBirdY(localBirdY);
-                    setVelocity(localVelocity);
-                    setPipes(localPipes);
-                    if (localScore !== challengeScore) setChallengeScore(localScore);
+                    // Throttle state updates: only update every 2 frames on desktop for performance
+                    if (frameCount % 2 === 0 || isMobile){
+                        setBirdY(localBirdY);
+                        setVelocity(localVelocity);
+                        setPipes(localPipes);
+                        if (localScore !== challengeScore) setChallengeScore(localScore);
+                    }
 
                     frame = requestAnimationFrame(loop);
                 };
                 frame = requestAnimationFrame(loop);
                 return function(){ running = false; cancelAnimationFrame(frame); };
-            }, [challengeScreen, gameRunning, challengeLevel, birdY, velocity, pipes, challengeScore]);
+            }, [challengeScreen, gameRunning, challengeLevel]);
 
             // Track challenge screen transitions for analytics
             useEffect(function(){
@@ -1870,7 +1877,7 @@
                         challengeScreen==='intro' && e("div",{key:"intro",className:"gstore-modal-content",style:{maxWidth:'512px'},onClick:function(ev){ev.stopPropagation();}},[
                             e("div",{key:"header",className:"challenge-header"},[e("button",{key:"close",className:"gstore-modal-close",onClick:closeChallenge},e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])),e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🏆"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.intro_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"desc1",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc2",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc2),e("p",{key:"desc3",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc3)]),e("div",{key:"footer",className:"challenge-footer challenge-footer-split"},[e("button",{key:"start",className:"gstore-btn gstore-btn-primary",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"gstore-btn gstore-btn-secondary",onClick:closeChallenge},"✕")])
                         ]),
-                        challengeScreen==='game' && e("div",{key:"game",className:"gstore-modal-content",style:{maxWidth:'450px'},onClick:function(ev){ev.stopPropagation();}},[e("div",{key:"header",className:"challenge-header"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🐦"),e("h3",{key:"title",className:"challenge-title"},"Flappy Gstore")])]),e("div",{key:"game-area",className:"game-area",onClick:jumpBird,onTouchStart:function(e){e.preventDefault();jumpBird();}},[e("img",{key:"bird",className:"game-bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",style:{top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"game-pipe",style:{height:(p.gapY-100)+'px',left:p.x+'px',top:0,borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"game-pipe",style:{height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"game-score"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))])]),
+                        challengeScreen==='game' && e("div",{key:"game",className:"gstore-modal-content",style:{maxWidth:'450px'},onClick:function(ev){ev.stopPropagation();}},[e("div",{key:"header",className:"challenge-header"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🐦"),e("h3",{key:"title",className:"challenge-title"},"Flappy Gstore")])]),e("div",{key:"game-area",className:"game-area",onClick:jumpBird,onTouchStart:jumpBird},[e("img",{key:"bird",className:"game-bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",style:{top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"game-pipe",style:{height:(p.gapY-100)+'px',left:p.x+'px',top:0,borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"game-pipe",style:{height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"game-score"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))])]),
                         challengeScreen==='lose' && e("div",{key:"lose",className:"gstore-modal-content",style:{maxWidth:'512px'},onClick:function(ev){ev.stopPropagation();}},[
                             e("div",{key:"header",className:"challenge-header challenge-header-danger"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"💥"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.lose_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"desc",className:"challenge-text"},CHALLENGE_TEXTS.lose_desc)]),e("div",{key:"footer",className:"challenge-footer challenge-footer-split"},[e("button",{key:"retry",className:"gstore-btn gstore-btn-primary",onClick:startFlappyGame},CHALLENGE_TEXTS.try_again),e("button",{key:"close",className:"gstore-btn gstore-btn-secondary",onClick:function(){setShowChallenge(false);setChallengeScreen('intro');}},CHALLENGE_TEXTS.close_btn)])
                         ]),
@@ -2449,7 +2456,7 @@
                         challengeScreen==='intro' && e("div",{key:"intro",className:"gstore-modal-content",style:{maxWidth:'512px'},onClick:function(ev){ev.stopPropagation();}},[
                             e("div",{key:"header",className:"challenge-header"},[e("button",{key:"close",className:"gstore-modal-close",onClick:closeChallenge},e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])),e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🏆"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.intro_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"desc1",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc1(cur.title)),e("p",{key:"desc2",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc2),e("p",{key:"desc3",className:"challenge-text"},CHALLENGE_TEXTS.intro_desc3)]),e("div",{key:"footer",className:"challenge-footer challenge-footer-split"},[e("button",{key:"start",className:"gstore-btn gstore-btn-primary",onClick:startFlappyGame},CHALLENGE_TEXTS.start_btn),e("button",{key:"cancel",className:"gstore-btn gstore-btn-secondary",onClick:closeChallenge},"✕")])
                         ]),
-                        challengeScreen==='game' && e("div",{key:"game",className:"gstore-modal-content",style:{maxWidth:'450px'},onClick:function(ev){ev.stopPropagation();}},[e("div",{key:"header",className:"challenge-header"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🐦"),e("h3",{key:"title",className:"challenge-title"},"Flappy Gstore")])]),e("div",{key:"game-area",className:"game-area",onClick:jumpBird,onTouchStart:function(e){e.preventDefault();jumpBird();}},[e("img",{key:"bird",className:"game-bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",style:{top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"game-pipe",style:{height:(p.gapY-100)+'px',left:p.x+'px',top:0,borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"game-pipe",style:{height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"game-score"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))])]),
+                        challengeScreen==='game' && e("div",{key:"game",className:"gstore-modal-content",style:{maxWidth:'450px'},onClick:function(ev){ev.stopPropagation();}},[e("div",{key:"header",className:"challenge-header"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"🐦"),e("h3",{key:"title",className:"challenge-title"},"Flappy Gstore")])]),e("div",{key:"game-area",className:"game-area",onClick:jumpBird,onTouchStart:jumpBird},[e("img",{key:"bird",className:"game-bird",src:'https://gstore.ge/wp-content/uploads/2025/11/logo-mark.webp',alt:"Flappy Gstore",style:{top:birdY+'px'}}),pipes.map(function(p,i){return e("div",{key:i},[e("div",{key:"top",className:"game-pipe",style:{height:(p.gapY-100)+'px',left:p.x+'px',top:0,borderRadius:'0 0 8px 8px'}}),e("div",{key:"bottom",className:"game-pipe",style:{height:(500-(p.gapY+100))+'px',left:p.x+'px',top:(p.gapY+100)+'px',borderRadius:'8px 8px 0 0'}})]);}),e("div",{key:"score",className:"game-score"},CHALLENGE_TEXTS.score+": "+Math.floor(challengeScore))])]),
                         challengeScreen==='lose' && e("div",{key:"lose",className:"gstore-modal-content",style:{maxWidth:'512px'},onClick:function(ev){ev.stopPropagation();}},[
                             e("div",{key:"header",className:"challenge-header challenge-header-danger"},[e("div",{key:"title-wrapper",className:"challenge-header-content"},[e("div",{key:"icon",className:"challenge-icon"},"💥"),e("h3",{key:"title",className:"challenge-title"},CHALLENGE_TEXTS.lose_title)])]),e("div",{key:"body",className:"challenge-body"},[e("p",{key:"desc",className:"challenge-text"},CHALLENGE_TEXTS.lose_desc)]),e("div",{key:"footer",className:"challenge-footer challenge-footer-split"},[e("button",{key:"retry",className:"gstore-btn gstore-btn-primary",onClick:startFlappyGame},CHALLENGE_TEXTS.try_again),e("button",{key:"close",className:"gstore-btn gstore-btn-secondary",onClick:function(){setShowChallenge(false);setChallengeScreen('intro');}},CHALLENGE_TEXTS.close_btn)])
                         ]),
