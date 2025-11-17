@@ -475,6 +475,7 @@
             var setShowOfferPopup = function(val){ dispatch({type: 'SET_SHOW_OFFER_POPUP', payload: val}); };
 
             var modalContentRef = React.useRef(null);
+            var offerShownRef = React.useRef(false);
 
             // Lock body scroll when modal is open
             useEffect(function(){
@@ -590,12 +591,11 @@
             useEffect(function(){
                 if (fbtOffers.length === 0) return; // Only if offers exist
 
-                var offerShown = false;
-
                 function handleMouseLeave(e){
                     // Detect mouse leaving viewport at top
-                    if (e.clientY <= 0 && !offerShown && !showOfferPopup){
-                        offerShown = true;
+                    // Use ref to persist across re-renders and prevent repeated popups
+                    if (e.clientY <= 0 && !offerShownRef.current && !showOfferPopup){
+                        offerShownRef.current = true;
                         setShowOfferPopup(true);
                     }
                 }
@@ -998,16 +998,22 @@
                             selectedFBT.forEach(function(fbtId){
                                 // Check if this is a gift
                                 var gift = fbtGifts.find(function(g){ return Number(g.id) === Number(fbtId); });
+                                // Check if this is an offer
+                                var offer = fbtOffers.find(function(o){ return Number(o.id) === Number(fbtId); });
 
                                 var fbtFd = new FormData();
                                 fbtFd.append('action', 'add-to-cart');
                                 fbtFd.append('product_id', fbtId);
                                 fbtFd.append('quantity', 1);
 
-                                // If it's a gift, add custom data for cart tracking
+                                // Add custom pricing for gifts
                                 if (gift) {
                                     fbtFd.append('fbt_gift_source', cur.productId);
                                     fbtFd.append('fbt_gift_price', gift.price);
+                                }
+                                // Add custom pricing for offers (separate from gifts)
+                                else if (offer) {
+                                    fbtFd.append('fbt_offer_price', offer.price);
                                 }
 
                                 fbtPromises.push(
@@ -2545,8 +2551,13 @@
                         BOOT.inStock && (fbt.length>0 || fbtGifts.length>0) && e("div",{key:"fbt",className:"mt-6"},[
                             e("h3",{key:"title",className:"text-base font-semibold mb-4"},t('fbt_title', 'Frequently Bought Together')),
                             e("div",{key:"grid",className:"grid sm:grid-cols-3 gap-4"},
-                                // Show gifts first, then regular FBT
-                                fbtGifts.concat(fbt).map(function(item){
+                                // Show gifts first, then regular FBT (deduplicated)
+                                fbtGifts.concat(
+                                    fbt.filter(function(fbtItem){
+                                        // Exclude items that are already in gifts to prevent duplicates
+                                        return !fbtGifts.some(function(gift){ return gift.id === fbtItem.id; });
+                                    })
+                                ).map(function(item){
                                     var isSelected = selectedFBT.indexOf(item.id) >= 0;
                                     var isGift = item.is_gift === true;
                                     var isOffer = item.is_offer === true;
