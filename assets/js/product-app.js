@@ -1147,8 +1147,27 @@
                 loadStockfish(initStockfish);
             }
             function closeChallenge(){ console.log('❌ Closing challenge'); if(challengeScreen !== 'intro' && !challengeUnlocked) trackChallengeEvent('challenge_abandoned', {screen: challengeScreen}); setShowChallenge(false); setChallengeScreen(null); }
-            function startFlappyGame(){ setChallengeScreen('game'); setGameRunning(true); setChallengeScore(0); setBirdY(200); setVelocity(0); setPipes([]); }
-            function jumpBird(){ if (!gameRunning) return; setVelocity(-7); }
+            function startFlappyGame(){
+                // Reset refs first (synchronous)
+                birdYRef.current = 200;
+                velocityRef.current = 0;
+                pipesRef.current = [];
+                scoreRef.current = 0;
+                // Then update state for rendering
+                setBirdY(200);
+                setVelocity(0);
+                setPipes([]);
+                setChallengeScore(0);
+                setChallengeScreen('game');
+                setGameRunning(true);
+            }
+            function jumpBird(){
+                if (!gameRunning) return;
+                // Update ref immediately (synchronous, no race condition)
+                velocityRef.current = -7;
+                // Update state for rendering
+                setVelocity(-7);
+            }
 
             // Chess game with chess.js + Stockfish AI
             function initChess(){
