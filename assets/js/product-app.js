@@ -2671,71 +2671,107 @@
                     // Warranty Modal
                     showWarrantyModal && e("div",{key:"warranty-modal",className:"gstore-modal-overlay",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"gstore-modal-content warranty-modal-desktop",onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"warranty-header"},[e("div",{key:"icon-title",className:"warranty-header-content"},[e("svg",{key:"shield-icon",className:"warranty-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24",xmlns:"http://www.w3.org/2000/svg"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"})]),e("h2",{key:"title",className:"warranty-title"},"Warranty Information")]),e("button",{key:"close",className:"gstore-modal-close",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"warranty-body",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
 
-                    // FBT Offer Popup (only show if there are unique offers after filtering gifts)
-                    showOfferPopup && uniqueOffers.length > 0 && e("div",{key:"offer-modal",className:"gstore-modal-overlay",onClick:function(){ setShowOfferPopup(false); }},[
-                        e("div",{key:"modal",className:"gstore-modal-content",style:{maxWidth:'650px'},onClick:function(ev){ ev.stopPropagation(); }},[
-                            e("div",{key:"header",style:{background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',padding:'24px',borderRadius:'12px 12px 0 0',position:'relative'}},[
-                                e("button",{key:"close",className:"gstore-modal-close",style:{color:'white'},onClick:function(){ setShowOfferPopup(false); }},[
-                                    e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[
-                                        e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})
-                                    ])
-                                ]),
-                                e("div",{key:"icon",style:{fontSize:'48px',marginBottom:'12px'}},"🔥"),
-                                e("h2",{key:"title",style:{fontSize:'24px',fontWeight:'700',marginBottom:'8px'}},"SpecialOffersForYou!"),
-                                e("p",{key:"subtitle",style:{fontSize:'14px',opacity:0.9}},"We've discounted these products just for you!")
-                            ]),
-                            e("div",{key:"body",style:{padding:'24px'}},[
-                                e("div",{key:"offers-grid",style:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',gap:'16px',marginBottom:'20px'}},
-                                    // Use computed uniqueOffers (gifts already filtered)
-                                    uniqueOffers.map(function(offer){
-                                        var isSelected = selectedFBT.indexOf(offer.id) >= 0;
-                                        var discount = offer.original_price > offer.price ? Math.round(((offer.original_price - offer.price) / offer.original_price) * 100) : 0;
+                    // FBT Offer Popup with 3 Scenarios
+                    showOfferPopup && uniqueOffers.length > 0 && (function(){
+                        // Calculate current scenario
+                        var offerIds = uniqueOffers.map(function(o){ return o.id; });
+                        var selectedOfferCount = offerIds.filter(function(id){ return selectedFBT.indexOf(id) >= 0; }).length;
+                        var totalOfferCount = offerIds.length;
 
-                                        return e("div",{
-                                            key:offer.id,
-                                            style:{
-                                                border:'2px solid '+(isSelected?'#4caf50':'#e0e0e0'),
-                                                borderRadius:'12px',
-                                                padding:'16px',
-                                                cursor:'pointer',
-                                                transition:'all 0.2s',
-                                                position:'relative',
-                                                background:isSelected?'#f1f8f4':'white'
-                                            },
-                                            onClick:function(){ toggleFBT(offer.id); }
-                                        },[
-                                            discount > 0 && e("div",{key:"badge",style:{position:'absolute',top:'-8px',right:'-8px',background:'#f44336',color:'white',borderRadius:'50%',width:'40px',height:'40px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:'700'}},"-"+discount+"%"),
-                                            isSelected && e("div",{key:"check",style:{position:'absolute',top:'8px',left:'8px',background:'#4caf50',color:'white',borderRadius:'50%',width:'24px',height:'24px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px'}},"✓"),
-                                            e("div",{key:"image",style:{width:'100%',height:'120px',backgroundImage:'url('+offer.image+')',backgroundSize:'contain',backgroundRepeat:'no-repeat',backgroundPosition:'center',marginBottom:'12px'}}),
-                                            e("h4",{key:"title",style:{fontSize:'13px',fontWeight:'600',marginBottom:'8px',minHeight:'32px',lineHeight:'1.2'}},offer.title),
-                                            e("div",{key:"prices",style:{display:'flex',flexDirection:'column',gap:'4px'}},[
-                                                e("div",{key:"original",style:{fontSize:'12px',textDecoration:'line-through',color:'#999'}},"₾"+offer.original_price),
-                                                e("div",{key:"offer-price",style:{fontSize:'18px',fontWeight:'700',color:'#f44336'}},"₾"+offer.price)
-                                            ])
-                                        ]);
-                                    })
-                                ),
-                                e("div",{key:"footer",style:{borderTop:'1px solid #e0e0e0',paddingTop:'20px',display:'flex',gap:'12px'}},[
-                                    e("button",{
-                                        key:"skip",
-                                        style:{flex:1,padding:'12px',border:'1px solid #ddd',borderRadius:'8px',background:'white',cursor:'pointer',fontWeight:'600'},
-                                        onClick:function(){
+                        var scenario = selectedOfferCount === 0 ? 1 : (selectedOfferCount === totalOfferCount ? 3 : 2);
+                        var scenarioText = scenario === 1 ? scenarioTexts.scenario1 : (scenario === 2 ? scenarioTexts.scenario2 : scenarioTexts.scenario3);
+
+                        // Countdown state for scenario 3
+                        var _useState_countdown = useState(5);
+                        var countdown = _useState_countdown[0];
+                        var setCountdown = _useState_countdown[1];
+
+                        // Countdown effect for scenario 3
+                        useEffect(function(){
+                            if (scenario !== 3 || !showOfferPopup) return;
+
+                            var timer = setInterval(function(){
+                                setCountdown(function(prev){
+                                    if (prev <= 1){
+                                        clearInterval(timer);
+                                        // Auto-close and proceed after countdown
+                                        setTimeout(function(){
                                             setShowOfferPopup(false);
-                                            addToCart('/checkout/');
-                                        }
-                                    },"No Thanks, Continue"),
-                                    e("button",{
-                                        key:"accept",
-                                        style:{flex:1,padding:'12px',border:'none',borderRadius:'8px',background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',cursor:'pointer',fontWeight:'700',fontSize:'16px'},
-                                        onClick:function(){
-                                            setShowOfferPopup(false);
-                                            addToCart('/checkout/');
-                                        }
-                                    },"Add Selected & Continue")
+                                            addToCart(null); // Add to cart with offers
+                                        }, 500);
+                                        return 0;
+                                    }
+                                    return prev - 1;
+                                });
+                            }, 1000);
+
+                            return function(){ clearInterval(timer); };
+                        }, [scenario, showOfferPopup]);
+
+                        return e("div",{key:"offer-modal",className:"gstore-modal-overlay",onClick:function(){ if(scenario !== 3) setShowOfferPopup(false); }},[
+                            e("div",{key:"modal",className:"gstore-modal-content",style:{maxWidth:'650px'},onClick:function(ev){ ev.stopPropagation(); }},[
+                                e("div",{key:"header",style:{background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',padding:'24px',borderRadius:'12px 12px 0 0',position:'relative'}},[
+                                    scenario !== 3 && e("button",{key:"close",className:"gstore-modal-close",style:{color:'white'},onClick:function(){ setShowOfferPopup(false); }},[
+                                        e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[
+                                            e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})
+                                        ])
+                                    ]),
+                                    e("div",{key:"icon",style:{fontSize:'48px',marginBottom:'12px'}},scenario === 3 ? "🎉" : "🔥"),
+                                    e("h2",{key:"title",style:{fontSize:'24px',fontWeight:'700',marginBottom:'8px'}},scenario === 3 ? "Special Discount!" : "Special Offer"),
+                                    e("p",{key:"subtitle",style:{fontSize:'14px',opacity:0.9',lineHeight:'1.4'}},scenarioText),
+                                    scenario === 3 && e("div",{key:"countdown",style:{marginTop:'16px',fontSize:'48px',fontWeight:'900',textAlign:'center'}},countdown)
+                                ]),
+                                e("div",{key:"body",style:{padding:'24px'}},[
+                                    scenario !== 3 && e("div",{key:"offers-grid",style:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',gap:'16px',marginBottom:'20px'}},
+                                        uniqueOffers.map(function(offer){
+                                            var isSelected = selectedFBT.indexOf(offer.id) >= 0;
+                                            var discount = offer.original_price > offer.price ? Math.round(((offer.original_price - offer.price) / offer.original_price) * 100) : 0;
+
+                                            return e("div",{
+                                                key:offer.id,
+                                                style:{
+                                                    border:'2px solid '+(isSelected?'#4caf50':'#e0e0e0'),
+                                                    borderRadius:'12px',
+                                                    padding:'16px',
+                                                    cursor:'pointer',
+                                                    transition:'all 0.2s',
+                                                    position:'relative',
+                                                    background:isSelected?'#f1f8f4':'white'
+                                                },
+                                                onClick:function(){ toggleFBT(offer.id); }
+                                            },[
+                                                discount > 0 && e("div",{key:"badge",style:{position:'absolute',top:'-8px',right:'-8px',background:'#f44336',color:'white',borderRadius:'50%',width:'40px',height:'40px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:'700'}},"-"+discount+"%"),
+                                                isSelected && e("div",{key:"check",style:{position:'absolute',top:'8px',left:'8px',background:'#4caf50',color:'white',borderRadius:'50%',width:'24px',height:'24px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px'}},"✓"),
+                                                e("div",{key:"image",style:{width:'100%',height:'120px',backgroundImage:'url('+offer.image+')',backgroundSize:'contain',backgroundRepeat:'no-repeat',backgroundPosition:'center',marginBottom:'12px'}}),
+                                                e("h4",{key:"title",style:{fontSize:'13px',fontWeight:'600',marginBottom:'8px',minHeight:'32px',lineHeight:'1.2'}},offer.title),
+                                                e("div",{key:"prices",style:{display:'flex',flexDirection:'column',gap:'4px'}},[
+                                                    e("div",{key:"original",style:{fontSize:'12px',textDecoration:'line-through',color:'#999'}},"₾"+offer.original_price),
+                                                    e("div",{key:"offer-price",style:{fontSize:'18px',fontWeight:'700',color:'#f44336'}},"₾"+offer.price)
+                                                ])
+                                            ]);
+                                        })
+                                    ),
+                                    scenario !== 3 && e("div",{key:"footer",style:{borderTop:'1px solid #e0e0e0',paddingTop:'20px',display:'flex',gap:'12px'}},[
+                                        e("button",{
+                                            key:"skip",
+                                            style:{flex:1,padding:'12px',border:'1px solid #ddd',borderRadius:'8px',background:'white',cursor:'pointer',fontWeight:'600'},
+                                            onClick:function(){
+                                                setShowOfferPopup(false);
+                                            }
+                                        },"I don't want"),
+                                        e("button",{
+                                            key:"accept",
+                                            style:{flex:1,padding:'12px',border:'none',borderRadius:'8px',background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',cursor:'pointer',fontWeight:'700',fontSize:'16px'},
+                                            onClick:function(){
+                                                setShowOfferPopup(false);
+                                                addToCart(null);
+                                            }
+                                        },"Add")
+                                    ])
                                 ])
                             ])
-                        ])
-                    ]),
+                        ]);
+                    })(),
 
                     // Surrender Warning Modal
                     showSurrenderWarning && e("div",{key:"surrender-modal",className:"gstore-modal-overlay",onClick:function(){setShowSurrenderWarning(false);}},[e("div",{key:"surrender",className:"surrender-modal",onClick:function(ev){ev.stopPropagation();}},[e("h3",{key:"title",className:"surrender-title"},"ნებდები?"),e("div",{key:"buttons",className:"surrender-buttons"},[e("button",{key:"yes",className:"surrender-btn-yes",onClick:function(){setShowSurrenderWarning(false);setShowChallenge(false);setChallengeScreen('intro');}},"დიახ"),e("button",{key:"no",className:"surrender-btn-no",onClick:function(){setShowSurrenderWarning(false);}},"✕")])])]),
