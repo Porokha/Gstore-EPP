@@ -69,6 +69,7 @@ require_once GSTORE_EPP_DIR.'includes/frontend/enqueue.php';
 require_once GSTORE_EPP_DIR.'includes/rest/routes.php';
 require_once GSTORE_EPP_DIR.'includes/frontend/ajax.php';
 require_once GSTORE_EPP_DIR.'includes/analytics.php';
+require_once GSTORE_EPP_DIR.'includes/fbt-cart.php';
 require_once GSTORE_EPP_DIR.'admin/menu.php';
 require_once GSTORE_EPP_DIR.'admin/metabox-fbt.php';
 require_once GSTORE_EPP_DIR.'admin/metabox-compare.php';
