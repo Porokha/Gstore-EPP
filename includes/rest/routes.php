@@ -740,6 +740,16 @@ class GStore_EPP_REST {
 			];
 		}
 
+		// Get scenario texts for offer popup
+		$scenario1_text = get_post_meta($pid, '_gstore_fbt_scenario1_text', true);
+		$scenario2_text = get_post_meta($pid, '_gstore_fbt_scenario2_text', true);
+		$scenario3_text = get_post_meta($pid, '_gstore_fbt_scenario3_text', true);
+
+		// Defaults
+		if (!$scenario1_text) $scenario1_text = "Hey, we have a special bundle offer for you. You can get these items for a discounted price if you add them now.";
+		if (!$scenario2_text) $scenario2_text = "We discounted the item you selected and we are offering the rest for a special price too.";
+		if (!$scenario3_text) $scenario3_text = "We appreciate your trust. Here is your final special discount.";
+
 		gstore_log_debug('fbt_resolved', [
 			'pid'=>$pid,
 			'regular'=>count($products),
@@ -751,7 +761,12 @@ class GStore_EPP_REST {
 			'ok'=>true,
 			'products'=>$products,
 			'gifts'=>$gift_products,
-			'offers'=>$offer_products
+			'offers'=>$offer_products,
+			'scenario_texts'=>[
+				'scenario1'=>$scenario1_text,
+				'scenario2'=>$scenario2_text,
+				'scenario3'=>$scenario3_text
+			]
 		];
 
 		// Cache for 1 hour

@@ -78,6 +78,38 @@ function gstore_fbt_box($post){
 	echo '<p class="description">Shows popup when user tries to leave page or clicks "Buy Now". Displays original price + offer price. Priority over regular FBT.</p>';
 	echo '</div>';
 
+	echo '<hr style="margin:12px 0;">';
+
+	// FBT Offer Popup Texts
+	$scenario1_text = get_post_meta($post->ID, '_gstore_fbt_scenario1_text', true);
+	$scenario2_text = get_post_meta($post->ID, '_gstore_fbt_scenario2_text', true);
+	$scenario3_text = get_post_meta($post->ID, '_gstore_fbt_scenario3_text', true);
+
+	if (!$scenario1_text) $scenario1_text = "Hey, we have a special bundle offer for you. You can get these items for a discounted price if you add them now.";
+	if (!$scenario2_text) $scenario2_text = "We discounted the item you selected and we are offering the rest for a special price too.";
+	if (!$scenario3_text) $scenario3_text = "We appreciate your trust. Here is your final special discount.";
+
+	echo '<div style="margin-bottom:20px;">';
+	echo '<p style="margin:0 0 8px 0;"><strong>💬 FBT Offer Popup Texts (Translatable):</strong></p>';
+
+	echo '<div style="margin-bottom:12px;">';
+	echo '<label style="display:block;margin-bottom:4px;font-weight:600;font-size:12px;">Scenario 1: User selected NO FBT items</label>';
+	echo '<textarea name="gstore_fbt_scenario1_text" rows="2" style="width:100%;" placeholder="Default: Hey, we have a special bundle offer...">'.esc_textarea($scenario1_text).'</textarea>';
+	echo '</div>';
+
+	echo '<div style="margin-bottom:12px;">';
+	echo '<label style="display:block;margin-bottom:4px;font-weight:600;font-size:12px;">Scenario 2: User selected SOME FBT items</label>';
+	echo '<textarea name="gstore_fbt_scenario2_text" rows="2" style="width:100%;" placeholder="Default: We discounted the item you selected...">'.esc_textarea($scenario2_text).'</textarea>';
+	echo '</div>';
+
+	echo '<div style="margin-bottom:12px;">';
+	echo '<label style="display:block;margin-bottom:4px;font-weight:600;font-size:12px;">Scenario 3: User selected ALL FBT items</label>';
+	echo '<textarea name="gstore_fbt_scenario3_text" rows="2" style="width:100%;" placeholder="Default: We appreciate your trust...">'.esc_textarea($scenario3_text).'</textarea>';
+	echo '</div>';
+
+	echo '<p class="description">These texts will be shown in the popup based on user selection. Customize for each product or use defaults. Supports WPML/Polylang translation.</p>';
+	echo '</div>';
+
 	// JavaScript for add/remove buttons
 	?>
 	<script>
@@ -153,6 +185,15 @@ add_action('save_post_product', function($post_id){
 		}
 	}
 	update_post_meta($post_id, '_gstore_fbt_offers', $offers);
+
+	// Save FBT Offer Scenario Texts
+	$scenario1 = isset($_POST['gstore_fbt_scenario1_text']) ? sanitize_textarea_field($_POST['gstore_fbt_scenario1_text']) : '';
+	$scenario2 = isset($_POST['gstore_fbt_scenario2_text']) ? sanitize_textarea_field($_POST['gstore_fbt_scenario2_text']) : '';
+	$scenario3 = isset($_POST['gstore_fbt_scenario3_text']) ? sanitize_textarea_field($_POST['gstore_fbt_scenario3_text']) : '';
+
+	update_post_meta($post_id, '_gstore_fbt_scenario1_text', $scenario1);
+	update_post_meta($post_id, '_gstore_fbt_scenario2_text', $scenario2);
+	update_post_meta($post_id, '_gstore_fbt_scenario3_text', $scenario3);
 
 	// Handle group default
 	$is_default = isset($_POST['gstore_is_group_default']) && $_POST['gstore_is_group_default'] === 'yes';
