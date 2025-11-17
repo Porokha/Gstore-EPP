@@ -389,6 +389,18 @@
             var _useState29 = useState([]); var chessBoard = _useState29[0]; var setChessBoard = _useState29[1];
             var _useState30 = useState(null); var selectedSquare = _useState30[0]; var setSelectedSquare = _useState30[1];
 
+            // Refs to track game state without causing re-renders
+            var birdYRef = useRef(200);
+            var velocityRef = useRef(0);
+            var pipesRef = useRef([]);
+            var scoreRef = useRef(0);
+
+            // Keep refs in sync with state
+            useEffect(function(){ birdYRef.current = birdY; }, [birdY]);
+            useEffect(function(){ velocityRef.current = velocity; }, [velocity]);
+            useEffect(function(){ pipesRef.current = pipes; }, [pipes]);
+            useEffect(function(){ scoreRef.current = challengeScore; }, [challengeScore]);
+
             var gallery = BOOT.gallery || [];
             var hasGallery = gallery.length > 0;
 
@@ -556,7 +568,7 @@
                 }).catch(function(e){ console.error('laptop addons fetch failed', e); });
             }, [cur.deviceType]);
 
-            // Flappy Bird Game Loop - Optimized for performance
+            // Flappy Bird Game Loop - Use refs to avoid race conditions
             useEffect(function(){
                 if (challengeScreen !== 'game' || !gameRunning) return;
                 var isMobile = window.innerWidth < 768;
@@ -570,54 +582,59 @@
                 var loop = function(){
                     if (!running) return;
 
-                    // Update velocity and position using current state
-                    setVelocity(function(v){
-                        var newV = v + gravity;
-                        setBirdY(function(y){ return Math.max(0, Math.min(460, y + newV)); });
-                        return newV;
-                    });
+                    // Update physics using refs (immediate, synchronous)
+                    velocityRef.current += gravity;
+                    birdYRef.current = Math.max(0, Math.min(460, birdYRef.current + velocityRef.current));
 
                     // Update pipes
-                    setPipes(function(prevPipes){
-                        var moved = prevPipes.map(function(p){ return {x: p.x - pipeSpeed, gapY: p.gapY, scored: p.scored}; }).filter(function(p){ return p.x > -60; });
-                        if (Math.random() < 0.009){
-                            var gapY = 140 + Math.random() * 180;
-                            moved.push({x: 420, gapY: gapY, scored: false});
-                        }
+                    var moved = pipesRef.current.map(function(p){ return {x: p.x - pipeSpeed, gapY: p.gapY, scored: p.scored}; }).filter(function(p){ return p.x > -60; });
+                    if (Math.random() < 0.009){
+                        var gapY = 140 + Math.random() * 180;
+                        moved.push({x: 420, gapY: gapY, scored: false});
+                    }
 
-                        // Check scoring and collision inline
-                        setBirdY(function(currentY){
-                            for (var i = 0; i < moved.length; i++){
-                                var p = moved[i];
-                                if (!p.scored && p.x < 60){
-                                    p.scored = true;
-                                    setChallengeScore(function(s){
-                                        var newScore = s + 10;
-                                        if (newScore >= targetScore && challengeLevel === 1){
-                                            running = false;
-                                            setChallengeLevel(2);
-                                            setGameRunning(false);
-                                            setChallengeScreen('level2');
-                                        }
-                                        return newScore;
-                                    });
-                                }
-                                // Check collision
-                                if (p.x < 80 && p.x > 20){
-                                    if (currentY < p.gapY - gapHalf || currentY > p.gapY + gapHalf){
-                                        running = false;
-                                        setGameRunning(false);
-                                        setChallengeScreen('lose');
-                                    }
-                                }
+                    // Check scoring and collision using ref values (no stale closures)
+                    for (var i = 0; i < moved.length; i++){
+                        var p = moved[i];
+                        if (!p.scored && p.x < 60){
+                            p.scored = true;
+                            scoreRef.current += 10;
+                            if (scoreRef.current >= targetScore && challengeLevel === 1){
+                                running = false;
+                                setBirdY(birdYRef.current);
+                                setVelocity(velocityRef.current);
+                                setPipes(moved);
+                                setChallengeScore(scoreRef.current);
+                                setChallengeLevel(2);
+                                setGameRunning(false);
+                                setChallengeScreen('level2');
+                                return;
                             }
-                            return currentY;
-                        });
+                        }
+                        // Check collision with current ref values (guaranteed correct)
+                        if (p.x < 80 && p.x > 20){
+                            if (birdYRef.current < p.gapY - gapHalf || birdYRef.current > p.gapY + gapHalf){
+                                running = false;
+                                setBirdY(birdYRef.current);
+                                setVelocity(velocityRef.current);
+                                setPipes(moved);
+                                setChallengeScore(scoreRef.current);
+                                setGameRunning(false);
+                                setChallengeScreen('lose');
+                                return;
+                            }
+                        }
+                    }
 
-                        return moved;
-                    });
+                    pipesRef.current = moved;
 
-                    if (running) frame = requestAnimationFrame(loop);
+                    // Update React state for rendering
+                    setBirdY(birdYRef.current);
+                    setVelocity(velocityRef.current);
+                    setPipes(moved);
+                    if (scoreRef.current !== challengeScore) setChallengeScore(scoreRef.current);
+
+                    frame = requestAnimationFrame(loop);
                 };
                 frame = requestAnimationFrame(loop);
                 return function(){ running = false; cancelAnimationFrame(frame); };
