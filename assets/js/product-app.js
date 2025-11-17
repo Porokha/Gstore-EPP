@@ -281,6 +281,8 @@
                     case 'SET_TIER': return {...state, tier: action.payload};
                     case 'SET_NEW_BAT': return {...state, newBat: action.payload};
                     case 'SET_FBT': return {...state, fbt: action.payload};
+                    case 'SET_FBT_GIFTS': return {...state, fbtGifts: action.payload};
+                    case 'SET_FBT_OFFERS': return {...state, fbtOffers: action.payload};
                     case 'SET_SELECTED_FBT': return {...state, selectedFBT: action.payload};
                     case 'TOGGLE_FBT':
                         var id = action.payload;
@@ -289,6 +291,7 @@
                                 ? state.selectedFBT.filter(function(x){ return x !== id; })
                                 : state.selectedFBT.concat([id])
                         };
+                    case 'SET_SHOW_OFFER_POPUP': return {...state, showOfferPopup: action.payload};
                     case 'SET_ACTIVE_TAB': return {...state, activeTab: action.payload};
                     case 'SET_COND': return {...state, cond: action.payload};
                     case 'SET_COMPARE_PRODUCT': return {...state, compareProduct: action.payload};
@@ -324,7 +327,10 @@
                 tier: ((BOOT.condition||'').toLowerCase() === 'used') ? 'pending' : null,
                 newBat: false,
                 fbt: [],
+                fbtGifts: [],
+                fbtOffers: [],
                 selectedFBT: [],
+                showOfferPopup: false,
                 activeTab: (typeof window!=='undefined' && window.innerWidth<=768) ? null : 'specifications',
                 cond: (BOOT.condition||'').toLowerCase() === 'new' ? 'new' : 'used',
                 compareProduct: null,
@@ -348,7 +354,10 @@
             var tier = state.tier;
             var newBat = state.newBat;
             var fbt = state.fbt;
+            var fbtGifts = state.fbtGifts;
+            var fbtOffers = state.fbtOffers;
             var selectedFBT = state.selectedFBT;
+            var showOfferPopup = state.showOfferPopup;
             var specs = state.specs;
             var delivery = state.delivery;
 
@@ -534,7 +543,29 @@
             useEffect(function(){
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/fbt?product_id=' + cur.productId;
                 fetchJSON(url).then(function(j){
-                    if (j && j.ok){ setFbt(j.products || []); }
+                    if (j && j.ok){
+                        // Regular FBT products
+                        var regularFBT = j.products || [];
+                        // FBT gifts (auto-selected)
+                        var gifts = j.gifts || [];
+                        // FBT offers (for exit popup)
+                        var offers = j.offers || [];
+
+                        // If offers exist, prioritize them over regular FBT for display
+                        // Offers will show in popup, but merge into display if needed
+                        var displayFBT = offers.length > 0 ? offers : regularFBT;
+
+                        // Set state
+                        dispatch({type: 'SET_FBT', payload: displayFBT});
+                        dispatch({type: 'SET_FBT_GIFTS', payload: gifts});
+                        dispatch({type: 'SET_FBT_OFFERS', payload: offers});
+
+                        // Auto-select gifts
+                        var giftIds = gifts.map(function(g){ return g.id; });
+                        if (giftIds.length > 0){
+                            dispatch({type: 'SET_SELECTED_FBT', payload: giftIds});
+                        }
+                    }
                 }).catch(function(e){ console.error('fbt fetch failed', e); });
             }, [cur.productId]);
 
@@ -884,11 +915,19 @@
             var fbtTotal = useMemo(function(){
                 var total = 0;
                 selectedFBT.forEach(function(id){
-                    var item = fbt.find(function(x){ return Number(x.id)===Number(id); });
-                    if (item) total += parseFloat(item.price||0);
+                    // Check if this is a gift (with custom pricing)
+                    var gift = fbtGifts.find(function(x){ return Number(x.id)===Number(id); });
+                    if (gift){
+                        // Use custom gift price
+                        total += parseFloat(gift.price||0);
+                    } else {
+                        // Regular FBT or offer item
+                        var item = fbt.find(function(x){ return Number(x.id)===Number(id); });
+                        if (item) total += parseFloat(item.price||0);
+                    }
                 });
                 return total;
-            }, [selectedFBT, fbt]);
+            }, [selectedFBT, fbt, fbtGifts]);
 
             var addonsTotal = useMemo(function(){
                 var total = 0;
@@ -2444,18 +2483,25 @@
                         ]),
 
                         // FBT - with translations (hide for out of stock)
-                        BOOT.inStock && fbt.length>0 && e("div",{key:"fbt",className:"mt-6"},[
+                        // Merge gifts with regular FBT for display
+                        BOOT.inStock && (fbt.length>0 || fbtGifts.length>0) && e("div",{key:"fbt",className:"mt-6"},[
                             e("h3",{key:"title",className:"text-base font-semibold mb-4"},t('fbt_title', 'Frequently Bought Together')),
                             e("div",{key:"grid",className:"grid sm:grid-cols-3 gap-4"},
-                                fbt.map(function(item){
+                                // Show gifts first, then regular FBT
+                                fbtGifts.concat(fbt).map(function(item){
                                     var isSelected = selectedFBT.indexOf(item.id) >= 0;
+                                    var isGift = item.is_gift === true;
+                                    var isOffer = item.is_offer === true;
+                                    var hasOriginalPrice = item.original_price && item.original_price > item.price;
+
                                     return e("div",{
                                         key:item.id,
-                                        className:"fbt-card "+(isSelected?"fbt-card-selected":"")
+                                        className:"fbt-card "+(isSelected?"fbt-card-selected":"")+(isGift?" fbt-card-gift":"")
                                     },[
                                         e("div",{key:"shine",className:"fbt-card__shine"}),
                                         e("div",{key:"glow",className:"fbt-card__glow"}),
-                                        isSelected && e("div",{key:"badge",className:"fbt-card__badge"},"✓ Added"),
+                                        isGift && e("div",{key:"gift-badge",className:"fbt-card__badge",style:{background:'#ff9800'}},"🎁 Gift"),
+                                        isSelected && !isGift && e("div",{key:"badge",className:"fbt-card__badge"},"✓ Added"),
                                         e("div",{key:"content",className:"fbt-card__content"},[
                                             e("div",{
                                                 key:"img-wrap",
@@ -2466,8 +2512,12 @@
                                                 e("h4",{key:"title",className:"fbt-card__title"},item.title)
                                             ]),
                                             e("div",{key:"footer",className:"fbt-card__footer"},[
-                                                e("span",{key:"price",className:"fbt-card__price"},"₾"+item.price),
-                                                e("button",{
+                                                e("div",{key:"prices",className:"fbt-card__prices",style:{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:'2px'}},[
+                                                    hasOriginalPrice && e("span",{key:"original",style:{fontSize:'11px',textDecoration:'line-through',color:'#999'}},"₾"+item.original_price),
+                                                    e("span",{key:"price",className:"fbt-card__price",style:hasOriginalPrice?{color:'#f44336',fontWeight:'600'}:{}},"₾"+item.price)
+                                                ]),
+                                                // Gifts are always selected and can't be toggled
+                                                isGift ? e("div",{key:"auto",style:{fontSize:'10px',color:'#666'}},"Auto") : e("button",{
                                                     key:"btn",
                                                     className:"fbt-card__button",
                                                     onClick:function(){ toggleFBT(item.id); }
