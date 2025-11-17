@@ -390,10 +390,10 @@
             var _useState30 = useState(null); var selectedSquare = _useState30[0]; var setSelectedSquare = _useState30[1];
 
             // Refs to track game state without causing re-renders
-            var birdYRef = useRef(200);
-            var velocityRef = useRef(0);
-            var pipesRef = useRef([]);
-            var scoreRef = useRef(0);
+            var birdYRef = React.useRef(200);
+            var velocityRef = React.useRef(0);
+            var pipesRef = React.useRef([]);
+            var scoreRef = React.useRef(0);
 
             // Keep refs in sync with state
             useEffect(function(){ birdYRef.current = birdY; }, [birdY]);
