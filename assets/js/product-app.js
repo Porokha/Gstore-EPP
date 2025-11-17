@@ -589,7 +589,11 @@
 
             // Exit-intent detection for offer popup
             useEffect(function(){
-                if (fbtOffers.length === 0) return; // Only if offers exist
+                // Only show if there are unique offers (not already in gifts)
+                var uniqueOffers = fbtOffers.filter(function(offer){
+                    return !fbtGifts.some(function(gift){ return gift.id === offer.id; });
+                });
+                if (uniqueOffers.length === 0) return;
 
                 function handleMouseLeave(e){
                     // Detect mouse leaving viewport at top
@@ -602,7 +606,7 @@
 
                 document.addEventListener('mouseleave', handleMouseLeave);
                 return function(){ document.removeEventListener('mouseleave', handleMouseLeave); };
-            }, [fbtOffers, showOfferPopup]);
+            }, [fbtOffers, fbtGifts, showOfferPopup]);
 
             // Load laptop addons
             useEffect(function(){
@@ -2527,14 +2531,21 @@
                                 key:"buy",
                                 className:"flex-1 buy-now-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg",
                                 onClick:function(ev){
-                                    // Show offer popup if offers exist and not all selected
+                                    // Show offer popup if offers exist (excluding gifts) and not all selected
                                     if (fbtOffers.length > 0){
-                                        var allOffersSelected = fbtOffers.every(function(offer){
-                                            return selectedFBT.indexOf(offer.id) >= 0;
+                                        // Filter out offers that are already gifts
+                                        var uniqueOffers = fbtOffers.filter(function(offer){
+                                            return !fbtGifts.some(function(gift){ return gift.id === offer.id; });
                                         });
-                                        if (!allOffersSelected){
-                                            setShowOfferPopup(true);
-                                            return; // Don't proceed to checkout yet
+
+                                        if (uniqueOffers.length > 0) {
+                                            var allOffersSelected = uniqueOffers.every(function(offer){
+                                                return selectedFBT.indexOf(offer.id) >= 0;
+                                            });
+                                            if (!allOffersSelected){
+                                                setShowOfferPopup(true);
+                                                return; // Don't proceed to checkout yet
+                                            }
                                         }
                                     }
 
@@ -2620,7 +2631,10 @@
                             ]),
                             e("div",{key:"body",style:{padding:'24px'}},[
                                 e("div",{key:"offers-grid",style:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',gap:'16px',marginBottom:'20px'}},
-                                    fbtOffers.map(function(offer){
+                                    // Filter out offers that are already in gifts to prevent duplicates
+                                    fbtOffers.filter(function(offer){
+                                        return !fbtGifts.some(function(gift){ return gift.id === offer.id; });
+                                    }).map(function(offer){
                                         var isSelected = selectedFBT.indexOf(offer.id) >= 0;
                                         var discount = offer.original_price > offer.price ? Math.round(((offer.original_price - offer.price) / offer.original_price) * 100) : 0;
 
