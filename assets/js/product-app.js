@@ -292,6 +292,7 @@
                                 : state.selectedFBT.concat([id])
                         };
                     case 'SET_SHOW_OFFER_POPUP': return {...state, showOfferPopup: action.payload};
+                    case 'SET_SCENARIO_TEXTS': return {...state, scenarioTexts: action.payload};
                     case 'SET_ACTIVE_TAB': return {...state, activeTab: action.payload};
                     case 'SET_COND': return {...state, cond: action.payload};
                     case 'SET_COMPARE_PRODUCT': return {...state, compareProduct: action.payload};
@@ -331,6 +332,7 @@
                 fbtOffers: [],
                 selectedFBT: [],
                 showOfferPopup: false,
+                scenarioTexts: {scenario1: '', scenario2: '', scenario3: ''},
                 activeTab: (typeof window!=='undefined' && window.innerWidth<=768) ? null : 'specifications',
                 cond: (BOOT.condition||'').toLowerCase() === 'new' ? 'new' : 'used',
                 compareProduct: null,
@@ -358,6 +360,7 @@
             var fbtOffers = state.fbtOffers;
             var selectedFBT = state.selectedFBT;
             var showOfferPopup = state.showOfferPopup;
+            var scenarioTexts = state.scenarioTexts;
             var specs = state.specs;
             var delivery = state.delivery;
 
@@ -564,6 +567,10 @@
                         // Offers will show in popup, but merge into display if needed
                         var displayFBT = offers.length > 0 ? offers : regularFBT;
 
+                        // Store scenario texts
+                        var texts = j.scenario_texts || {scenario1: '', scenario2: '', scenario3: ''};
+                        dispatch({type: 'SET_SCENARIO_TEXTS', payload: texts});
+
                         // Set state
                         dispatch({type: 'SET_FBT', payload: displayFBT});
                         dispatch({type: 'SET_FBT_GIFTS', payload: gifts});
@@ -594,22 +601,60 @@
                 }).catch(function(e){ console.error('delivery fetch failed', e); });
             }, [BOOT.warehouse]);
 
-            // Exit-intent detection for offer popup
+            // Session tracking for popup (show only once per product page session)
+            var popupSessionKey = 'fbt_popup_shown_' + cur.productId;
+
+            // Function to check if popup was already shown in this session
+            function wasPopupShown(){
+                try{
+                    return sessionStorage.getItem(popupSessionKey) === 'true';
+                }catch(e){ return false; }
+            }
+
+            // Function to mark popup as shown
+            function markPopupShown(){
+                try{
+                    sessionStorage.setItem(popupSessionKey, 'true');
+                }catch(e){}
+            }
+
+            // Function to trigger offer popup with scenario check
+            function triggerOfferPopup(intentType){
+                // Don't show if no offers or already shown or already visible
+                if (uniqueOffers.length === 0 || wasPopupShown() || showOfferPopup) return false;
+
+                // Mark as shown
+                markPopupShown();
+                setShowOfferPopup(true);
+                return true;
+            }
+
+            // Exit-intent detection - detect navigation attempts
             useEffect(function(){
-                // Only show if there are unique offers (not already in gifts)
                 if (uniqueOffers.length === 0) return;
 
-                function handleMouseLeave(e){
-                    // Detect mouse leaving viewport at top
-                    // Use ref to persist across re-renders and prevent repeated popups
-                    if (e.clientY <= 0 && !offerShownRef.current && !showOfferPopup){
-                        offerShownRef.current = true;
-                        setShowOfferPopup(true);
+                function handleLinkClick(e){
+                    // Find if clicked element is or contains a link
+                    var target = e.target;
+                    var link = target.closest('a');
+
+                    if (link && link.href){
+                        var href = link.href;
+                        var currentDomain = window.location.origin;
+
+                        // Check if it's internal navigation away from product page
+                        if (href.indexOf(currentDomain) === 0 && href !== window.location.href){
+                            // Try to show popup
+                            if (triggerOfferPopup('exit')){
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                        }
                     }
                 }
 
-                document.addEventListener('mouseleave', handleMouseLeave);
-                return function(){ document.removeEventListener('mouseleave', handleMouseLeave); };
+                document.addEventListener('click', handleLinkClick, true);
+                return function(){ document.removeEventListener('click', handleLinkClick, true); };
             }, [uniqueOffers, showOfferPopup]);
 
             // Load laptop addons
@@ -2528,7 +2573,13 @@
                             e("button",{
                                 key:"cart",
                                 className:"flex-1 cart-btn-desktop bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg flex items-center justify-center gap-2",
-                                onClick:function(){ addToCart(null); }
+                                onClick:function(){
+                                    // Try to trigger offer popup before adding to cart
+                                    if (triggerOfferPopup('add_to_cart')){
+                                        return; // Popup shown, wait for user decision
+                                    }
+                                    addToCart(null);
+                                }
                             },[
                                 e("span",{key:"icon-container",className:"cart-icon-container"},e(CartIcon)),
                                 e("span",{key:"text",className:"cart-text"}," " + t('add_to_cart', 'Add to Cart') + " " + gel(grandTotal))
@@ -2537,15 +2588,9 @@
                                 key:"buy",
                                 className:"flex-1 buy-now-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg",
                                 onClick:function(ev){
-                                    // Show offer popup if unique offers exist and not all selected
-                                    if (uniqueOffers.length > 0) {
-                                        var allOffersSelected = uniqueOffers.every(function(offer){
-                                            return selectedFBT.indexOf(offer.id) >= 0;
-                                        });
-                                        if (!allOffersSelected){
-                                            setShowOfferPopup(true);
-                                            return; // Don't proceed to checkout yet
-                                        }
+                                    // Try to trigger offer popup before proceeding to checkout
+                                    if (triggerOfferPopup('buy_now')){
+                                        return; // Popup shown, wait for user decision
                                     }
 
                                     var btn = ev.currentTarget;
@@ -2593,8 +2638,14 @@
                                             ]),
                                             e("div",{key:"footer",className:"fbt-card__footer"},[
                                                 e("div",{key:"prices",className:"fbt-card__prices",style:{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:'2px'}},[
-                                                    hasOriginalPrice && e("span",{key:"original",style:{fontSize:'11px',textDecoration:'line-through',color:'#999'}},"₾"+item.original_price),
-                                                    e("span",{key:"price",className:"fbt-card__price",style:hasOriginalPrice?{color:'#f44336',fontWeight:'600'}:{}},"₾"+item.price)
+                                                    // For offers on product page, show ONLY original price (no discount)
+                                                    // Offer price will be shown only in popup
+                                                    isOffer && item.original_price ?
+                                                        e("span",{key:"price",className:"fbt-card__price"},"₾"+item.original_price)
+                                                    : [
+                                                        hasOriginalPrice && e("span",{key:"original",style:{fontSize:'11px',textDecoration:'line-through',color:'#999'}},"₾"+item.original_price),
+                                                        e("span",{key:"price",className:"fbt-card__price",style:hasOriginalPrice?{color:'#f44336',fontWeight:'600'}:{}},"₾"+item.price)
+                                                    ]
                                                 ]),
                                                 // Gifts are always selected and show green checkmark
                                                 isGift ? e("div",{key:"auto",className:"fbt-card__button",style:{background:'#4caf50',cursor:'default'}},
