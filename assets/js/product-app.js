@@ -435,6 +435,13 @@
 
             var maxScroll = Math.max(0, gallery.length - visibleGalleryCount);
 
+            // Compute unique offers (exclude gifts to prevent duplicates)
+            var uniqueOffers = useMemo(function(){
+                return fbtOffers.filter(function(offer){
+                    return !fbtGifts.some(function(gift){ return gift.id === offer.id; });
+                });
+            }, [fbtOffers, fbtGifts]);
+
             // Sync heroImage with cur.image when product changes
             useEffect(function(){
                 setHeroImage(cur.image || BOOT.image);
@@ -931,13 +938,6 @@
             }, [rules]);
 
             var batteryPrice = batteryPriceBlock.price;
-
-            // Compute unique offers (exclude gifts to prevent duplicates)
-            var uniqueOffers = useMemo(function(){
-                return fbtOffers.filter(function(offer){
-                    return !fbtGifts.some(function(gift){ return gift.id === offer.id; });
-                });
-            }, [fbtOffers, fbtGifts]);
 
             var fbtTotal = useMemo(function(){
                 var total = 0;
