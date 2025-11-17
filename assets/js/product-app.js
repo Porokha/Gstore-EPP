@@ -138,6 +138,104 @@
             return props.children;
         }
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // ANIMATED NUMBER COMPONENT - Smooth number transitions
+        // ═══════════════════════════════════════════════════════════════════════
+        function AnimatedNumber(props){
+            var value = Number(props.value || 0);
+            var prefix = props.prefix || '';
+            var suffix = props.suffix || '';
+            var className = props.className || '';
+            var decimals = props.decimals || 0;
+
+            var _s = useState(value);
+            var displayValue = _s[0];
+            var setDisplayValue = _s[1];
+
+            var _s2 = useState(false);
+            var isAnimating = _s2[0];
+            var setIsAnimating = _s2[1];
+
+            // Animate to new value when it changes
+            useEffect(function(){
+                if (displayValue === value) return;
+
+                setIsAnimating(true);
+                var start = displayValue;
+                var end = value;
+                var duration = 600; // ms
+                var startTime = Date.now();
+
+                var animate = function(){
+                    var elapsed = Date.now() - startTime;
+                    var progress = Math.min(elapsed / duration, 1);
+
+                    // Easing function (easeOutCubic)
+                    var eased = 1 - Math.pow(1 - progress, 3);
+
+                    var current = start + (end - start) * eased;
+                    setDisplayValue(current);
+
+                    if (progress < 1){
+                        requestAnimationFrame(animate);
+                    } else {
+                        setIsAnimating(false);
+                    }
+                };
+
+                requestAnimationFrame(animate);
+            }, [value]);
+
+            var formattedValue = decimals > 0
+                ? displayValue.toFixed(decimals)
+                : Math.round(displayValue).toString();
+
+            return e("span", {
+                className: className + ' inline-block transition-all duration-300',
+                style: {
+                    transform: isAnimating ? 'scale(1.05)' : 'scale(1)',
+                    color: isAnimating ? '#3b82f6' : 'inherit'
+                }
+            }, prefix + formattedValue + suffix);
+        }
+
+        // Animated Text - Smooth fade transitions for text changes
+        function AnimatedText(props){
+            var text = props.children || '';
+            var className = props.className || '';
+
+            var _s = useState(text);
+            var displayText = _s[0];
+            var setDisplayText = _s[1];
+
+            var _s2 = useState(1);
+            var opacity = _s2[0];
+            var setOpacity = _s2[1];
+
+            useEffect(function(){
+                if (displayText === text) return;
+
+                // Fade out
+                setOpacity(0);
+
+                setTimeout(function(){
+                    setDisplayText(text);
+                    // Fade in
+                    setTimeout(function(){
+                        setOpacity(1);
+                    }, 50);
+                }, 150);
+            }, [text]);
+
+            return e("span", {
+                className: className,
+                style: {
+                    opacity: opacity,
+                    transition: 'opacity 150ms ease-in-out'
+                }
+            }, displayText);
+        }
+
         // P4 OPTIMIZED: Loading Skeleton Component
         function LoadingSkeleton() {
             return e("div", {className: "animate-pulse space-y-4 p-6"},[
@@ -2300,21 +2398,29 @@
                     e("div",{key:"right",className:"space-y-5"},[
                         // Title
                         e("h1",{key:"title",className:"text-2xl font-semibold"},
-                            cur.title || BOOT.title || "Product"),
+                            e(AnimatedText, {className: "inline-block"}, cur.title || BOOT.title || "Product")),
                         e("hr",{key:"hr",className:"my-4 border-t border-gray-300"}),
 
-                        // Price
+                        // Price with animations
                         e("div",{key:"price",className:"flex items-center gap-3 flex-wrap"},[
                             e("div",{key:"prices",className:"flex items-center gap-2"},[
-                                e("span",{key:"main",className:"text-3xl font-bold " + (priceBlock.hasSale ? "text-red-600" : "text-gray-900")},
-                                    (priceBlock.hasSale ? "🔥 " : "") + gel(priceBlock.hasSale ? priceBlock.sale : priceBlock.base)),
-                                priceBlock.hasSale && e("span",{key:"reg",className:"text-sm text-gray-400 line-through"}, gel(priceBlock.reg))
+                                e("span",{key:"main",className:"text-3xl font-bold " + (priceBlock.hasSale ? "text-red-600" : "text-gray-900")},[
+                                    priceBlock.hasSale && "🔥 ",
+                                    e(AnimatedNumber, {
+                                        key: "price-num",
+                                        value: priceBlock.hasSale ? priceBlock.sale : priceBlock.base,
+                                        prefix: "₾",
+                                        className: "inline-block"
+                                    })
+                                ]),
+                                priceBlock.hasSale && e("span",{key:"reg",className:"text-sm text-gray-400 line-through"},
+                                    e(AnimatedNumber, {value: priceBlock.reg, prefix: "₾"}))
                             ]),
                             e("p",{key:"inst",className:"text-gray-600 flex items-center gap-1 text-base"},[
                                 e(CoinsIcon,{key:"icon"}),
-                                " " + t('installment_text', 'From ₾{amount}/month for 24 months', {
-                                    amount: Math.floor(grandTotal/24)
-                                })
+                                " " + t('installment_text', 'From ₾', {amount: Math.floor(grandTotal/24)}),
+                                e(AnimatedNumber, {key: "inst-num", value: Math.floor(grandTotal/24), className: "inline-block"}),
+                                t('installment_suffix', '/month for 24 months')
                             ])
                         ]),
 
@@ -2627,7 +2733,10 @@
                                 }
                             },[
                                 e("span",{key:"icon-container",className:"cart-icon-container"},e(CartIcon)),
-                                e("span",{key:"text",className:"cart-text"}," " + t('add_to_cart', 'Add to Cart') + " " + gel(grandTotal))
+                                e("span",{key:"text",className:"cart-text"},[
+                                    " " + t('add_to_cart', 'Add to Cart') + " ₾",
+                                    e(AnimatedNumber, {key:"cart-price", value: grandTotal, className: "inline-block"})
+                                ])
                             ]),
                             e("button",{
                                 key:"buy",
@@ -2643,7 +2752,10 @@
                                     setTimeout(function(){ if(btn) btn.classList.remove('animate'); }, 600);
                                     addToCart('/checkout/');
                                 }
-                            }, t('buy_now', 'Buy Now') + " " + gel(grandTotal))
+                            }, [
+                                t('buy_now', 'Buy Now') + " ₾",
+                                e(AnimatedNumber, {key:"buy-price", value: grandTotal, className: "inline-block"})
+                            ])
                         ]),
 
                         // FBT - with translations (hide for out of stock)
@@ -2686,10 +2798,13 @@
                                                     // For offers on product page, show ONLY original price (no discount)
                                                     // Offer price will be shown only in popup
                                                     isOffer && item.original_price ?
-                                                        e("span",{key:"price",className:"fbt-card__price"},"₾"+item.original_price)
+                                                        e("span",{key:"price",className:"fbt-card__price"},
+                                                            e(AnimatedNumber, {value: item.original_price, prefix: "₾"}))
                                                     : [
-                                                        hasOriginalPrice && e("span",{key:"original",style:{fontSize:'11px',textDecoration:'line-through',color:'#999'}},"₾"+item.original_price),
-                                                        e("span",{key:"price",className:"fbt-card__price",style:hasOriginalPrice?{color:'#f44336',fontWeight:'600'}:{}},"₾"+item.price)
+                                                        hasOriginalPrice && e("span",{key:"original",style:{fontSize:'11px',textDecoration:'line-through',color:'#999'}},
+                                                            e(AnimatedNumber, {value: item.original_price, prefix: "₾"})),
+                                                        e("span",{key:"price",className:"fbt-card__price",style:hasOriginalPrice?{color:'#f44336',fontWeight:'600'}:{}},
+                                                            e(AnimatedNumber, {value: item.price, prefix: "₾"}))
                                                     ]
                                                 ]),
                                                 // Gifts are always selected and show green checkmark
@@ -2754,8 +2869,10 @@
                                             e("div",{key:"image",style:{width:'100%',height:'120px',backgroundImage:'url('+offer.image+')',backgroundSize:'contain',backgroundRepeat:'no-repeat',backgroundPosition:'center',marginBottom:'12px'}}),
                                             e("h4",{key:"title",style:{fontSize:'13px',fontWeight:'600',marginBottom:'8px',minHeight:'32px',lineHeight:'1.2'}},offer.title),
                                             e("div",{key:"prices",style:{display:'flex',flexDirection:'column',gap:'4px'}},[
-                                                e("div",{key:"original",style:{fontSize:'12px',textDecoration:'line-through',color:'#999'}},"₾"+offer.original_price),
-                                                e("div",{key:"offer-price",style:{fontSize:'18px',fontWeight:'700',color:'#f44336'}},"₾"+offer.price)
+                                                e("div",{key:"original",style:{fontSize:'12px',textDecoration:'line-through',color:'#999'}},
+                                                    e(AnimatedNumber, {value: offer.original_price, prefix: "₾"})),
+                                                e("div",{key:"offer-price",style:{fontSize:'18px',fontWeight:'700',color:'#f44336'}},
+                                                    e(AnimatedNumber, {value: offer.price, prefix: "₾"}))
                                             ])
                                         ]);
                                     })
