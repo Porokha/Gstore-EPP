@@ -1023,11 +1023,12 @@
                                     fbtFd.append('fbt_offer_price', offer.price);
                                 }
 
-                                // Use WooCommerce's add-to-cart endpoint (query string in URL)
-                                var fbtUrl = window.location.origin + '/?wc-ajax=add_to_cart';
+                                // Use WooCommerce's add-to-cart endpoint
+                                var fbtUrl = window.location.origin + '/?add-to-cart=' + fbtId;
                                 fbtPromises.push(
                                     fetch(fbtUrl, { method:'POST', body:fbtFd, credentials:'same-origin' })
-                                        .then(function(r){ return r.json(); })
+                                        .then(function(r){ return r.text(); })
+                                        .catch(function(e){ console.error('FBT add failed:', e); })
                                 );
                             });
 
@@ -2578,8 +2579,9 @@
                                     },[
                                         e("div",{key:"shine",className:"fbt-card__shine"}),
                                         e("div",{key:"glow",className:"fbt-card__glow"}),
-                                        isGift && e("div",{key:"gift-badge",className:"fbt-card__badge",style:{background:'#ff9800'}},"🎁 Gift"),
-                                        isSelected && e("div",{key:"badge",className:"fbt-card__badge"},"✓ Added"),
+                                        isGift && e("div",{key:"gift-badge",className:"fbt-card__badge",style:{background:'#ff9800',left:'8px',right:'auto'}},"🎁 Gift"),
+                                        isSelected && !isGift && e("div",{key:"badge",className:"fbt-card__badge"},"✓ Added"),
+                                        isSelected && isGift && e("div",{key:"added-badge",className:"fbt-card__badge",style:{left:'auto',right:'8px'}},"✓ Added"),
                                         e("div",{key:"content",className:"fbt-card__content"},[
                                             e("div",{
                                                 key:"img-wrap",
