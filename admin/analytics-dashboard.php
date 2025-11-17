@@ -17,9 +17,25 @@ add_action('admin_menu', function(){
 }, 15);
 
 /**
+ * Handle manual table creation
+ */
+add_action('admin_init', function(){
+	if (isset($_GET['gstore_create_tables']) && $_GET['gstore_create_tables'] === '1' && current_user_can('manage_woocommerce')) {
+		gstore_epp_create_tables();
+		wp_redirect(admin_url('admin.php?page=gstore_analytics&tables_created=1'));
+		exit;
+	}
+});
+
+/**
  * Render Analytics Dashboard
  */
 function gstore_analytics_dashboard_page(){
+	// Check if analytics table exists
+	global $wpdb;
+	$analytics_table = gstore_epp_table_analytics();
+	$table_exists = $wpdb->get_var("SHOW TABLES LIKE '$analytics_table'") === $analytics_table;
+
 	// Get time period from query string (default: 30 days)
 	$period = isset($_GET['period']) ? absint($_GET['period']) : 30;
 	$valid_periods = [7, 30, 90];
@@ -29,9 +45,28 @@ function gstore_analytics_dashboard_page(){
 	$stats = gstore_get_analytics_stats($period);
 
 	$updated = isset($_GET['updated']) ? true : false;
+	$tables_created = isset($_GET['tables_created']) ? true : false;
 	?>
 	<div class="wrap">
 		<h1 class="wp-heading-inline">🎮 Challenge Analytics Dashboard</h1>
+
+		<?php if ($tables_created): ?>
+			<div class="notice notice-success is-dismissible"><p><strong>Success!</strong> Analytics tables have been created. Tracking is now enabled.</p></div>
+		<?php endif; ?>
+
+		<?php if (!$table_exists): ?>
+			<div class="notice notice-error">
+				<p><strong>⚠️ Analytics table does not exist!</strong> Tracking is currently disabled.</p>
+				<p>This can happen if the plugin was already active when analytics features were added.</p>
+				<p>
+					<a href="<?php echo admin_url('admin.php?page=gstore_analytics&gstore_create_tables=1'); ?>"
+					   class="button button-primary"
+					   onclick="return confirm('Create analytics database tables?');">
+						🔧 Create Analytics Tables Now
+					</a>
+				</p>
+			</div>
+		<?php endif; ?>
 
 		<?php if ($updated): ?>
 			<div class="notice notice-success is-dismissible"><p>Stats refreshed successfully.</p></div>
@@ -252,6 +287,21 @@ function gstore_analytics_dashboard_page(){
 					<li><strong>No recent activity</strong> - No challenges started in the last 7 days. Check if the feature is visible to users.</li>
 				<?php endif; ?>
 			</ul>
+		</div>
+
+		<!-- Debugging Help -->
+		<div style="background: #f0f0f1; border-left: 4px solid #72aee6; padding: 20px; margin: 30px 0; border-radius: 4px;">
+			<h3 style="margin: 0 0 15px 0; font-size: 16px; color: #1d2327;">🔍 Debugging Analytics</h3>
+			<p style="margin: 0 0 10px 0; color: #646970;">If analytics aren't tracking:</p>
+			<ol style="margin: 0; padding-left: 20px; color: #646970;">
+				<li>Make sure the analytics table exists (check warning above)</li>
+				<li>Open browser DevTools Console (F12) on a product page</li>
+				<li>Click the "80-85%" tier to start a challenge</li>
+				<li>Look for console messages: <code style="background: #fff; padding: 2px 6px; border-radius: 3px;">📊 Tracking: challenge_started</code></li>
+				<li>You should see: <code style="background: #fff; padding: 2px 6px; border-radius: 3px;">✅ Tracked: challenge_started</code></li>
+				<li>If you see errors, check the Network tab for the <code style="background: #fff; padding: 2px 6px; border-radius: 3px;">admin-ajax.php</code> request</li>
+				<li>Refresh this page after playing the challenge to see updated stats</li>
+			</ol>
 		</div>
 
 		<!-- Footer -->

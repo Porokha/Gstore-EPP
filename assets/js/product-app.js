@@ -1120,7 +1120,11 @@
 
             // ─── Analytics Tracking ───
             function trackChallengeEvent(eventType, eventData){
-                if(!BOOT.ajax || !BOOT.ajax.url) return;
+                if(!BOOT.ajax || !BOOT.ajax.url) {
+                    console.warn('📊 Analytics disabled: BOOT.ajax.url not available');
+                    return;
+                }
+                console.log('📊 Tracking:', eventType, eventData);
                 fetch(BOOT.ajax.url, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1130,7 +1134,16 @@
                         event_type: eventType,
                         event_data: JSON.stringify(eventData || {})
                     })
-                }).catch(function(e){ console.log('Analytics track failed:', e); });
+                })
+                .then(function(res){ return res.json(); })
+                .then(function(data){
+                    if(data.success){
+                        console.log('✅ Tracked:', eventType, data.data);
+                    } else {
+                        console.error('❌ Track failed:', eventType, data);
+                    }
+                })
+                .catch(function(e){ console.error('❌ Analytics error:', eventType, e); });
             }
 
             function startChallenge(){
