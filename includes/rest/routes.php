@@ -598,11 +598,20 @@ class GStore_EPP_REST {
 			return new WP_REST_Response($cached, 200);
 		}
 
+		// Get regular FBT products
 		$ids = get_post_meta($pid, '_gstore_fbt_ids', true);
 		if (!is_array($ids)) $ids = [];
 		$ids = array_filter(array_map('absint', $ids));
 
-		// If empty, fallback to group default (same model)
+		// Get FBT gifts
+		$gifts = get_post_meta($pid, '_gstore_fbt_gifts', true);
+		if (!is_array($gifts)) $gifts = [];
+
+		// Get FBT offers
+		$offers = get_post_meta($pid, '_gstore_fbt_offers', true);
+		if (!is_array($offers)) $offers = [];
+
+		// If empty regular FBT, fallback to group default (same model)
 		if (empty($ids)){
 			$ctx = gstore_epp_parse_by_product_id($pid);
 			if ($ctx && $ctx['group_key'] && $ctx['model']){
@@ -658,8 +667,9 @@ class GStore_EPP_REST {
 			wp_reset_postdata();
 		}
 
+		// Build regular FBT products (no limit)
 		$products = [];
-		foreach(array_slice($ids, 0, 3) as $id){
+		foreach($ids as $id){
 			$p = wc_get_product($id);
 			if (!$p) continue;
 
@@ -677,9 +687,72 @@ class GStore_EPP_REST {
 			];
 		}
 
-		gstore_log_debug('fbt_resolved', ['pid'=>$pid,'count'=>count($products)]);
+		// Build gift products with custom pricing
+		$gift_products = [];
+		foreach($gifts as $gift){
+			$gift_id = isset($gift['id']) ? absint($gift['id']) : 0;
+			$custom_price = isset($gift['price']) ? floatval($gift['price']) : 0;
 
-		$result = ['ok'=>true,'products'=>$products];
+			if (!$gift_id) continue;
+			$p = wc_get_product($gift_id);
+			if (!$p) continue;
+
+			$img_id = $p->get_image_id();
+			$hero = $img_id ? wp_get_attachment_image_url($img_id, 'medium') : wc_placeholder_img_src('medium');
+
+			$gift_products[] = [
+				'id'=>$p->get_id(),
+				'title'=>$p->get_title(),
+				'permalink'=>get_permalink($p->get_id()),
+				'price'=>$custom_price,
+				'original_price'=>$p->get_price(),
+				'regular'=>$p->get_regular_price(),
+				'sale'=>$p->get_sale_price(),
+				'image'=>$hero,
+				'is_gift'=>true,
+				'source_product_id'=>$pid // Track which product this gift came from
+			];
+		}
+
+		// Build offer products with offer pricing
+		$offer_products = [];
+		foreach($offers as $offer){
+			$offer_id = isset($offer['id']) ? absint($offer['id']) : 0;
+			$offer_price = isset($offer['price']) ? floatval($offer['price']) : 0;
+
+			if (!$offer_id) continue;
+			$p = wc_get_product($offer_id);
+			if (!$p) continue;
+
+			$img_id = $p->get_image_id();
+			$hero = $img_id ? wp_get_attachment_image_url($img_id, 'medium') : wc_placeholder_img_src('medium');
+
+			$offer_products[] = [
+				'id'=>$p->get_id(),
+				'title'=>$p->get_title(),
+				'permalink'=>get_permalink($p->get_id()),
+				'price'=>$offer_price,
+				'original_price'=>$p->get_price(),
+				'regular'=>$p->get_regular_price(),
+				'sale'=>$p->get_sale_price(),
+				'image'=>$hero,
+				'is_offer'=>true
+			];
+		}
+
+		gstore_log_debug('fbt_resolved', [
+			'pid'=>$pid,
+			'regular'=>count($products),
+			'gifts'=>count($gift_products),
+			'offers'=>count($offer_products)
+		]);
+
+		$result = [
+			'ok'=>true,
+			'products'=>$products,
+			'gifts'=>$gift_products,
+			'offers'=>$offer_products
+		];
 
 		// Cache for 1 hour
 		set_transient($cache_key, $result, HOUR_IN_SECONDS);
