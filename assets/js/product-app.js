@@ -1010,8 +1010,7 @@
                                 var offer = fbtOffers.find(function(o){ return Number(o.id) === Number(fbtId); });
 
                                 var fbtFd = new FormData();
-                                fbtFd.append('action', 'add-to-cart');
-                                fbtFd.append('product_id', fbtId);
+                                fbtFd.append('add-to-cart', fbtId);
                                 fbtFd.append('quantity', 1);
 
                                 // Add custom pricing for gifts
@@ -1024,8 +1023,10 @@
                                     fbtFd.append('fbt_offer_price', offer.price);
                                 }
 
+                                // Use WooCommerce's add-to-cart endpoint (query string in URL)
+                                var fbtUrl = window.location.origin + '/?wc-ajax=add_to_cart';
                                 fbtPromises.push(
-                                    fetch(BOOT.ajax.url, { method:'POST', body:fbtFd, credentials:'same-origin' })
+                                    fetch(fbtUrl, { method:'POST', body:fbtFd, credentials:'same-origin' })
                                         .then(function(r){ return r.json(); })
                                 );
                             });
@@ -2578,7 +2579,7 @@
                                         e("div",{key:"shine",className:"fbt-card__shine"}),
                                         e("div",{key:"glow",className:"fbt-card__glow"}),
                                         isGift && e("div",{key:"gift-badge",className:"fbt-card__badge",style:{background:'#ff9800'}},"🎁 Gift"),
-                                        isSelected && !isGift && e("div",{key:"badge",className:"fbt-card__badge"},"✓ Added"),
+                                        isSelected && e("div",{key:"badge",className:"fbt-card__badge"},"✓ Added"),
                                         e("div",{key:"content",className:"fbt-card__content"},[
                                             e("div",{
                                                 key:"img-wrap",
@@ -2593,8 +2594,12 @@
                                                     hasOriginalPrice && e("span",{key:"original",style:{fontSize:'11px',textDecoration:'line-through',color:'#999'}},"₾"+item.original_price),
                                                     e("span",{key:"price",className:"fbt-card__price",style:hasOriginalPrice?{color:'#f44336',fontWeight:'600'}:{}},"₾"+item.price)
                                                 ]),
-                                                // Gifts are always selected and can't be toggled
-                                                isGift ? e("div",{key:"auto",style:{fontSize:'10px',color:'#666'}},"Auto") : e("button",{
+                                                // Gifts are always selected and show green checkmark
+                                                isGift ? e("div",{key:"auto",className:"fbt-card__button",style:{background:'#4caf50',cursor:'default'}},
+                                                    e("svg",{width:"14",height:"14",viewBox:"0 0 24 24",fill:"none",stroke:"white",strokeWidth:"3"},
+                                                        e("path",{d:"M5 13l4 4L19 7"})
+                                                    )
+                                                ) : e("button",{
                                                     key:"btn",
                                                     className:"fbt-card__button",
                                                     onClick:function(){ toggleFBT(item.id); }
