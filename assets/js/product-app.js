@@ -165,6 +165,7 @@
                 var end = value;
                 var duration = 600; // ms
                 var startTime = Date.now();
+                var rafId = null;
 
                 var animate = function(){
                     var elapsed = Date.now() - startTime;
@@ -177,13 +178,20 @@
                     setDisplayValue(current);
 
                     if (progress < 1){
-                        requestAnimationFrame(animate);
+                        rafId = requestAnimationFrame(animate);
                     } else {
                         setIsAnimating(false);
                     }
                 };
 
-                requestAnimationFrame(animate);
+                rafId = requestAnimationFrame(animate);
+
+                // CRITICAL: Cancel animation on unmount or value change
+                return function(){
+                    if (rafId !== null){
+                        cancelAnimationFrame(rafId);
+                    }
+                };
             }, [value]);
 
             var formattedValue = decimals > 0
@@ -218,13 +226,24 @@
                 // Fade out
                 setOpacity(0);
 
-                setTimeout(function(){
+                var timer1 = setTimeout(function(){
                     setDisplayText(text);
                     // Fade in
-                    setTimeout(function(){
+                    var timer2 = setTimeout(function(){
                         setOpacity(1);
                     }, 50);
+
+                    // Store timer2 for cleanup
+                    timer1._timer2 = timer2;
                 }, 150);
+
+                // CRITICAL: Cancel all timers on unmount or text change
+                return function(){
+                    clearTimeout(timer1);
+                    if (timer1._timer2){
+                        clearTimeout(timer1._timer2);
+                    }
+                };
             }, [text]);
 
             return e("span", {
@@ -2418,9 +2437,9 @@
                             ]),
                             e("p",{key:"inst",className:"text-gray-600 flex items-center gap-1 text-base"},[
                                 e(CoinsIcon,{key:"icon"}),
-                                " " + t('installment_text', 'From ₾', {amount: Math.floor(grandTotal/24)}),
-                                e(AnimatedNumber, {key: "inst-num", value: Math.floor(grandTotal/24), className: "inline-block"}),
-                                t('installment_suffix', '/month for 24 months')
+                                " " + t('installment_text', 'From ₾{amount}/month for 24 months', {
+                                    amount: Math.floor(grandTotal/24)
+                                })
                             ])
                         ]),
 
