@@ -590,9 +590,6 @@
             // Exit-intent detection for offer popup
             useEffect(function(){
                 // Only show if there are unique offers (not already in gifts)
-                var uniqueOffers = fbtOffers.filter(function(offer){
-                    return !fbtGifts.some(function(gift){ return gift.id === offer.id; });
-                });
                 if (uniqueOffers.length === 0) return;
 
                 function handleMouseLeave(e){
@@ -606,7 +603,7 @@
 
                 document.addEventListener('mouseleave', handleMouseLeave);
                 return function(){ document.removeEventListener('mouseleave', handleMouseLeave); };
-            }, [fbtOffers, fbtGifts, showOfferPopup]);
+            }, [uniqueOffers, showOfferPopup]);
 
             // Load laptop addons
             useEffect(function(){
@@ -934,6 +931,13 @@
             }, [rules]);
 
             var batteryPrice = batteryPriceBlock.price;
+
+            // Compute unique offers (exclude gifts to prevent duplicates)
+            var uniqueOffers = useMemo(function(){
+                return fbtOffers.filter(function(offer){
+                    return !fbtGifts.some(function(gift){ return gift.id === offer.id; });
+                });
+            }, [fbtOffers, fbtGifts]);
 
             var fbtTotal = useMemo(function(){
                 var total = 0;
@@ -2531,21 +2535,14 @@
                                 key:"buy",
                                 className:"flex-1 buy-now-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg",
                                 onClick:function(ev){
-                                    // Show offer popup if offers exist (excluding gifts) and not all selected
-                                    if (fbtOffers.length > 0){
-                                        // Filter out offers that are already gifts
-                                        var uniqueOffers = fbtOffers.filter(function(offer){
-                                            return !fbtGifts.some(function(gift){ return gift.id === offer.id; });
+                                    // Show offer popup if unique offers exist and not all selected
+                                    if (uniqueOffers.length > 0) {
+                                        var allOffersSelected = uniqueOffers.every(function(offer){
+                                            return selectedFBT.indexOf(offer.id) >= 0;
                                         });
-
-                                        if (uniqueOffers.length > 0) {
-                                            var allOffersSelected = uniqueOffers.every(function(offer){
-                                                return selectedFBT.indexOf(offer.id) >= 0;
-                                            });
-                                            if (!allOffersSelected){
-                                                setShowOfferPopup(true);
-                                                return; // Don't proceed to checkout yet
-                                            }
+                                        if (!allOffersSelected){
+                                            setShowOfferPopup(true);
+                                            return; // Don't proceed to checkout yet
                                         }
                                     }
 
@@ -2616,8 +2613,8 @@
                     // Warranty Modal
                     showWarrantyModal && e("div",{key:"warranty-modal",className:"gstore-modal-overlay",onClick:function(){ setShowWarrantyModal(false); },onWheel:handleModalWrapperScroll},[e("div",{key:"modal",className:"gstore-modal-content warranty-modal-desktop",onClick:function(ev){ ev.stopPropagation(); }},[e("div",{key:"header",className:"warranty-header"},[e("div",{key:"icon-title",className:"warranty-header-content"},[e("svg",{key:"shield-icon",className:"warranty-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24",xmlns:"http://www.w3.org/2000/svg"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"})]),e("h2",{key:"title",className:"warranty-title"},"Warranty Information")]),e("button",{key:"close",className:"gstore-modal-close",onClick:function(){ setShowWarrantyModal(false); }},[e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})])])]),e("div",{key:"content",ref:modalContentRef,className:"warranty-body",dangerouslySetInnerHTML:{__html: BOOT.warrantyContent || '<p>No warranty information available.</p>'}})])]),
 
-                    // FBT Offer Popup
-                    showOfferPopup && fbtOffers.length > 0 && e("div",{key:"offer-modal",className:"gstore-modal-overlay",onClick:function(){ setShowOfferPopup(false); }},[
+                    // FBT Offer Popup (only show if there are unique offers after filtering gifts)
+                    showOfferPopup && uniqueOffers.length > 0 && e("div",{key:"offer-modal",className:"gstore-modal-overlay",onClick:function(){ setShowOfferPopup(false); }},[
                         e("div",{key:"modal",className:"gstore-modal-content",style:{maxWidth:'650px'},onClick:function(ev){ ev.stopPropagation(); }},[
                             e("div",{key:"header",style:{background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',padding:'24px',borderRadius:'12px 12px 0 0',position:'relative'}},[
                                 e("button",{key:"close",className:"gstore-modal-close",style:{color:'white'},onClick:function(){ setShowOfferPopup(false); }},[
@@ -2631,10 +2628,8 @@
                             ]),
                             e("div",{key:"body",style:{padding:'24px'}},[
                                 e("div",{key:"offers-grid",style:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',gap:'16px',marginBottom:'20px'}},
-                                    // Filter out offers that are already in gifts to prevent duplicates
-                                    fbtOffers.filter(function(offer){
-                                        return !fbtGifts.some(function(gift){ return gift.id === offer.id; });
-                                    }).map(function(offer){
+                                    // Use computed uniqueOffers (gifts already filtered)
+                                    uniqueOffers.map(function(offer){
                                         var isSelected = selectedFBT.indexOf(offer.id) >= 0;
                                         var discount = offer.original_price > offer.price ? Math.round(((offer.original_price - offer.price) / offer.original_price) * 100) : 0;
 
