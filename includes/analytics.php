@@ -23,7 +23,13 @@ function gstore_track_challenge_event(){
 
 		$product_id = absint($_POST['product_id'] ?? 0);
 		$event_type = sanitize_text_field($_POST['event_type'] ?? '');
-		$event_data = $_POST['event_data'] ?? [];
+		$event_data_raw = $_POST['event_data'] ?? '{}';
+
+		// Handle JSON string from JavaScript
+		$event_data = is_string($event_data_raw) ? json_decode($event_data_raw, true) : $event_data_raw;
+		if (!is_array($event_data)) {
+			$event_data = [];
+		}
 
 		if (!$product_id || !$event_type) {
 			wp_send_json_error(['message' => 'Missing required fields'], 400);
