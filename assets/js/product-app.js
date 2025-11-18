@@ -1285,6 +1285,9 @@
                             // After main product is added, add FBT items
                             var fbtPromises = [];
 
+                            // Track failed additions for user notification
+                            var fbtErrors = [];
+
                             // ALWAYS add gifts (regardless of selection) - SECURE ENDPOINT
                             fbtGifts.forEach(function(gift){
                                 var fbtFd = new FormData();
@@ -1300,10 +1303,17 @@
                                         .then(function(r){ return r.json(); })
                                         .then(function(res){
                                             if (!res.success) {
-                                                console.error('FBT gift add failed:', res.data?.message || 'Unknown error');
+                                                var errorMsg = res.data?.message || 'Unknown error';
+                                                console.error('FBT gift add failed:', errorMsg);
+                                                fbtErrors.push('Gift item failed: ' + errorMsg);
                                             }
+                                            return res;
                                         })
-                                        .catch(function(e){ console.error('FBT gift add failed:', e); })
+                                        .catch(function(e){
+                                            console.error('FBT gift add failed:', e);
+                                            fbtErrors.push('Gift item failed: Network error');
+                                            return {success: false};
+                                        })
                                 );
                             });
 
@@ -1333,15 +1343,27 @@
                                         .then(function(r){ return r.json(); })
                                         .then(function(res){
                                             if (!res.success) {
-                                                console.error('FBT offer add failed:', res.data?.message || 'Unknown error');
+                                                var errorMsg = res.data?.message || 'Unknown error';
+                                                console.error('FBT offer add failed:', errorMsg);
+                                                fbtErrors.push('Offer item failed: ' + errorMsg);
                                             }
+                                            return res;
                                         })
-                                        .catch(function(e){ console.error('FBT add failed:', e); })
+                                        .catch(function(e){
+                                            console.error('FBT add failed:', e);
+                                            fbtErrors.push('Offer item failed: Network error');
+                                            return {success: false};
+                                        })
                                 );
                             });
 
                             // Wait for all FBT items to be added
                             Promise.all(fbtPromises).then(function(){
+                                // Show user-facing error if any FBT items failed
+                                if (fbtErrors.length > 0) {
+                                    alert('Some bonus items could not be added:\n\n' + fbtErrors.join('\n'));
+                                }
+
                                 if (redirect) {
                                     window.location.href = redirect;
                                 } else {

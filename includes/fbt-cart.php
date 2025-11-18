@@ -13,8 +13,8 @@ if (!defined('ABSPATH')) { exit; }
 add_action('wp_ajax_gstore_add_fbt_to_cart', 'gstore_add_fbt_to_cart_ajax');
 add_action('wp_ajax_nopriv_gstore_add_fbt_to_cart', 'gstore_add_fbt_to_cart_ajax');
 function gstore_add_fbt_to_cart_ajax(){
-	// Verify nonce for CSRF protection
-	check_ajax_referer('gstore_epp_nonce', 'nonce');
+	// Verify nonce for CSRF protection - MUST match enqueue.php:271
+	check_ajax_referer('gstore_epp_ajax', 'nonce');
 
 	$product_id = absint($_POST['product_id'] ?? 0);
 	$quantity = absint($_POST['quantity'] ?? 1);
@@ -93,15 +93,17 @@ function gstore_add_fbt_to_cart_ajax(){
 /**
  * Add custom cart item data to track FBT gifts and offers
  * This runs when products are added to cart
+ * SECURITY: Only accepts $_POST to prevent CSRF via GET URLs
  */
 add_filter('woocommerce_add_cart_item_data', 'gstore_fbt_add_cart_item_data', 10, 3);
 function gstore_fbt_add_cart_item_data($cart_item_data, $product_id, $variation_id){
+	// SECURITY: Only check $_POST (not $_REQUEST) to prevent CSRF attacks via GET
+	// FBT items MUST go through secure AJAX endpoint with nonce verification
+
 	// Check if this product is being added as an FBT gift
-	// Check both $_POST and $_REQUEST (for WooCommerce /?add-to-cart= endpoint compatibility)
-	if ((isset($_POST['fbt_gift_source']) || isset($_REQUEST['fbt_gift_source'])) &&
-	    (isset($_POST['fbt_gift_price']) || isset($_REQUEST['fbt_gift_price']))){
-		$source_product_id = absint(isset($_POST['fbt_gift_source']) ? $_POST['fbt_gift_source'] : $_REQUEST['fbt_gift_source']);
-		$custom_price = floatval(isset($_POST['fbt_gift_price']) ? $_POST['fbt_gift_price'] : $_REQUEST['fbt_gift_price']);
+	if (isset($_POST['fbt_gift_source']) && isset($_POST['fbt_gift_price'])){
+		$source_product_id = absint($_POST['fbt_gift_source']);
+		$custom_price = floatval($_POST['fbt_gift_price']);
 
 		// Verify this is actually configured as a gift from source product
 		$gifts = get_post_meta($source_product_id, '_gstore_fbt_gifts', true);
@@ -122,12 +124,11 @@ function gstore_fbt_add_cart_item_data($cart_item_data, $product_id, $variation_
 			$cart_item_data['unique_key'] = md5(microtime().rand()); // Make each item unique
 		}
 	}
-	// Check if this product is being added as an FBT offer - MUST VALIDATE PRICE
-	// Check both $_POST and $_REQUEST (for WooCommerce /?add-to-cart= endpoint compatibility)
-	elseif ((isset($_POST['fbt_offer_price']) || isset($_REQUEST['fbt_offer_price'])) &&
-	        (isset($_POST['fbt_source_product']) || isset($_REQUEST['fbt_source_product']))){
-		$source_product_id = absint(isset($_POST['fbt_source_product']) ? $_POST['fbt_source_product'] : $_REQUEST['fbt_source_product']);
-		$offer_price = floatval(isset($_POST['fbt_offer_price']) ? $_POST['fbt_offer_price'] : $_REQUEST['fbt_offer_price']);
+	// Check if this product is being added as an FBT offer
+	// SECURITY: Only check $_POST (not $_REQUEST) to prevent CSRF attacks via GET
+	elseif (isset($_POST['fbt_offer_price']) && isset($_POST['fbt_source_product'])){
+		$source_product_id = absint($_POST['fbt_source_product']);
+		$offer_price = floatval($_POST['fbt_offer_price']);
 
 		// CRITICAL SECURITY: Validate offer price against source product metadata
 		$offers = get_post_meta($source_product_id, '_gstore_fbt_offers', true);
