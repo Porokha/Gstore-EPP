@@ -13,9 +13,11 @@ if (!defined('ABSPATH')) { exit; }
 add_filter('woocommerce_add_cart_item_data', 'gstore_fbt_add_cart_item_data', 10, 3);
 function gstore_fbt_add_cart_item_data($cart_item_data, $product_id, $variation_id){
 	// Check if this product is being added as an FBT gift
-	if (isset($_POST['fbt_gift_source']) && isset($_POST['fbt_gift_price'])){
-		$source_product_id = absint($_POST['fbt_gift_source']);
-		$custom_price = floatval($_POST['fbt_gift_price']);
+	// Check both $_POST and $_REQUEST (for WooCommerce /?add-to-cart= endpoint compatibility)
+	if ((isset($_POST['fbt_gift_source']) || isset($_REQUEST['fbt_gift_source'])) &&
+	    (isset($_POST['fbt_gift_price']) || isset($_REQUEST['fbt_gift_price']))){
+		$source_product_id = absint(isset($_POST['fbt_gift_source']) ? $_POST['fbt_gift_source'] : $_REQUEST['fbt_gift_source']);
+		$custom_price = floatval(isset($_POST['fbt_gift_price']) ? $_POST['fbt_gift_price'] : $_REQUEST['fbt_gift_price']);
 
 		// Verify this is actually configured as a gift from source product
 		$gifts = get_post_meta($source_product_id, '_gstore_fbt_gifts', true);
@@ -37,8 +39,9 @@ function gstore_fbt_add_cart_item_data($cart_item_data, $product_id, $variation_
 		}
 	}
 	// Check if this product is being added as an FBT offer (no validation needed - one-time offer)
-	elseif (isset($_POST['fbt_offer_price'])){
-		$offer_price = floatval($_POST['fbt_offer_price']);
+	// Check both $_POST and $_REQUEST (for WooCommerce /?add-to-cart= endpoint compatibility)
+	elseif (isset($_POST['fbt_offer_price']) || isset($_REQUEST['fbt_offer_price'])){
+		$offer_price = floatval(isset($_POST['fbt_offer_price']) ? $_POST['fbt_offer_price'] : $_REQUEST['fbt_offer_price']);
 		if ($offer_price > 0) {
 			$cart_item_data['fbt_offer_price'] = $offer_price;
 			$cart_item_data['unique_key'] = md5(microtime().rand());
