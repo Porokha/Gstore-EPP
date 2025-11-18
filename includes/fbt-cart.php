@@ -7,6 +7,90 @@ if (!defined('ABSPATH')) { exit; }
  */
 
 /**
+ * SECURE AJAX ENDPOINT: Add FBT item to cart with nonce protection
+ * This prevents CSRF attacks and price manipulation via URL tampering
+ */
+add_action('wp_ajax_gstore_add_fbt_to_cart', 'gstore_add_fbt_to_cart_ajax');
+add_action('wp_ajax_nopriv_gstore_add_fbt_to_cart', 'gstore_add_fbt_to_cart_ajax');
+function gstore_add_fbt_to_cart_ajax(){
+	// Verify nonce for CSRF protection
+	check_ajax_referer('gstore_epp_nonce', 'nonce');
+
+	$product_id = absint($_POST['product_id'] ?? 0);
+	$quantity = absint($_POST['quantity'] ?? 1);
+	$source_product_id = absint($_POST['source_product_id'] ?? 0);
+
+	if (!$product_id || !$source_product_id) {
+		wp_send_json_error(['message' => 'Invalid product ID']);
+		return;
+	}
+
+	$cart_item_data = [];
+
+	// Handle FBT Gift
+	if (isset($_POST['fbt_gift_price'])) {
+		$custom_price = floatval($_POST['fbt_gift_price']);
+
+		// Validate against configured gift metadata
+		$gifts = get_post_meta($source_product_id, '_gstore_fbt_gifts', true);
+		if (!is_array($gifts)) $gifts = [];
+
+		$is_valid_gift = false;
+		foreach ($gifts as $gift) {
+			if (isset($gift['id']) && absint($gift['id']) === $product_id &&
+			    isset($gift['price']) && floatval($gift['price']) === $custom_price) {
+				$is_valid_gift = true;
+				break;
+			}
+		}
+
+		if ($is_valid_gift) {
+			$cart_item_data['fbt_gift_source'] = $source_product_id;
+			$cart_item_data['fbt_gift_price'] = $custom_price;
+			$cart_item_data['unique_key'] = md5(microtime().rand());
+		} else {
+			wp_send_json_error(['message' => 'Invalid gift configuration']);
+			return;
+		}
+	}
+	// Handle FBT Offer
+	elseif (isset($_POST['fbt_offer_price'])) {
+		$offer_price = floatval($_POST['fbt_offer_price']);
+
+		// Validate against configured offer metadata
+		$offers = get_post_meta($source_product_id, '_gstore_fbt_offers', true);
+		if (!is_array($offers)) $offers = [];
+
+		$is_valid_offer = false;
+		foreach ($offers as $offer) {
+			if (isset($offer['id']) && absint($offer['id']) === $product_id &&
+			    isset($offer['price']) && floatval($offer['price']) === $offer_price) {
+				$is_valid_offer = true;
+				break;
+			}
+		}
+
+		if ($is_valid_offer && $offer_price > 0) {
+			$cart_item_data['fbt_offer_price'] = $offer_price;
+			$cart_item_data['fbt_source_product'] = $source_product_id;
+			$cart_item_data['unique_key'] = md5(microtime().rand());
+		} else {
+			wp_send_json_error(['message' => 'Invalid offer configuration']);
+			return;
+		}
+	}
+
+	// Add to cart
+	$cart_item_key = WC()->cart->add_to_cart($product_id, $quantity, 0, [], $cart_item_data);
+
+	if ($cart_item_key) {
+		wp_send_json_success(['cart_item_key' => $cart_item_key]);
+	} else {
+		wp_send_json_error(['message' => 'Failed to add to cart']);
+	}
+}
+
+/**
  * Add custom cart item data to track FBT gifts and offers
  * This runs when products are added to cart
  */
@@ -38,12 +122,30 @@ function gstore_fbt_add_cart_item_data($cart_item_data, $product_id, $variation_
 			$cart_item_data['unique_key'] = md5(microtime().rand()); // Make each item unique
 		}
 	}
-	// Check if this product is being added as an FBT offer (no validation needed - one-time offer)
+	// Check if this product is being added as an FBT offer - MUST VALIDATE PRICE
 	// Check both $_POST and $_REQUEST (for WooCommerce /?add-to-cart= endpoint compatibility)
-	elseif (isset($_POST['fbt_offer_price']) || isset($_REQUEST['fbt_offer_price'])){
+	elseif ((isset($_POST['fbt_offer_price']) || isset($_REQUEST['fbt_offer_price'])) &&
+	        (isset($_POST['fbt_source_product']) || isset($_REQUEST['fbt_source_product']))){
+		$source_product_id = absint(isset($_POST['fbt_source_product']) ? $_POST['fbt_source_product'] : $_REQUEST['fbt_source_product']);
 		$offer_price = floatval(isset($_POST['fbt_offer_price']) ? $_POST['fbt_offer_price'] : $_REQUEST['fbt_offer_price']);
-		if ($offer_price > 0) {
+
+		// CRITICAL SECURITY: Validate offer price against source product metadata
+		$offers = get_post_meta($source_product_id, '_gstore_fbt_offers', true);
+		if (!is_array($offers)) $offers = [];
+
+		$is_valid_offer = false;
+		foreach ($offers as $offer) {
+			if (isset($offer['id']) && absint($offer['id']) === $product_id &&
+			    isset($offer['price']) && floatval($offer['price']) === $offer_price) {
+				$is_valid_offer = true;
+				break;
+			}
+		}
+
+		// Only apply custom price if it matches configured offer price
+		if ($is_valid_offer && $offer_price > 0) {
 			$cart_item_data['fbt_offer_price'] = $offer_price;
+			$cart_item_data['fbt_source_product'] = $source_product_id;
 			$cart_item_data['unique_key'] = md5(microtime().rand());
 		}
 	}

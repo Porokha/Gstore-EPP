@@ -1285,22 +1285,29 @@
                             // After main product is added, add FBT items
                             var fbtPromises = [];
 
-                            // ALWAYS add gifts (regardless of selection)
+                            // ALWAYS add gifts (regardless of selection) - SECURE ENDPOINT
                             fbtGifts.forEach(function(gift){
-                                // Use URL parameters for WooCommerce add-to-cart endpoint
-                                var fbtUrl = window.location.origin + '/?add-to-cart=' + gift.id +
-                                    '&quantity=1' +
-                                    '&fbt_gift_source=' + encodeURIComponent(cur.productId) +
-                                    '&fbt_gift_price=' + encodeURIComponent(gift.price);
+                                var fbtFd = new FormData();
+                                fbtFd.append('action', 'gstore_add_fbt_to_cart');
+                                fbtFd.append('nonce', BOOT.ajax.nonce);
+                                fbtFd.append('product_id', gift.id);
+                                fbtFd.append('quantity', 1);
+                                fbtFd.append('source_product_id', cur.productId);
+                                fbtFd.append('fbt_gift_price', gift.price);
 
                                 fbtPromises.push(
-                                    fetch(fbtUrl, { method:'GET', credentials:'same-origin' })
-                                        .then(function(r){ return r.text(); })
+                                    fetch(BOOT.ajax.url, { method:'POST', body:fbtFd, credentials:'same-origin' })
+                                        .then(function(r){ return r.json(); })
+                                        .then(function(res){
+                                            if (!res.success) {
+                                                console.error('FBT gift add failed:', res.data?.message || 'Unknown error');
+                                            }
+                                        })
                                         .catch(function(e){ console.error('FBT gift add failed:', e); })
                                 );
                             });
 
-                            // Add selected FBT offers and regular FBT items (exclude gifts)
+                            // Add selected FBT offers and regular FBT items (exclude gifts) - SECURE ENDPOINT
                             fbtToAdd.forEach(function(fbtId){
                                 // Skip if this is a gift (already added above)
                                 var isGift = fbtGifts.some(function(g){ return Number(g.id) === Number(fbtId); });
@@ -1309,15 +1316,26 @@
                                 // Check if this is an offer
                                 var offer = fbtOffers.find(function(o){ return Number(o.id) === Number(fbtId); });
 
-                                // Build URL with custom pricing for offers
-                                var fbtUrl = window.location.origin + '/?add-to-cart=' + fbtId + '&quantity=1';
+                                var fbtFd = new FormData();
+                                fbtFd.append('action', 'gstore_add_fbt_to_cart');
+                                fbtFd.append('nonce', BOOT.ajax.nonce);
+                                fbtFd.append('product_id', fbtId);
+                                fbtFd.append('quantity', 1);
+                                fbtFd.append('source_product_id', cur.productId);
+
+                                // Add custom pricing for offers (will be validated on backend)
                                 if (offer && offer.price) {
-                                    fbtUrl += '&fbt_offer_price=' + encodeURIComponent(offer.price);
+                                    fbtFd.append('fbt_offer_price', offer.price);
                                 }
 
                                 fbtPromises.push(
-                                    fetch(fbtUrl, { method:'GET', credentials:'same-origin' })
-                                        .then(function(r){ return r.text(); })
+                                    fetch(BOOT.ajax.url, { method:'POST', body:fbtFd, credentials:'same-origin' })
+                                        .then(function(r){ return r.json(); })
+                                        .then(function(res){
+                                            if (!res.success) {
+                                                console.error('FBT offer add failed:', res.data?.message || 'Unknown error');
+                                            }
+                                        })
                                         .catch(function(e){ console.error('FBT add failed:', e); })
                                 );
                             });
