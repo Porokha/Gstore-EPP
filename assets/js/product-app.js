@@ -603,15 +603,26 @@
 
             var modalContentRef = React.useRef(null);
             var offerShownRef = React.useRef(false);
+            var pendingNavigationRef = React.useRef(null); // Store pending navigation URL
 
             // FBT Offer Popup: Countdown state (for scenario 3)
             var _useState_countdown = useState(5);
             var countdown = _useState_countdown[0];
             var setCountdown = _useState_countdown[1];
 
-            // Calculate current scenario based on user selection
+            // Track initial scenario when popup opens (don't change dynamically)
+            var _useState_initialScenario = useState(1);
+            var initialScenario = _useState_initialScenario[0];
+            var setInitialScenario = _useState_initialScenario[1];
+
+            // Calculate current scenario based on user selection AT TRIGGER TIME ONLY
             var offerScenario = useMemo(function(){
                 if (uniqueOffers.length === 0) return 0; // No offers
+
+                // When popup is open, use initial scenario (freeze scenario)
+                if (showOfferPopup) return initialScenario;
+
+                // When popup is closed, calculate based on current selection
                 var offerIds = uniqueOffers.map(function(o){ return o.id; });
                 var selectedOfferCount = offerIds.filter(function(id){ return selectedFBT.indexOf(id) >= 0; }).length;
                 var totalOfferCount = offerIds.length;
@@ -619,7 +630,7 @@
                 if (selectedOfferCount === 0) return 1; // No items selected
                 if (selectedOfferCount === totalOfferCount) return 3; // All items selected
                 return 2; // Some items selected
-            }, [uniqueOffers, selectedFBT]);
+            }, [uniqueOffers, selectedFBT, showOfferPopup, initialScenario]);
 
             var scenarioText = offerScenario === 1 ? scenarioTexts.scenario1 :
                               (offerScenario === 2 ? scenarioTexts.scenario2 : scenarioTexts.scenario3);
@@ -781,9 +792,26 @@
             }
 
             // Function to trigger offer popup with scenario check
-            function triggerOfferPopup(intentType){
+            function triggerOfferPopup(intentType, navigationUrl){
                 // Don't show if no offers or already shown or already visible
                 if (uniqueOffers.length === 0 || wasPopupShown() || showOfferPopup) return false;
+
+                // Calculate scenario at trigger time based on OFFER selection only
+                var offerIds = uniqueOffers.map(function(o){ return o.id; });
+                var selectedOfferCount = offerIds.filter(function(id){ return selectedFBT.indexOf(id) >= 0; }).length;
+                var totalOfferCount = offerIds.length;
+
+                var scenario = 1; // Default: no offers selected
+                if (selectedOfferCount === totalOfferCount) scenario = 3; // All offers selected
+                else if (selectedOfferCount > 0) scenario = 2; // Some offers selected
+
+                // Set initial scenario (freeze it for this popup session)
+                setInitialScenario(scenario);
+
+                // Store pending navigation if provided
+                if (navigationUrl) {
+                    pendingNavigationRef.current = navigationUrl;
+                }
 
                 // Mark as shown
                 markPopupShown();
@@ -806,8 +834,8 @@
 
                         // Check if it's internal navigation away from product page
                         if (href.indexOf(currentDomain) === 0 && href !== window.location.href){
-                            // Try to show popup
-                            if (triggerOfferPopup('exit')){
+                            // Try to show popup with navigation URL
+                            if (triggerOfferPopup('exit', href)){
                                 e.preventDefault();
                                 e.stopPropagation();
                             }
@@ -1152,16 +1180,23 @@
                     // Check if this is a gift (with custom pricing)
                     var gift = fbtGifts.find(function(x){ return Number(x.id)===Number(id); });
                     if (gift){
-                        // Use custom gift price
-                        total += parseFloat(gift.price||0);
+                        // Gifts are FREE (price 0) when displayed on page
+                        // Custom price only applies in cart
+                        total += 0;
                     } else {
-                        // Regular FBT or offer item
-                        var item = fbt.find(function(x){ return Number(x.id)===Number(id); });
-                        if (item) total += parseFloat(item.price||0);
+                        // For offers, use ORIGINAL price on page (discount applies only in cart)
+                        var offer = fbtOffers.find(function(x){ return Number(x.id)===Number(id); });
+                        if (offer){
+                            total += parseFloat(offer.original_price||0);
+                        } else {
+                            // Regular FBT item
+                            var item = fbt.find(function(x){ return Number(x.id)===Number(id); });
+                            if (item) total += parseFloat(item.price||0);
+                        }
                     }
                 });
                 return total;
-            }, [selectedFBT, fbt, fbtGifts]);
+            }, [selectedFBT, fbt, fbtGifts, fbtOffers]);
 
             var addonsTotal = useMemo(function(){
                 var total = 0;
@@ -1208,11 +1243,31 @@
                     .then(function(r){ return r.json(); })
                     .then(function(res){
                         if (res && res.success){
-                            // After main product is added, add selected FBT items
+                            // After main product is added, add FBT items
                             var fbtPromises = [];
+
+                            // ALWAYS add gifts (regardless of selection)
+                            fbtGifts.forEach(function(gift){
+                                var fbtFd = new FormData();
+                                fbtFd.append('add-to-cart', gift.id);
+                                fbtFd.append('quantity', 1);
+                                fbtFd.append('fbt_gift_source', cur.productId);
+                                fbtFd.append('fbt_gift_price', gift.price);
+
+                                var fbtUrl = window.location.origin + '/?add-to-cart=' + gift.id;
+                                fbtPromises.push(
+                                    fetch(fbtUrl, { method:'POST', body:fbtFd, credentials:'same-origin' })
+                                        .then(function(r){ return r.text(); })
+                                        .catch(function(e){ console.error('FBT gift add failed:', e); })
+                                );
+                            });
+
+                            // Add selected FBT offers and regular FBT items (exclude gifts)
                             selectedFBT.forEach(function(fbtId){
-                                // Check if this is a gift
-                                var gift = fbtGifts.find(function(g){ return Number(g.id) === Number(fbtId); });
+                                // Skip if this is a gift (already added above)
+                                var isGift = fbtGifts.some(function(g){ return Number(g.id) === Number(fbtId); });
+                                if (isGift) return;
+
                                 // Check if this is an offer
                                 var offer = fbtOffers.find(function(o){ return Number(o.id) === Number(fbtId); });
 
@@ -1220,13 +1275,8 @@
                                 fbtFd.append('add-to-cart', fbtId);
                                 fbtFd.append('quantity', 1);
 
-                                // Add custom pricing for gifts
-                                if (gift) {
-                                    fbtFd.append('fbt_gift_source', cur.productId);
-                                    fbtFd.append('fbt_gift_price', gift.price);
-                                }
-                                // Add custom pricing for offers (separate from gifts)
-                                else if (offer) {
+                                // Add custom pricing for offers
+                                if (offer) {
                                     fbtFd.append('fbt_offer_price', offer.price);
                                 }
 
@@ -2925,6 +2975,13 @@
                                         style:{flex:1,padding:'12px',border:'1px solid #ddd',borderRadius:'8px',background:'white',cursor:'pointer',fontWeight:'600'},
                                         onClick:function(){
                                             setShowOfferPopup(false);
+                                            // Continue pending navigation if exists
+                                            if (pendingNavigationRef.current) {
+                                                setTimeout(function(){
+                                                    window.location.href = pendingNavigationRef.current;
+                                                    pendingNavigationRef.current = null;
+                                                }, 100);
+                                            }
                                         }
                                     },"I don't want"),
                                     e("button",{
@@ -2932,6 +2989,8 @@
                                         style:{flex:1,padding:'12px',border:'none',borderRadius:'8px',background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',cursor:'pointer',fontWeight:'700',fontSize:'16px'},
                                         onClick:function(){
                                             setShowOfferPopup(false);
+                                            // Clear pending navigation (we're adding to cart instead)
+                                            pendingNavigationRef.current = null;
                                             addToCart(null);
                                         }
                                     },"Add")
