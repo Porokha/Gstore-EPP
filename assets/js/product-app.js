@@ -2938,7 +2938,16 @@
                     }},[
                         e("div",{key:"modal",className:"gstore-modal-content",style:{maxWidth:'650px'},onClick:function(ev){ ev.stopPropagation(); }},[
                             e("div",{key:"header",style:{background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',padding:'24px',borderRadius:'12px 12px 0 0',position:'relative'}},[
-                                offerScenario !== 3 && e("button",{key:"close",className:"gstore-modal-close",style:{color:'white'},onClick:function(){ setShowOfferPopup(false); }},[
+                                offerScenario !== 3 && e("button",{key:"close",className:"gstore-modal-close",style:{color:'white'},onClick:function(){
+                                    setShowOfferPopup(false);
+                                    // Continue pending navigation if exists
+                                    if (pendingNavigationRef.current) {
+                                        setTimeout(function(){
+                                            window.location.href = pendingNavigationRef.current;
+                                            pendingNavigationRef.current = null;
+                                        }, 100);
+                                    }
+                                }},[
                                     e("svg",{className:"gstore-modal-close-icon",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24"},[
                                         e("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})
                                     ])
