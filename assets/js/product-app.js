@@ -1658,53 +1658,23 @@
             var scoreKeys = ['CPU','GPU','Camera','Battery','Display','Build','Connectivity','Charging','Weight','Durability','Storage Speed','Thermals'];
 
 // OPTIMIZED: Icons organized in single object for better maintainability
-            // Check if HugeiconsIcon is available globally
-            var HugeiconsIcon = window.HugeiconsIcon || function(props){
-                // Fallback if HugeiconsIcon not loaded
-                return e("svg", {width:18, height:18, viewBox:"0 0 24 24", fill:"currentColor"},
-                    e("circle", {cx:12, cy:12, r:10}));
-            };
-
-            // Validate icon constants and provide fallbacks
-            var DeliveryDelay01IconConst = window.DeliveryDelay01Icon || function(props){
-                return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[
-                    e("path",{key:1,d:"M3 7h18M5 7v10a2 2 0 002 2h10a2 2 0 002-2V7"}),
-                    e("circle",{key:2,cx:17,cy:17,r:2})
-                ]);
-            };
-            var SecurityCheckIconConst = window.SecurityCheckIcon || function(props){
-                return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[
-                    e("path",{key:1,d:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"}),
-                    e("path",{key:2,d:"M9 12l2 2 4-4"})
-                ]);
-            };
-            var StoreLocation01IconConst = window.StoreLocation01Icon || function(props){
-                return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[
-                    e("path",{key:1,d:"M3 9h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"}),
-                    e("path",{key:2,d:"M3 9l2-6h14l2 6"})
-                ]);
-            };
-            var PackageSearchIconConst = window.PackageSearchIcon || function(props){
-                return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[
-                    e("path",{key:1,d:"M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8"}),
-                    e("circle",{key:2,cx:12,cy:12,r:3}),
-                    e("path",{key:3,d:"M14.5 14.5L17 17"})
-                ]);
-            };
-            var InformationCircleIconConst = window.InformationCircleIcon || function(props){
-                return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},[
-                    e("circle",{key:1,cx:12,cy:12,r:10}),
-                    e("path",{key:2,d:"M12 16v-4"}),
-                    e("path",{key:3,d:"M12 8h.01"})
-                ]);
-            };
-
             var Icons = {
-                Truck: function(){ return e(HugeiconsIcon, {icon: DeliveryDelay01IconConst, size: 18}); },
-                Shield: function(){ return e(HugeiconsIcon, {icon: SecurityCheckIconConst, size: 18}); },
-                Warehouse: function(){ return e(HugeiconsIcon, {icon: StoreLocation01IconConst, size: 18}); },
-                Info: function(){ return e(HugeiconsIcon, {icon: PackageSearchIconConst, size: 18}); },
+                // Delivery icon - truck with delay indicator
+                Truck: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"}),e("path",{key:2,d:"M15 18H9"}),e("path",{key:3,d:"M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"}),e("circle",{key:4,cx:17,cy:18,r:2}),e("circle",{key:5,cx:7,cy:18,r:2})]); },
+
+                // Security/Warranty icon - shield with checkmark
+                Shield: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"}),e("path",{key:2,d:"M9 12l2 2 4-4"})]); },
+
+                // Warehouse/Store location icon - building with location marker
+                Warehouse: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"}),e("polyline",{key:2,points:"9 22 9 12 15 12 15 22"})]); },
+
+                // Condition/Package search icon - package with magnifying glass
+                Info: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"}),e("polyline",{key:2,points:"7.5 4.21 12 6.81 16.5 4.21"}),e("polyline",{key:3,points:"7.5 19.79 7.5 14.6 3 12"}),e("polyline",{key:4,points:"21 12 16.5 14.6 16.5 19.79"}),e("polyline",{key:5,points:"3 12 7.5 14.6 12 12"})]); },
+
+                // Cart icon - shopping cart
                 Cart: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("circle",{key:1,cx:9,cy:21,r:1}),e("circle",{key:2,cx:20,cy:21,r:1}),e("path",{key:3,d:"M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"})]); },
+
+                // Coins/Installment icon
                 Coins: function(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",className:"text-green-600"},[e("circle",{key:1,cx:8,cy:8,r:6}),e("path",{key:2,d:"M18.09 10.37A6 6 0 1 1 10.34 18"}),e("path",{key:3,d:"M7 6h1v4"}),e("path",{key:4,d:"m16.71 13.88.7.71-2.82 2.82"})]); }
             };
 
@@ -1716,9 +1686,13 @@
             var CartIcon = Icons.Cart;
             var CoinsIcon = Icons.Coins;
 
-            // InformationCircle icon used directly (not aliased to prevent collision)
+            // Information Circle icon - for warranty info button
             var InformationCircleIcon = function(){
-                return e(HugeiconsIcon, {icon: InformationCircleIconConst, size: 18});
+                return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[
+                    e("circle",{key:1,cx:12,cy:12,r:10}),
+                    e("path",{key:2,d:"M12 16v-4"}),
+                    e("path",{key:3,d:"M12 8h.01"})
+                ]);
             };
 
 // Get shipping time and warehouse from BOOT
