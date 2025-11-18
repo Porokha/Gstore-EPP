@@ -604,6 +604,7 @@
             var modalContentRef = React.useRef(null);
             var offerShownRef = React.useRef(false);
             var pendingNavigationRef = React.useRef(null); // Store pending navigation URL
+            var scenario3SnapshotRef = React.useRef(null); // Snapshot selections when scenario 3 starts
 
             // FBT Offer Popup: Countdown state (for scenario 3)
             var _useState_countdown = useState(5);
@@ -639,8 +640,12 @@
             useEffect(function(){
                 if (offerScenario !== 3 || !showOfferPopup) {
                     setCountdown(5); // Reset countdown when not in scenario 3
+                    scenario3SnapshotRef.current = null; // Clear snapshot
                     return;
                 }
+
+                // Snapshot all selected items when scenario 3 starts (prevent deselection during countdown)
+                scenario3SnapshotRef.current = selectedFBT.slice(); // Copy array
 
                 var timer = setInterval(function(){
                     setCountdown(function(prev){
@@ -649,9 +654,9 @@
                             // Auto-close and proceed after countdown
                             setTimeout(function(){
                                 setShowOfferPopup(false);
-                                // In scenario 3, ensure all offers are added
-                                // Pass selected FBT directly to avoid state timing issues
-                                addToCart(null);
+                                // Use snapshotted selections to ensure all originally-selected items are added
+                                addToCartWithSnapshot(null, scenario3SnapshotRef.current);
+                                scenario3SnapshotRef.current = null; // Clear after use
                             }, 500);
                             return 0;
                         }
@@ -1221,6 +1226,13 @@
             }
 
             function addToCart(redirect){
+                addToCartWithSnapshot(redirect, null);
+            }
+
+            function addToCartWithSnapshot(redirect, fbtSnapshot){
+                // Use snapshot if provided (for scenario 3), otherwise use current selectedFBT
+                var fbtToAdd = fbtSnapshot || selectedFBT;
+
                 var fd = new FormData();
                 fd.append('action', 'gstore_epp_add_to_cart');
                 fd.append('nonce', BOOT.ajax.nonce);
@@ -1265,7 +1277,7 @@
                             });
 
                             // Add selected FBT offers and regular FBT items (exclude gifts)
-                            selectedFBT.forEach(function(fbtId){
+                            fbtToAdd.forEach(function(fbtId){
                                 // Skip if this is a gift (already added above)
                                 var isGift = fbtGifts.some(function(g){ return Number(g.id) === Number(fbtId); });
                                 if (isGift) return;
