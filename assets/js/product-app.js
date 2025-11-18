@@ -1658,11 +1658,24 @@
             var scoreKeys = ['CPU','GPU','Camera','Battery','Display','Build','Connectivity','Charging','Weight','Durability','Storage Speed','Thermals'];
 
 // OPTIMIZED: Icons organized in single object for better maintainability
+            // Check if HugeiconsIcon is available globally
+            var HugeiconsIcon = window.HugeiconsIcon || function(props){
+                // Fallback if HugeiconsIcon not loaded
+                return e("svg", {width:18, height:18, viewBox:"0 0 24 24", fill:"currentColor"},
+                    e("circle", {cx:12, cy:12, r:10}));
+            };
+            var DeliveryDelay01Icon = window.DeliveryDelay01Icon;
+            var SecurityCheckIcon = window.SecurityCheckIcon;
+            var StoreLocation01Icon = window.StoreLocation01Icon;
+            var PackageSearchIcon = window.PackageSearchIcon;
+            var InformationCircleIcon = window.InformationCircleIcon;
+
             var Icons = {
-                Truck: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"}),e("path",{key:2,d:"M15 18H9"}),e("path",{key:3,d:"M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"}),e("circle",{key:4,cx:17,cy:18,r:2}),e("circle",{key:5,cx:7,cy:18,r:2})]); },
-                Shield: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"})]); },
-                Warehouse: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"}),e("polyline",{key:2,points:"9 22 9 12 15 12 15 22"})]); },
-                Info: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("path",{key:1,d:"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"}),e("line",{key:2,x1:12,x2:12,y1:16,y2:12}),e("line",{key:3,x1:12,x2:12.01,y1:8,y2:8})]); },
+                Truck: function(){ return e(HugeiconsIcon, {icon: DeliveryDelay01Icon, size: 18}); },
+                Shield: function(){ return e(HugeiconsIcon, {icon: SecurityCheckIcon, size: 18}); },
+                Warehouse: function(){ return e(HugeiconsIcon, {icon: StoreLocation01Icon, size: 18}); },
+                Info: function(){ return e(HugeiconsIcon, {icon: PackageSearchIcon, size: 18}); },
+                InformationCircle: function(){ return e(HugeiconsIcon, {icon: InformationCircleIcon, size: 18}); },
                 Cart: function(){ return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},[e("circle",{key:1,cx:9,cy:21,r:1}),e("circle",{key:2,cx:20,cy:21,r:1}),e("path",{key:3,d:"M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"})]); },
                 Coins: function(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",className:"text-green-600"},[e("circle",{key:1,cx:8,cy:8,r:6}),e("path",{key:2,d:"M18.09 10.37A6 6 0 1 1 10.34 18"}),e("path",{key:3,d:"M7 6h1v4"}),e("path",{key:4,d:"m16.71 13.88.7.71-2.82 2.82"})]); }
             };
@@ -1671,6 +1684,7 @@
             var ShieldIcon = Icons.Shield;
             var WarehouseIcon = Icons.Warehouse;
             var InfoIcon = Icons.Info;
+            var InformationCircleIcon = Icons.InformationCircle;
             var CartIcon = Icons.Cart;
             var CoinsIcon = Icons.Coins;
 
@@ -1993,10 +2007,11 @@
                             ]),
                             e("div",{key:"warr",className:"flex items-center gap-2"},[
                                 e(ShieldIcon),
+                                " " + t('warranty_text', 'Warranty'),
                                 e("button",{
-                                    className:"text-blue-600 underline bg-transparent border-0 p-0",
+                                    className:"text-blue-600 hover:text-blue-800 cursor-pointer bg-transparent border-0 p-0 ml-1",
                                     onClick:function(){ setShowWarrantyModal(true); }
-                                }, t('warranty_text', 'Warranty'))
+                                }, e(InformationCircleIcon))
                             ])
                         ]),
 
@@ -2451,10 +2466,11 @@
                             ]),
                             e("div",{key:"warr",className:"flex items-center gap-2"},[
                                 e(ShieldIcon),
+                                " " + t('warranty_text', 'Warranty: Available'),
                                 e("button",{
-                                    className:"text-blue-600 hover:text-blue-800 underline cursor-pointer bg-transparent border-0 p-0",
+                                    className:"text-blue-600 hover:text-blue-800 cursor-pointer bg-transparent border-0 p-0 ml-1",
                                     onClick:function(){ setShowWarrantyModal(true); }
-                                }, t('warranty_text', 'Warranty: Available'))
+                                }, e(InformationCircleIcon))
                             ]),
                             e("div",{key:"warehouse",className:"flex items-center gap-2"},[
                                 e(WarehouseIcon),
