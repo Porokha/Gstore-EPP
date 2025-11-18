@@ -1287,15 +1287,14 @@
 
                             // ALWAYS add gifts (regardless of selection)
                             fbtGifts.forEach(function(gift){
-                                var fbtFd = new FormData();
-                                fbtFd.append('add-to-cart', gift.id);
-                                fbtFd.append('quantity', 1);
-                                fbtFd.append('fbt_gift_source', cur.productId);
-                                fbtFd.append('fbt_gift_price', gift.price);
+                                // Use URL parameters for WooCommerce add-to-cart endpoint
+                                var fbtUrl = window.location.origin + '/?add-to-cart=' + gift.id +
+                                    '&quantity=1' +
+                                    '&fbt_gift_source=' + encodeURIComponent(cur.productId) +
+                                    '&fbt_gift_price=' + encodeURIComponent(gift.price);
 
-                                var fbtUrl = window.location.origin + '/?add-to-cart=' + gift.id;
                                 fbtPromises.push(
-                                    fetch(fbtUrl, { method:'POST', body:fbtFd, credentials:'same-origin' })
+                                    fetch(fbtUrl, { method:'GET', credentials:'same-origin' })
                                         .then(function(r){ return r.text(); })
                                         .catch(function(e){ console.error('FBT gift add failed:', e); })
                                 );
@@ -1310,19 +1309,14 @@
                                 // Check if this is an offer
                                 var offer = fbtOffers.find(function(o){ return Number(o.id) === Number(fbtId); });
 
-                                var fbtFd = new FormData();
-                                fbtFd.append('add-to-cart', fbtId);
-                                fbtFd.append('quantity', 1);
-
-                                // Add custom pricing for offers
-                                if (offer) {
-                                    fbtFd.append('fbt_offer_price', offer.price);
+                                // Build URL with custom pricing for offers
+                                var fbtUrl = window.location.origin + '/?add-to-cart=' + fbtId + '&quantity=1';
+                                if (offer && offer.price) {
+                                    fbtUrl += '&fbt_offer_price=' + encodeURIComponent(offer.price);
                                 }
 
-                                // Use WooCommerce's add-to-cart endpoint
-                                var fbtUrl = window.location.origin + '/?add-to-cart=' + fbtId;
                                 fbtPromises.push(
-                                    fetch(fbtUrl, { method:'POST', body:fbtFd, credentials:'same-origin' })
+                                    fetch(fbtUrl, { method:'GET', credentials:'same-origin' })
                                         .then(function(r){ return r.text(); })
                                         .catch(function(e){ console.error('FBT add failed:', e); })
                                 );
@@ -3187,31 +3181,52 @@
                                     })
                                 ),
                                 e("div",{key:"footer",style:{borderTop:'1px solid #e0e0e0',paddingTop:'20px',display:'flex',gap:'12px'}},[
-                                    e("button",{
-                                        key:"skip",
-                                        style:{flex:1,padding:'12px',border:'1px solid #ddd',borderRadius:'8px',background:'white',cursor:'pointer',fontWeight:'600'},
-                                        onClick:function(){
-                                            setShowOfferPopup(false);
-                                            // Continue with selected items and pending navigation
-                                            if (pendingNavigationRef.current) {
-                                                var targetUrl = pendingNavigationRef.current;
-                                                pendingNavigationRef.current = null;
-                                                addToCart(targetUrl); // Add with selections, then navigate
-                                            } else {
-                                                addToCart(null); // Just add to cart with selections
+                                    offerScenario === 3 ?
+                                        // Scenario 3: Single Continue button (products already added via snapshot)
+                                        e("button",{
+                                            key:"continue",
+                                            style:{flex:1,padding:'14px',border:'none',borderRadius:'8px',background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',cursor:'pointer',fontWeight:'700',fontSize:'16px'},
+                                            onClick:function(){
+                                                setShowOfferPopup(false);
+                                                // Continue pending navigation if exists
+                                                if (pendingNavigationRef.current) {
+                                                    var targetUrl = pendingNavigationRef.current;
+                                                    pendingNavigationRef.current = null;
+                                                    setTimeout(function(){
+                                                        window.location.href = targetUrl;
+                                                    }, 100);
+                                                }
                                             }
-                                        }
-                                    },"I don't want"),
-                                    e("button",{
-                                        key:"accept",
-                                        style:{flex:1,padding:'12px',border:'none',borderRadius:'8px',background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',cursor:'pointer',fontWeight:'700',fontSize:'16px'},
-                                        onClick:function(){
-                                            setShowOfferPopup(false);
-                                            // Clear pending navigation (we're adding to cart instead)
-                                            pendingNavigationRef.current = null;
-                                            addToCart(null);
-                                        }
-                                    },"Add")
+                                        }, t('continue_btn', 'Continue'))
+                                    :
+                                        // Scenarios 1 & 2: Skip and Add buttons
+                                        [
+                                            e("button",{
+                                                key:"skip",
+                                                style:{flex:1,padding:'12px',border:'1px solid #ddd',borderRadius:'8px',background:'white',cursor:'pointer',fontWeight:'600'},
+                                                onClick:function(){
+                                                    setShowOfferPopup(false);
+                                                    // Continue with selected items and pending navigation
+                                                    if (pendingNavigationRef.current) {
+                                                        var targetUrl = pendingNavigationRef.current;
+                                                        pendingNavigationRef.current = null;
+                                                        addToCart(targetUrl); // Add with selections, then navigate
+                                                    } else {
+                                                        addToCart(null); // Just add to cart with selections
+                                                    }
+                                                }
+                                            },"I don't want"),
+                                            e("button",{
+                                                key:"accept",
+                                                style:{flex:1,padding:'12px',border:'none',borderRadius:'8px',background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',color:'white',cursor:'pointer',fontWeight:'700',fontSize:'16px'},
+                                                onClick:function(){
+                                                    setShowOfferPopup(false);
+                                                    // Clear pending navigation (we're adding to cart instead)
+                                                    pendingNavigationRef.current = null;
+                                                    addToCart(null);
+                                                }
+                                            },"Add")
+                                        ]
                                 ])
                             ])
                         ])
