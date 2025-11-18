@@ -202,9 +202,30 @@
                 className: className + ' inline-block transition-all duration-300',
                 style: {
                     transform: isAnimating ? 'scale(1.05)' : 'scale(1)',
-                    color: isAnimating ? '#3b82f6' : 'inherit'
+                    color: isAnimating ? '#dc2626' : 'inherit' // Red-600 instead of blue
                 }
             }, prefix + formattedValue + suffix);
+        }
+
+        // Loading Spinner Component
+        function LoadingSpinner(){
+            return e("svg",{
+                "aria-hidden":"true",
+                className:"w-4 h-4 animate-spin fill-white me-2",
+                style:{display:'inline-block',marginRight:'0.5rem'},
+                viewBox:"0 0 100 101",
+                fill:"none",
+                xmlns:"http://www.w3.org/2000/svg"
+            },[
+                e("path",{
+                    d:"M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z",
+                    fill:"currentColor"
+                }),
+                e("path",{
+                    d:"M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z",
+                    fill:"currentFill"
+                })
+            ]);
         }
 
         // Animated Text - Smooth fade transitions for text changes
@@ -517,6 +538,7 @@
             var _useState28 = useState(null); var chessGame = _useState28[0]; var setChessGame = _useState28[1];
             var _useState29 = useState([]); var chessBoard = _useState29[0]; var setChessBoard = _useState29[1];
             var _useState30 = useState(null); var selectedSquare = _useState30[0]; var setSelectedSquare = _useState30[1];
+            var _useState31 = useState(false); var isAddingToCart = _useState31[0]; var setIsAddingToCart = _useState31[1];
 
             // Refs to track game state without causing re-renders
             var birdYRef = React.useRef(200);
@@ -1233,6 +1255,9 @@
                 // Use snapshot if provided (for scenario 3), otherwise use current selectedFBT
                 var fbtToAdd = fbtSnapshot || selectedFBT;
 
+                // Set loading state
+                setIsAddingToCart(true);
+
                 var fd = new FormData();
                 fd.append('action', 'gstore_epp_add_to_cart');
                 fd.append('nonce', BOOT.ajax.nonce);
@@ -1314,12 +1339,22 @@
                                         jQuery(document.body).trigger('added_to_cart');
                                     }
                                     // No alert - silent add to cart
+                                    // Clear loading state after cart refresh
+                                    setIsAddingToCart(false);
                                 }
                             });
                         }
-                        else { alert('Failed to add to cart'); console.error(res); }
+                        else {
+                            setIsAddingToCart(false);
+                            alert('Failed to add to cart');
+                            console.error(res);
+                        }
                     })
-                    .catch(function(err){ console.error(err); alert('Failed to add to cart'); });
+                    .catch(function(err){
+                        setIsAddingToCart(false);
+                        console.error(err);
+                        alert('Failed to add to cart');
+                    });
             }
 
             function CondButton(lbl, key, enabled){ if(!enabled){ return null; }
@@ -1820,15 +1855,26 @@
                 }
 
                 var cartBtn = document.createElement('button');
-                cartBtn.style.cssText = 'background:#16a34a;color:white;font-weight:500;padding:0.75rem 1rem;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;gap:0.25rem;border:none;cursor:pointer';
-                cartBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>';
-                cartBtn.onclick = function(){ addToCart(null); };
+                cartBtn.style.cssText = 'background:#16a34a;color:white;font-weight:500;padding:0.75rem 1rem;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;gap:0.25rem;border:none;cursor:' + (isAddingToCart ? 'not-allowed' : 'pointer') + ';opacity:' + (isAddingToCart ? '0.7' : '1');
+                cartBtn.disabled = isAddingToCart;
+                if (isAddingToCart) {
+                    cartBtn.innerHTML = '<svg aria-hidden="true" class="w-4 h-4 animate-spin fill-white" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;width:1rem;height:1rem;margin-right:0.25rem"><path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/><path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/></svg>' + t('adding', 'Adding...');
+                } else {
+                    cartBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>';
+                }
+                cartBtn.onclick = function(){ if (!isAddingToCart) addToCart(null); };
 
                 var buyBtn = document.createElement('button');
                 buyBtn.className = 'buy-now-btn';
-                buyBtn.style.cssText = 'background:white;border:2px solid #2563eb;color:#2563eb;font-weight:500;padding:0.75rem 1.5rem;border-radius:0.5rem;cursor:pointer;position:relative;overflow:hidden';
-                buyBtn.textContent = t('buy_now', 'Buy Now');
+                buyBtn.style.cssText = 'background:white;border:2px solid #2563eb;color:#2563eb;font-weight:500;padding:0.75rem 1.5rem;border-radius:0.5rem;cursor:' + (isAddingToCart ? 'not-allowed' : 'pointer') + ';position:relative;overflow:hidden;opacity:' + (isAddingToCart ? '0.7' : '1');
+                buyBtn.disabled = isAddingToCart;
+                if (isAddingToCart) {
+                    buyBtn.innerHTML = '<svg aria-hidden="true" class="w-4 h-4 animate-spin" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;width:1rem;height:1rem;margin-right:0.25rem"><path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/><path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/></svg>' + t('processing', 'Processing...');
+                } else {
+                    buyBtn.textContent = t('buy_now', 'Buy Now');
+                }
                 buyBtn.onclick = function(ev){
+                    if (isAddingToCart) return;
                     var btn = ev.currentTarget;
                     btn.classList.add('animate');
                     setTimeout(function(){ if(btn) btn.classList.remove('animate'); }, 600);
@@ -1844,7 +1890,7 @@
                     var bar = document.getElementById('gstore-mobile-sticky-bar');
                     if (bar) bar.remove();
                 };
-            }, [isMobile, priceBlock, gel, t, addToCart]);
+            }, [isMobile, priceBlock, gel, t, addToCart, isAddingToCart]);
 
             // Desktop sticky bar - show when scrolled past original CTA buttons (hide for out of stock)
             var _s19 = useState(false);
@@ -1945,15 +1991,26 @@
                 buttonsDiv.style.cssText = 'display:flex;gap:0.75rem';
 
                 var cartBtn = document.createElement('button');
-                cartBtn.style.cssText = 'background:#2563eb;color:white;font-weight:500;padding:0.75rem 2rem;border-radius:0.5rem;border:none;cursor:pointer;font-size:1rem';
-                cartBtn.textContent = t('add_to_cart', 'Add to Cart') + ' ' + gel(grandTotal);
-                cartBtn.onclick = function(){ addToCart(null); };
+                cartBtn.style.cssText = 'background:#2563eb;color:white;font-weight:500;padding:0.75rem 2rem;border-radius:0.5rem;border:none;cursor:' + (isAddingToCart ? 'not-allowed' : 'pointer') + ';font-size:1rem;opacity:' + (isAddingToCart ? '0.7' : '1') + ';display:flex;align-items:center;gap:0.5rem';
+                cartBtn.disabled = isAddingToCart;
+                if (isAddingToCart) {
+                    cartBtn.innerHTML = '<svg aria-hidden="true" class="w-4 h-4 animate-spin fill-white" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;width:1rem;height:1rem"><path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/><path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/></svg>' + t('adding', 'Adding...');
+                } else {
+                    cartBtn.textContent = t('add_to_cart', 'Add to Cart') + ' ' + gel(grandTotal);
+                }
+                cartBtn.onclick = function(){ if (!isAddingToCart) addToCart(null); };
 
                 var buyBtn = document.createElement('button');
                 buyBtn.className = 'buy-now-btn';
-                buyBtn.style.cssText = 'background:white;border:2px solid #d1d5db;color:#374151;font-weight:500;padding:0.75rem 2rem;border-radius:0.5rem;cursor:pointer;font-size:1rem;position:relative;overflow:hidden';
-                buyBtn.textContent = t('buy_now', 'Buy Now') + ' ' + gel(grandTotal);
+                buyBtn.style.cssText = 'background:white;border:2px solid #d1d5db;color:#374151;font-weight:500;padding:0.75rem 2rem;border-radius:0.5rem;cursor:' + (isAddingToCart ? 'not-allowed' : 'pointer') + ';font-size:1rem;position:relative;overflow:hidden;opacity:' + (isAddingToCart ? '0.7' : '1') + ';display:flex;align-items:center;gap:0.5rem';
+                buyBtn.disabled = isAddingToCart;
+                if (isAddingToCart) {
+                    buyBtn.innerHTML = '<svg aria-hidden="true" class="w-4 h-4 animate-spin" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;width:1rem;height:1rem"><path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/><path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/></svg>' + t('processing', 'Processing...');
+                } else {
+                    buyBtn.textContent = t('buy_now', 'Buy Now') + ' ' + gel(grandTotal);
+                }
                 buyBtn.onclick = function(ev){
+                    if (isAddingToCart) return;
                     var btn = ev.currentTarget;
                     btn.classList.add('animate');
                     setTimeout(function(){ if(btn) btn.classList.remove('animate'); }, 600);
@@ -1973,7 +2030,7 @@
                     var bar = document.getElementById('gstore-desktop-sticky-bar');
                     if (bar) bar.remove();
                 };
-            }, [isMobile, showDesktopSticky, priceBlock, grandTotal, gel, t, addToCart]);
+            }, [isMobile, showDesktopSticky, priceBlock, grandTotal, gel, t, addToCart, isAddingToCart]);
 
             // P4 OPTIMIZED: Show loading skeleton while data loads
             if (isLoading) {
@@ -2948,7 +3005,10 @@
                             e("button",{
                                 key:"cart",
                                 className:"flex-1 cart-btn-desktop bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg flex items-center justify-center gap-2",
+                                disabled: isAddingToCart,
+                                style: isAddingToCart ? {opacity: 0.7, cursor: 'not-allowed'} : {},
                                 onClick:function(){
+                                    if (isAddingToCart) return;
                                     // Try to trigger offer popup before adding to cart
                                     if (triggerOfferPopup('add_to_cart')){
                                         return; // Popup shown, wait for user decision
@@ -2956,16 +3016,20 @@
                                     addToCart(null);
                                 }
                             },[
-                                e("span",{key:"icon-container",className:"cart-icon-container"},e(CartIcon)),
+                                isAddingToCart && e(LoadingSpinner, {key:"spinner"}),
+                                !isAddingToCart && e("span",{key:"icon-container",className:"cart-icon-container"},e(CartIcon)),
                                 e("span",{key:"text",className:"cart-text"},[
-                                    " " + t('add_to_cart', 'Add to Cart') + " ₾",
-                                    e(AnimatedNumber, {key:"cart-price", value: grandTotal, className: "inline-block"})
+                                    isAddingToCart ? t('adding', 'Adding...') : (" " + t('add_to_cart', 'Add to Cart') + " ₾"),
+                                    !isAddingToCart && e(AnimatedNumber, {key:"cart-price", value: grandTotal, className: "inline-block"})
                                 ])
                             ]),
                             e("button",{
                                 key:"buy",
                                 className:"flex-1 buy-now-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg",
+                                disabled: isAddingToCart,
+                                style: isAddingToCart ? {opacity: 0.7, cursor: 'not-allowed'} : {},
                                 onClick:function(ev){
+                                    if (isAddingToCart) return;
                                     // Try to trigger offer popup before proceeding to checkout
                                     if (triggerOfferPopup('buy_now')){
                                         return; // Popup shown, wait for user decision
@@ -2977,8 +3041,9 @@
                                     addToCart('/checkout/');
                                 }
                             }, [
-                                t('buy_now', 'Buy Now') + " ₾",
-                                e(AnimatedNumber, {key:"buy-price", value: grandTotal, className: "inline-block"})
+                                isAddingToCart && e(LoadingSpinner, {key:"spinner"}),
+                                isAddingToCart ? t('processing', 'Processing...') : (t('buy_now', 'Buy Now') + " ₾"),
+                                !isAddingToCart && e(AnimatedNumber, {key:"buy-price", value: grandTotal, className: "inline-block"})
                             ])
                         ]),
 
