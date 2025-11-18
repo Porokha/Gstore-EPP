@@ -649,6 +649,8 @@
                             // Auto-close and proceed after countdown
                             setTimeout(function(){
                                 setShowOfferPopup(false);
+                                // In scenario 3, ensure all offers are added
+                                // Pass selected FBT directly to avoid state timing issues
                                 addToCart(null);
                             }, 500);
                             return 0;
@@ -2958,7 +2960,7 @@
                                 offerScenario === 3 && e("div",{key:"countdown",style:{marginTop:'16px',fontSize:'48px',fontWeight:'900',textAlign:'center'}},countdown)
                             ]),
                             e("div",{key:"body",style:{padding:'24px'}},[
-                                offerScenario !== 3 && e("div",{key:"offers-grid",style:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',gap:'16px',marginBottom:'20px'}},
+                                e("div",{key:"offers-grid",style:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',gap:'16px',marginBottom:'20px'}},
                                     uniqueOffers.map(function(offer){
                                         var isSelected = selectedFBT.indexOf(offer.id) >= 0;
                                         var discount = offer.original_price > offer.price ? Math.round(((offer.original_price - offer.price) / offer.original_price) * 100) : 0;
@@ -2989,18 +2991,19 @@
                                         ]);
                                     })
                                 ),
-                                offerScenario !== 3 && e("div",{key:"footer",style:{borderTop:'1px solid #e0e0e0',paddingTop:'20px',display:'flex',gap:'12px'}},[
+                                e("div",{key:"footer",style:{borderTop:'1px solid #e0e0e0',paddingTop:'20px',display:'flex',gap:'12px'}},[
                                     e("button",{
                                         key:"skip",
                                         style:{flex:1,padding:'12px',border:'1px solid #ddd',borderRadius:'8px',background:'white',cursor:'pointer',fontWeight:'600'},
                                         onClick:function(){
                                             setShowOfferPopup(false);
-                                            // Continue pending navigation if exists
+                                            // Continue with selected items and pending navigation
                                             if (pendingNavigationRef.current) {
-                                                setTimeout(function(){
-                                                    window.location.href = pendingNavigationRef.current;
-                                                    pendingNavigationRef.current = null;
-                                                }, 100);
+                                                var targetUrl = pendingNavigationRef.current;
+                                                pendingNavigationRef.current = null;
+                                                addToCart(targetUrl); // Add with selections, then navigate
+                                            } else {
+                                                addToCart(null); // Just add to cart with selections
                                             }
                                         }
                                     },"I don't want"),
