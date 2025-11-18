@@ -2086,8 +2086,126 @@
                             ])
                         ]),
 
-                        // 4. Storage - hide unavailable options and entire section for laptops
-                        (function(){
+                        // OUT OF STOCK ALERT - Georgian warning (Flowbite design with forced styles) - MOBILE
+                        !BOOT.inStock ? e("div",{
+                            key:"out-of-stock-alert",
+                            style:{
+                                marginTop:'0.75rem',
+                                padding:'1rem',
+                                backgroundColor:'#fef3c7',
+                                border:'1px solid #fcd34d',
+                                borderRadius:'0.5rem'
+                            }
+                        },[
+                            // Header with icon and title
+                            e("div",{
+                                style:{
+                                    display:'flex',
+                                    alignItems:'center',
+                                    gap:'0.5rem',
+                                    marginBottom:'0.5rem'
+                                }
+                            },[
+                                e("svg",{
+                                    fill:'currentColor',
+                                    viewBox:'0 0 20 20',
+                                    xmlns:'http://www.w3.org/2000/svg',
+                                    style:{
+                                        width:'1.25rem',
+                                        height:'1.25rem',
+                                        color:'#d97706',
+                                        flexShrink:0
+                                    }
+                                },[
+                                    e("path",{
+                                        fillRule:'evenodd',
+                                        d:'M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z',
+                                        clipRule:'evenodd'
+                                    })
+                                ]),
+                                e("span",{
+                                    style:{
+                                        fontWeight:'500',
+                                        color:'#92400e',
+                                        fontSize:'0.875rem',
+                                        lineHeight:'1.25rem'
+                                    }
+                                },"ყურადღება, მოცემული მოდელი ამ ეტაპზე მარაგში არ გვაქვს!")
+                            ]),
+                            // Body text
+                            e("div",{
+                                style:{
+                                    marginBottom:'1rem',
+                                    marginTop:'0.5rem',
+                                    fontSize:'0.875rem',
+                                    lineHeight:'1.25rem',
+                                    color:'#b45309'
+                                }
+                            },"თუ მხოლოდ ეს მოდელი გსურთ, შეგიძლიათ დაგვიკავშირდეთ და მხოლოდ თქვენთვის სასწაულს ჩავიდენთ. ან შეგიძლიათ, სხვა შეარჩიოთ"),
+                            // Action buttons
+                            e("div",{style:{display:'flex',gap:'0.5rem',flexWrap:'wrap'}},[
+                                e("a",{
+                                    href:'/shop',
+                                    style:{
+                                        display:'inline-flex',
+                                        alignItems:'center',
+                                        gap:'0.5rem',
+                                        borderRadius:'0.5rem',
+                                        backgroundColor:'#d97706',
+                                        padding:'0.375rem 0.75rem',
+                                        textAlign:'center',
+                                        fontSize:'0.75rem',
+                                        lineHeight:'1rem',
+                                        fontWeight:'500',
+                                        color:'#ffffff',
+                                        textDecoration:'none',
+                                        cursor:'pointer',
+                                        border:'none'
+                                    }
+                                },[
+                                    e("svg",{
+                                        fill:'currentColor',
+                                        viewBox:'0 0 20 20',
+                                        xmlns:'http://www.w3.org/2000/svg',
+                                        style:{
+                                            width:'1rem',
+                                            height:'1rem',
+                                            marginLeft:'-0.125rem',
+                                            marginRight:'0.5rem',
+                                            flexShrink:0
+                                        }
+                                    },[
+                                        e("path",{d:'M10 12a2 2 0 100-4 2 2 0 000 4z'}),
+                                        e("path",{
+                                            fillRule:'evenodd',
+                                            d:'M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z',
+                                            clipRule:'evenodd'
+                                        })
+                                    ]),
+                                    "შეარჩიე სხვა"
+                                ]),
+                                e("a",{
+                                    href:'/',
+                                    style:{
+                                        borderRadius:'0.5rem',
+                                        border:'1px solid #d97706',
+                                        backgroundColor:'transparent',
+                                        padding:'0.375rem 0.75rem',
+                                        textAlign:'center',
+                                        fontSize:'0.75rem',
+                                        lineHeight:'1rem',
+                                        fontWeight:'500',
+                                        color:'#b45309',
+                                        textDecoration:'none',
+                                        cursor:'pointer',
+                                        display:'inline-block'
+                                    }
+                                },"მთავარი")
+                            ])
+                        ]) : null,
+
+                        // 4. Storage - hide unavailable options and entire section for laptops (ONLY show if in stock)
+                        BOOT.inStock && (function(){
                             var availStorages = ALL_STORAGES.filter(function(st){ return storages[st]; });
                             if (availStorages.length === 0) return null;
                             return e("div",{key:"storage"},[
@@ -2106,8 +2224,8 @@
                             ]);
                         })(),
 
-                        // 5. Condition + Battery Tiers - fixed sizing for up to 3 options
-                        e("div",{key:"condition"},[
+                        // 5. Condition + Battery Tiers - fixed sizing for up to 3 options (ONLY show if in stock)
+                        BOOT.inStock && e("div",{key:"condition"},[
                             e("h3",{className:"text-sm font-semibold mb-2 text-center"},t('condition_label', 'Condition')),
                             e("div",{key:"condition",className:"flex mb-2",style:{gap:'0.5rem',justifyContent:'center'}},[
                                 e("button",{
@@ -2152,8 +2270,8 @@
                             )
                         ]),
 
-                        // 6. Add New Battery
-                        cond==='used' && shouldShowBatteryTier(cur.deviceType, cur.brand) && rules && rules.exists && (function(){
+                        // 6. Add New Battery (ONLY show if in stock)
+                        BOOT.inStock && cond==='used' && shouldShowBatteryTier(cur.deviceType, cur.brand) && rules && rules.exists && (function(){
                             var nb = (rules.pricing||{})['new_battery']||{};
                             var hasPrice = (nb.regular && nb.regular!=='') || (nb.sale && nb.sale!=='');
                             if (!hasPrice) return null;
@@ -2173,8 +2291,8 @@
                             ]);
                         })(),
 
-                        // 6b. Laptop Add-ons (Mobile)
-                        cur.deviceType === 'laptop' && laptopAddons.length > 0 && laptopAddons.map(function(addon){
+                        // 6b. Laptop Add-ons (Mobile) (ONLY show if in stock)
+                        BOOT.inStock && cur.deviceType === 'laptop' && laptopAddons.length > 0 && laptopAddons.map(function(addon){
                             var isSelected = selectedAddons.indexOf(addon.key) >= 0;
                             return e("button",{
                                     key:addon.key,
@@ -2271,8 +2389,8 @@
                             ])
                         ]),
 
-                        // 9. FBT - Frequently Bought Together
-                        fbt.length>0 && e("div",{key:"fbt",className:"border border-gray-200 rounded-lg p-2"},[
+                        // 9. FBT - Frequently Bought Together (ONLY show if in stock)
+                        BOOT.inStock && fbt.length>0 && e("div",{key:"fbt",className:"border border-gray-200 rounded-lg p-2"},[
                             e("h3",{key:"title",className:"text-sm font-semibold mb-2"},t('fbt_title', 'Frequently Bought Together')),
                             e("div",{key:"flex",className:"flex gap-2 justify-between"},
                                 fbt.map(function(item){
