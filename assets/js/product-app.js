@@ -26,6 +26,18 @@
     function money(n){ var x = Number(n||0); return isFinite(x) ? Math.floor(x).toString() : "0"; }
     function gel(n){ return "₾" + money(n); }
 
+    // Sanitize hex color to prevent CSS injection
+    function sanitizeHex(hex){
+        if (!hex || typeof hex !== 'string') return '#333';
+        // Remove any non-hex characters and ensure valid format
+        var cleaned = hex.replace(/[^a-fA-F0-9#]/g, '');
+        // Validate hex format: #RGB, #RRGGBB, or #RRGGBBAA
+        if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(cleaned)) {
+            return cleaned;
+        }
+        return '#333'; // Fallback to safe default
+    }
+
     function mount(){
         // VERSION CHECK: Verify latest code with all fixes is loaded
         console.log('🔧 GSTORE EPP v2024-11-09-15:47 - MOBILE PADDING FIX:', {
@@ -2157,15 +2169,16 @@
                             BOOT.inStock && cur.deviceType !== 'laptop' && e("div",{key:"colors",className:"flex gap-2 justify-center flex-wrap"},
                                 colors.map(function(c){
                                     var active = (String(c.id)===String(cur.productId));
+                                    var safeHex = sanitizeHex(c.hex);
                                     return e("img",{
                                         key:c.id,
                                         src:c.image,
                                         alt:c.color||'color',
                                         className:"h-16 w-16 rounded-lg object-cover cursor-pointer border-2",
                                         style:{
-                                            borderColor:active ? (c.hex || '#333') : '#d1d5db',
+                                            borderColor:active ? safeHex : '#d1d5db',
                                             borderStyle:'solid',
-                                            boxShadow:active ? '0 0 12px rgba(0, 0, 0, 0.3), 0 0 4px ' + (c.hex || '#333') : 'none'
+                                            boxShadow:active ? '0 0 12px rgba(0, 0, 0, 0.3), 0 0 4px ' + safeHex : 'none'
                                         },
                                         onClick:function(){ switchToProductId(c.id); }
                                     });
@@ -2614,15 +2627,16 @@
                         BOOT.inStock && cur.deviceType !== 'laptop' && e("div",{key:"thumbs",className:"flex gap-3 overflow-x-auto"},
                             colors.map(function(c){
                                 var active = (String(c.id)===String(cur.productId));
+                                var safeHex = sanitizeHex(c.hex);
                                 return e("img",{
                                     key:c.id,
                                     src:c.image,
                                     alt:c.color||'color',
                                     className:"h-16 w-16 rounded-lg object-cover cursor-pointer border-2",
                                     style:{
-                                        borderColor:active ? (c.hex || '#333') : '#e5e7eb',
+                                        borderColor:active ? safeHex : '#e5e7eb',
                                         borderStyle:'solid',
-                                        boxShadow:active ? '0 0 12px rgba(0, 0, 0, 0.3), 0 0 4px ' + (c.hex || '#333') : 'none'
+                                        boxShadow:active ? '0 0 12px rgba(0, 0, 0, 0.3), 0 0 4px ' + safeHex : 'none'
                                     },
                                     onClick:function(){ switchToProductId(c.id); }
                                 });
