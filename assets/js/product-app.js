@@ -2162,7 +2162,11 @@
                                         src:c.image,
                                         alt:c.color||'color',
                                         className:"h-16 w-16 rounded-lg object-cover cursor-pointer border-2",
-                                        style:{borderColor:active ? (c.hex || '#333') : '#d1d5db',borderStyle:'solid'},
+                                        style:{
+                                            borderColor:active ? (c.hex || '#333') : '#d1d5db',
+                                            borderStyle:'solid',
+                                            boxShadow:active ? '0 0 12px rgba(0, 0, 0, 0.3), 0 0 4px ' + (c.hex || '#333') : 'none'
+                                        },
                                         onClick:function(){ switchToProductId(c.id); }
                                     });
                                 })
@@ -2615,7 +2619,11 @@
                                     src:c.image,
                                     alt:c.color||'color',
                                     className:"h-16 w-16 rounded-lg object-cover cursor-pointer border-2",
-                                    style:{borderColor:active ? (c.hex || '#333') : '#e5e7eb',borderStyle:'solid'},
+                                    style:{
+                                        borderColor:active ? (c.hex || '#333') : '#e5e7eb',
+                                        borderStyle:'solid',
+                                        boxShadow:active ? '0 0 12px rgba(0, 0, 0, 0.3), 0 0 4px ' + (c.hex || '#333') : 'none'
+                                    },
                                     onClick:function(){ switchToProductId(c.id); }
                                 });
                             })
