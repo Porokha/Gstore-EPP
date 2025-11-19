@@ -830,11 +830,13 @@
                 var selectedOfferCount = offerIds.filter(function(id){ return selectedFBT.indexOf(id) >= 0; }).length;
                 var totalOfferCount = offerIds.length;
 
-                // Only show popup if user has selected at least one FBT offer
-                // Don't show popup if user hasn't selected anything and is just navigating away
-                if (selectedOfferCount === 0) return false;
+                // For exit intent (navigating away), only show if user selected something
+                // For add_to_cart/buy_now, always show popup to present offers
+                if (intentType === 'exit' && selectedOfferCount === 0) {
+                    return false;
+                }
 
-                var scenario = 1; // Default: no offers selected (won't reach here now)
+                var scenario = 1; // Default: no offers selected
                 if (selectedOfferCount === totalOfferCount) scenario = 3; // All offers selected
                 else if (selectedOfferCount > 0) scenario = 2; // Some offers selected
 
@@ -1322,13 +1324,20 @@
                             });
 
                             // Add selected FBT offers and regular FBT items (exclude gifts) - SECURE ENDPOINT
+                            console.log('FBT: Adding items from fbtToAdd:', fbtToAdd);
+                            console.log('FBT: Available offers:', fbtOffers);
+
                             fbtToAdd.forEach(function(fbtId){
                                 // Skip if this is a gift (already added above)
                                 var isGift = fbtGifts.some(function(g){ return Number(g.id) === Number(fbtId); });
-                                if (isGift) return;
+                                if (isGift) {
+                                    console.log('FBT: Skipping gift ID:', fbtId);
+                                    return;
+                                }
 
                                 // Check if this is an offer
                                 var offer = fbtOffers.find(function(o){ return Number(o.id) === Number(fbtId); });
+                                console.log('FBT: Processing ID:', fbtId, 'Found offer:', offer);
 
                                 var fbtFd = new FormData();
                                 fbtFd.append('action', 'gstore_add_fbt_to_cart');
@@ -1340,12 +1349,14 @@
                                 // Add custom pricing for offers (will be validated on backend)
                                 if (offer && offer.price) {
                                     fbtFd.append('fbt_offer_price', offer.price);
+                                    console.log('FBT: Adding offer with price:', offer.price);
                                 }
 
                                 fbtPromises.push(
                                     fetch(BOOT.ajax.url, { method:'POST', body:fbtFd, credentials:'same-origin' })
                                         .then(function(r){ return r.json(); })
                                         .then(function(res){
+                                            console.log('FBT: Server response for ID', fbtId, ':', res);
                                             if (!res.success) {
                                                 var errorMsg = res.data?.message || 'Unknown error';
                                                 console.error('FBT offer add failed:', errorMsg);
