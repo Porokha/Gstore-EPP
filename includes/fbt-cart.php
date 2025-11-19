@@ -128,9 +128,18 @@ function gstore_fbt_add_cart_item_data($cart_item_data, $product_id, $variation_
 		$source_product_id = absint($_POST['fbt_gift_source']);
 		$custom_price = floatval($_POST['fbt_gift_price']);
 
-		// Verify this is actually configured as a gift from source product
+		// Verify this is actually configured as a gift from source product (check source and group default)
 		$gifts = get_post_meta($source_product_id, '_gstore_fbt_gifts', true);
 		if (!is_array($gifts)) $gifts = [];
+
+		// Also check group default if source product doesn't have gifts configured
+		if (empty($gifts)) {
+			$default_id = gstore_get_group_default_product_id($source_product_id);
+			if ($default_id) {
+				$gifts = get_post_meta($default_id, '_gstore_fbt_gifts', true);
+				if (!is_array($gifts)) $gifts = [];
+			}
+		}
 
 		$is_valid_gift = false;
 		foreach ($gifts as $gift) {
@@ -153,9 +162,18 @@ function gstore_fbt_add_cart_item_data($cart_item_data, $product_id, $variation_
 		$source_product_id = absint($_POST['fbt_source_product']);
 		$offer_price = floatval($_POST['fbt_offer_price']);
 
-		// CRITICAL SECURITY: Validate offer price against source product metadata
+		// CRITICAL SECURITY: Validate offer price against source product metadata (check source and group default)
 		$offers = get_post_meta($source_product_id, '_gstore_fbt_offers', true);
 		if (!is_array($offers)) $offers = [];
+
+		// Also check group default if source product doesn't have offers configured
+		if (empty($offers)) {
+			$default_id = gstore_get_group_default_product_id($source_product_id);
+			if ($default_id) {
+				$offers = get_post_meta($default_id, '_gstore_fbt_offers', true);
+				if (!is_array($offers)) $offers = [];
+			}
+		}
 
 		$is_valid_offer = false;
 		foreach ($offers as $offer) {
