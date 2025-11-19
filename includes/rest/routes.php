@@ -612,7 +612,9 @@ class GStore_EPP_REST {
 		if (!is_array($offers)) $offers = [];
 
 		// If empty regular FBT, fallback to group default (same model)
-		if (empty($ids)){
+		// Also inherit gifts and offers from group default if not configured
+		$default_id = null;
+		if (empty($ids) || empty($gifts) || empty($offers)){
 			$ctx = gstore_epp_parse_by_product_id($pid);
 			if ($ctx && $ctx['group_key'] && $ctx['model']){
 				// Find group default product with same model
@@ -636,10 +638,27 @@ class GStore_EPP_REST {
 
 				if ($q->have_posts()){
 					$default_id = $q->posts[0];
-					$ids = get_post_meta($default_id, '_gstore_fbt_ids', true);
-					if (!is_array($ids)) $ids = [];
-					$ids = array_filter(array_map('absint', $ids));
-					gstore_log_debug('fbt_fallback_group_default', ['pid'=>$pid,'default_id'=>$default_id,'model'=>$ctx['model']]);
+
+					// Inherit regular FBT if empty
+					if (empty($ids)) {
+						$ids = get_post_meta($default_id, '_gstore_fbt_ids', true);
+						if (!is_array($ids)) $ids = [];
+						$ids = array_filter(array_map('absint', $ids));
+					}
+
+					// Inherit gifts if empty
+					if (empty($gifts)) {
+						$gifts = get_post_meta($default_id, '_gstore_fbt_gifts', true);
+						if (!is_array($gifts)) $gifts = [];
+					}
+
+					// Inherit offers if empty
+					if (empty($offers)) {
+						$offers = get_post_meta($default_id, '_gstore_fbt_offers', true);
+						if (!is_array($offers)) $offers = [];
+					}
+
+					gstore_log_debug('fbt_fallback_group_default', ['pid'=>$pid,'default_id'=>$default_id,'model'=>$ctx['model'],'inherited'=>['ids'=>!empty($ids),'gifts'=>!empty($gifts),'offers'=>!empty($offers)]]);
 				}
 
 				wp_reset_postdata();

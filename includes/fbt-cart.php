@@ -31,9 +31,18 @@ function gstore_add_fbt_to_cart_ajax(){
 	if (isset($_POST['fbt_gift_price'])) {
 		$custom_price = floatval($_POST['fbt_gift_price']);
 
-		// Validate against configured gift metadata
+		// Validate against configured gift metadata (check source product and group default)
 		$gifts = get_post_meta($source_product_id, '_gstore_fbt_gifts', true);
 		if (!is_array($gifts)) $gifts = [];
+
+		// Also check group default if source product doesn't have gifts configured
+		if (empty($gifts)) {
+			$default_id = gstore_get_group_default_product_id($source_product_id);
+			if ($default_id) {
+				$gifts = get_post_meta($default_id, '_gstore_fbt_gifts', true);
+				if (!is_array($gifts)) $gifts = [];
+			}
+		}
 
 		$is_valid_gift = false;
 		foreach ($gifts as $gift) {
@@ -57,9 +66,18 @@ function gstore_add_fbt_to_cart_ajax(){
 	elseif (isset($_POST['fbt_offer_price'])) {
 		$offer_price = floatval($_POST['fbt_offer_price']);
 
-		// Validate against configured offer metadata
+		// Validate against configured offer metadata (check source product and group default)
 		$offers = get_post_meta($source_product_id, '_gstore_fbt_offers', true);
 		if (!is_array($offers)) $offers = [];
+
+		// Also check group default if source product doesn't have offers configured
+		if (empty($offers)) {
+			$default_id = gstore_get_group_default_product_id($source_product_id);
+			if ($default_id) {
+				$offers = get_post_meta($default_id, '_gstore_fbt_offers', true);
+				if (!is_array($offers)) $offers = [];
+			}
+		}
 
 		$is_valid_offer = false;
 		foreach ($offers as $offer) {
@@ -78,6 +96,11 @@ function gstore_add_fbt_to_cart_ajax(){
 			wp_send_json_error(['message' => 'Invalid offer configuration']);
 			return;
 		}
+	}
+	// Handle regular FBT item (no custom pricing)
+	else {
+		// Regular FBT items just get added normally with unique key
+		$cart_item_data['unique_key'] = md5(microtime().rand());
 	}
 
 	// Add to cart
@@ -157,8 +180,9 @@ function gstore_fbt_add_cart_item_data($cart_item_data, $product_id, $variation_
 /**
  * Apply custom pricing to FBT gifts and offers in cart
  * This runs before cart totals are calculated
+ * Priority 1 ensures it runs before other calculations
  */
-add_action('woocommerce_before_calculate_totals', 'gstore_fbt_apply_custom_pricing', 10, 1);
+add_action('woocommerce_before_calculate_totals', 'gstore_fbt_apply_custom_pricing', 1, 1);
 function gstore_fbt_apply_custom_pricing($cart){
 	if (is_admin() && !defined('DOING_AJAX')) return;
 	if (did_action('woocommerce_before_calculate_totals') >= 2) return;
@@ -175,6 +199,57 @@ function gstore_fbt_apply_custom_pricing($cart){
 			$cart_item['data']->set_price($offer_price);
 		}
 	}
+}
+
+/**
+ * Display the discounted price in cart item price column
+ * This ensures the offer price shows in cart, not just checkout
+ */
+add_filter('woocommerce_cart_item_price', 'gstore_fbt_cart_item_price', 10, 3);
+function gstore_fbt_cart_item_price($price, $cart_item, $cart_item_key){
+	// For FBT offers, show both original and discounted price
+	if (isset($cart_item['fbt_offer_price'])) {
+		$offer_price = floatval($cart_item['fbt_offer_price']);
+		$original_price = floatval($cart_item['data']->get_regular_price());
+
+		if ($original_price > $offer_price) {
+			return '<del>' . wc_price($original_price) . '</del> <ins>' . wc_price($offer_price) . '</ins>';
+		}
+		return wc_price($offer_price);
+	}
+	// For FBT gifts, show custom price (could be 0 for free gifts)
+	elseif (isset($cart_item['fbt_gift_price'])) {
+		$gift_price = floatval($cart_item['fbt_gift_price']);
+		$original_price = floatval($cart_item['data']->get_regular_price());
+
+		if ($original_price > $gift_price) {
+			return '<del>' . wc_price($original_price) . '</del> <ins>' . wc_price($gift_price) . '</ins>';
+		}
+		return wc_price($gift_price);
+	}
+
+	return $price;
+}
+
+/**
+ * Display the correct subtotal for FBT items in cart
+ */
+add_filter('woocommerce_cart_item_subtotal', 'gstore_fbt_cart_item_subtotal', 10, 3);
+function gstore_fbt_cart_item_subtotal($subtotal, $cart_item, $cart_item_key){
+	// For FBT offers, calculate subtotal with offer price
+	if (isset($cart_item['fbt_offer_price'])) {
+		$offer_price = floatval($cart_item['fbt_offer_price']);
+		$quantity = $cart_item['quantity'];
+		return wc_price($offer_price * $quantity);
+	}
+	// For FBT gifts, calculate subtotal with gift price
+	elseif (isset($cart_item['fbt_gift_price'])) {
+		$gift_price = floatval($cart_item['fbt_gift_price']);
+		$quantity = $cart_item['quantity'];
+		return wc_price($gift_price * $quantity);
+	}
+
+	return $subtotal;
 }
 
 /**
@@ -229,4 +304,45 @@ function gstore_fbt_order_item_meta($item, $cart_item_key, $values, $order){
 	elseif (isset($values['fbt_offer_price'])) {
 		$item->add_meta_data('_fbt_offer_price', $values['fbt_offer_price']);
 	}
+}
+
+/**
+ * Helper function to get group default product ID for a given product
+ * Used for validating FBT items that may be inherited from group default
+ */
+function gstore_get_group_default_product_id($product_id){
+	if (!function_exists('gstore_epp_parse_by_product_id')) {
+		return 0;
+	}
+
+	$ctx = gstore_epp_parse_by_product_id($product_id);
+	if (empty($ctx['model'])) {
+		return 0;
+	}
+
+	$model_slug = sanitize_title($ctx['model']);
+	$q = new WP_Query([
+		'post_type'=>'product',
+		'posts_per_page'=>1,
+		'post_status'=>'publish',
+		'meta_query'=>[
+			['key'=>'_gstore_is_group_default','value'=>'yes']
+		],
+		'tax_query'=>[
+			[
+				'taxonomy'=>'pa_model',
+				'field'=>'slug',
+				'terms'=>$model_slug
+			]
+		],
+		'fields'=>'ids'
+	]);
+
+	$default_id = 0;
+	if ($q->have_posts()){
+		$default_id = $q->posts[0];
+	}
+	wp_reset_postdata();
+
+	return $default_id;
 }
