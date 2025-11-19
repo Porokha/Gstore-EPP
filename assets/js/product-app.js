@@ -202,7 +202,7 @@
                 className: className + ' inline-block transition-all duration-300',
                 style: {
                     transform: isAnimating ? 'scale(1.05)' : 'scale(1)',
-                    color: isAnimating ? '#dc2626' : 'inherit' // Red-600 instead of blue
+                    color: isAnimating ? '#ffffff' : 'inherit' // White highlight
                 }
             }, prefix + formattedValue + suffix);
         }
