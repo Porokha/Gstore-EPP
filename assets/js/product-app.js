@@ -830,7 +830,11 @@
                 var selectedOfferCount = offerIds.filter(function(id){ return selectedFBT.indexOf(id) >= 0; }).length;
                 var totalOfferCount = offerIds.length;
 
-                var scenario = 1; // Default: no offers selected
+                // Only show popup if user has selected at least one FBT offer
+                // Don't show popup if user hasn't selected anything and is just navigating away
+                if (selectedOfferCount === 0) return false;
+
+                var scenario = 1; // Default: no offers selected (won't reach here now)
                 if (selectedOfferCount === totalOfferCount) scenario = 3; // All offers selected
                 else if (selectedOfferCount > 0) scenario = 2; // Some offers selected
 
