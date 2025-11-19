@@ -202,7 +202,8 @@
                 className: className + ' inline-block transition-all duration-300',
                 style: {
                     transform: isAnimating ? 'scale(1.05)' : 'scale(1)',
-                    color: isAnimating ? '#ffffff' : 'inherit' // White highlight
+                    color: isAnimating ? '#d1d5db' : 'inherit', // Light gray-300 for flash effect
+                    textShadow: isAnimating ? '0 0 10px rgba(255, 255, 255, 0.9)' : 'none' // Glowing flash effect
                 }
             }, prefix + formattedValue + suffix);
         }
