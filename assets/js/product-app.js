@@ -2175,7 +2175,7 @@
                                         className:"color-selector-wrapper",
                                         style:{
                                             position:'relative',
-                                            padding:active ? '0.5px' : '0',
+                                            padding:active ? '2px' : '0',
                                             borderRadius:'0.75rem',
                                             background:active ? 'linear-gradient(45deg, ' + safeHex + ', rgba(255,255,255,0.5), ' + safeHex + ')' : 'transparent',
                                             backgroundSize:active ? '200% 200%' : 'auto',
@@ -2184,9 +2184,10 @@
                                     }, e("img",{
                                         src:c.image,
                                         alt:c.color||'color',
-                                        className:"h-16 w-16 rounded-lg object-cover cursor-pointer",
+                                        className:"h-16 w-16 object-cover cursor-pointer",
                                         style:{
                                             border:active ? 'none' : '2px solid #d1d5db',
+                                            borderRadius:'0.625rem',
                                             display:'block'
                                         },
                                         onClick:function(){ switchToProductId(c.id); }
@@ -2642,7 +2643,7 @@
                                     className:"color-selector-wrapper",
                                     style:{
                                         position:'relative',
-                                        padding:active ? '0.5px' : '0',
+                                        padding:active ? '2px' : '0',
                                         borderRadius:'0.75rem',
                                         background:active ? 'linear-gradient(45deg, ' + safeHex + ', rgba(255,255,255,0.5), ' + safeHex + ')' : 'transparent',
                                         backgroundSize:active ? '200% 200%' : 'auto',
@@ -2651,9 +2652,10 @@
                                 }, e("img",{
                                     src:c.image,
                                     alt:c.color||'color',
-                                    className:"h-16 w-16 rounded-lg object-cover cursor-pointer",
+                                    className:"h-16 w-16 object-cover cursor-pointer",
                                     style:{
                                         border:active ? 'none' : '2px solid #e5e7eb',
+                                        borderRadius:'0.625rem',
                                         display:'block'
                                     },
                                     onClick:function(){ switchToProductId(c.id); }
