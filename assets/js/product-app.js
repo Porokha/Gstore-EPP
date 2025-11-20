@@ -2175,18 +2175,18 @@
                                         className:"color-selector-wrapper",
                                         style:{
                                             position:'relative',
-                                            padding:active ? '3px' : '0',
+                                            padding:active ? '0.5px' : '0',
                                             borderRadius:'0.75rem',
                                             background:active ? 'linear-gradient(45deg, ' + safeHex + ', rgba(255,255,255,0.5), ' + safeHex + ')' : 'transparent',
                                             backgroundSize:active ? '200% 200%' : 'auto',
-                                            animation:active ? 'glow-rotate 3s linear infinite' : 'none'
+                                            animation:active ? 'glow-rotate 5s linear infinite' : 'none'
                                         }
                                     }, e("img",{
                                         src:c.image,
                                         alt:c.color||'color',
                                         className:"h-16 w-16 rounded-lg object-cover cursor-pointer",
                                         style:{
-                                            border:active ? '2px solid white' : '2px solid #d1d5db',
+                                            border:active ? 'none' : '2px solid #d1d5db',
                                             display:'block'
                                         },
                                         onClick:function(){ switchToProductId(c.id); }
@@ -2642,18 +2642,18 @@
                                     className:"color-selector-wrapper",
                                     style:{
                                         position:'relative',
-                                        padding:active ? '3px' : '0',
+                                        padding:active ? '0.5px' : '0',
                                         borderRadius:'0.75rem',
                                         background:active ? 'linear-gradient(45deg, ' + safeHex + ', rgba(255,255,255,0.5), ' + safeHex + ')' : 'transparent',
                                         backgroundSize:active ? '200% 200%' : 'auto',
-                                        animation:active ? 'glow-rotate 3s linear infinite' : 'none'
+                                        animation:active ? 'glow-rotate 5s linear infinite' : 'none'
                                     }
                                 }, e("img",{
                                     src:c.image,
                                     alt:c.color||'color',
                                     className:"h-16 w-16 rounded-lg object-cover cursor-pointer",
                                     style:{
-                                        border:active ? '2px solid white' : '2px solid #e5e7eb',
+                                        border:active ? 'none' : '2px solid #e5e7eb',
                                         display:'block'
                                     },
                                     onClick:function(){ switchToProductId(c.id); }
