@@ -562,6 +562,9 @@ class GStore_EPP_REST {
 			$p = wc_get_product($id);
 			if (!$p) continue;
 
+			// CRITICAL: Skip out-of-stock products from search results
+			if (!$p->is_in_stock()) continue;
+
 			$img_id = $p->get_image_id();
 			$thumb = $img_id ? wp_get_attachment_image_url($img_id, 'thumbnail') : wc_placeholder_img_src('thumbnail');
 
