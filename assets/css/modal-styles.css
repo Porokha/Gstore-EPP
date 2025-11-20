@@ -31,7 +31,7 @@
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
     max-width: 32rem !important;
     width: 100% !important;
-    max-height: 90vh !important;
+    max-height: 75vh !important;
     overflow-y: auto !important;
     animation: slideUp 0.3s ease-out !important;
     pointer-events: auto !important;
@@ -572,7 +572,7 @@
 
     .gstore-modal-content {
         margin: 0 !important;
-        max-height: calc(100vh - 160px) !important;
+        max-height: calc(100vh - 180px) !important;
         overflow-y: auto !important;
     }
 
