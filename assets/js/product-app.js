@@ -2352,7 +2352,7 @@
                         BOOT.inStock && e("div",{key:"condition"},[
                             e("h3",{className:"text-sm font-semibold mb-2 text-center"},t('condition_label', 'Condition')),
                             e("div",{key:"condition",className:"flex mb-2",style:{gap:'0.5rem',justifyContent:'center'}},[
-                                e("button",{
+                                avail.hasNew && e("button",{
                                     key:"new",
                                     className:"text-center py-2 text-sm font-medium border border-gray-200 rounded-lg "+(cond==='new'?"bg-blue-600 text-white border-blue-600":"bg-white text-gray-700"),
                                     style:{width:'90px'},
