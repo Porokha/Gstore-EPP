@@ -485,7 +485,10 @@
                 showOfferPopup: false,
                 scenarioTexts: {scenario1: '', scenario2: '', scenario3: ''},
                 activeTab: (typeof window!=='undefined' && window.innerWidth<=768) ? null : 'specifications',
-                cond: (BOOT.condition||'').toLowerCase() === 'new' ? 'new' : 'used',
+                cond: (function(){
+                    var c = (BOOT.condition||'').toLowerCase().replace(/\s+/g,'');
+                    return c === 'new' ? 'new' : (c === 'openbox' ? 'openbox' : 'used');
+                })(),
                 compareProduct: null,
                 showSearch: false,
                 searchQuery: '',
@@ -1138,7 +1141,8 @@
                     storage: p.storage||'',
                     image: p.image
                 });
-                var newCond = ((p.condition||'').toLowerCase()==='new') ? 'new':'used';
+                var pCondition = (p.condition||'').toLowerCase().replace(/\s+/g,'');
+                var newCond = pCondition === 'new' ? 'new' : (pCondition === 'openbox' ? 'openbox' : 'used');
                 setCond(newCond);
                 setNewBat(false);
                 setSelectedAddons([]);
