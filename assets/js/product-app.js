@@ -1863,7 +1863,8 @@
             // Get condition text
             var conditionNewText = t('condition_new', 'NEW');
             var conditionUsedText = t('condition_used', 'USED (A)');
-            var currentConditionText = cond === 'new' ? conditionNewText : conditionUsedText;
+            var conditionOpenBoxText = t('condition_openbox', 'OPEN BOX');
+            var currentConditionText = cond === 'new' ? conditionNewText : (cond === 'openbox' ? conditionOpenBoxText : conditionUsedText);
 
             // Detect mobile (<=1024px)
             var _s18 = useState(typeof window !== 'undefined' && window.innerWidth <= 1024);
@@ -2368,6 +2369,12 @@
                                     style:{width:'90px'},
                                     onClick:function(){ setTier(null); setNewBat(false); setCond('new'); }
                                 }, conditionNewText),
+                                avail.hasOpen && e("button",{
+                                    key:"openbox",
+                                    className:"text-center py-2 text-sm font-medium border border-gray-200 rounded-lg "+(cond==='openbox'?"bg-blue-600 text-white border-blue-600":"bg-white text-gray-700"),
+                                    style:{width:'90px'},
+                                    onClick:function(){ setTier(null); setNewBat(false); setCond('openbox'); }
+                                }, conditionOpenBoxText),
                                 avail.hasUsed && e("button",{
                                     key:"used",
                                     className:"text-center py-2 text-sm font-medium border border-gray-200 rounded-lg "+(cond==='used'?"bg-blue-600 text-white border-blue-600":"bg-white text-gray-700"),
@@ -2999,6 +3006,7 @@
                             e("h3",{className:"text-sm font-semibold mb-2"},t('condition_label', 'Condition')),
                             e("div",{className:"flex gap-2 mb-3"},[
                                 CondButton(conditionNewText,'new', avail.hasNew),
+                                CondButton(conditionOpenBoxText,'openbox', avail.hasOpen),
                                 CondButton(conditionUsedText,'used', avail.hasUsed)
                             ]),
 
