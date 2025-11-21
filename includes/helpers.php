@@ -6,9 +6,20 @@ function gstore_epp_logs_dir(){
 }
 function gstore_epp_ensure_logs_dir(){
 	$dir = gstore_epp_logs_dir();
-	if (!is_dir($dir)) { wp_mkdir_p($dir); }
+	if (!is_dir($dir)) {
+		wp_mkdir_p($dir);
+		// Ensure directory has proper write permissions
+		if (is_dir($dir)) {
+			@chmod($dir, 0755);
+		}
+	}
+	// Create .htaccess to protect logs from web access
 	if (is_dir($dir) && !file_exists($dir.'.htaccess')) {
 		@file_put_contents($dir.'.htaccess', "Deny from all\n");
+	}
+	// Create index.php to prevent directory listing
+	if (is_dir($dir) && !file_exists($dir.'index.php')) {
+		@file_put_contents($dir.'index.php', "<?php\n// Silence is golden.\n");
 	}
 }
 
