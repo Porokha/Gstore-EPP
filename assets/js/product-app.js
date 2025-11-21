@@ -2475,7 +2475,7 @@
                             ),
                             activeTab && e("div",{className:"pt-2 text-sm text-gray-700"},[
                                 activeTab==='specifications' && (BOOT.description
-                                    ? e("div",{dangerouslySetInnerHTML:{__html:BOOT.description}})
+                                    ? e("div",{"data-gstore-description":"",dangerouslySetInnerHTML:{__html:BOOT.description}})
                                     : e("p",{},"No specs available.")),
                                 activeTab==='delivery' && (deliveryText
                                     ? e("div",{dangerouslySetInnerHTML:{__html:deliveryText}})
@@ -2699,7 +2699,7 @@
                             e("div",{className:"pt-4"},[
                                 activeTab==='specifications' && e("div",{key:"specs",className:"text-sm text-gray-700 leading-relaxed"},[
                                     BOOT.description
-                                        ? e("div",{dangerouslySetInnerHTML:{__html:BOOT.description}})
+                                        ? e("div",{"data-gstore-description":"",dangerouslySetInnerHTML:{__html:BOOT.description}})
                                         : e("p",{},"No specifications available.")
                                 ]),
 
