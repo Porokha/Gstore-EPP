@@ -120,6 +120,18 @@ add_filter('woocommerce_get_item_data', function($item_data, $cart_item){
 	// Laptop Add-ons
 	if (!empty($cart_item['gstore_addons']) && is_array($cart_item['gstore_addons'])){
 		$addons = $cart_item['gstore_addons'];
+		// New format: items array with {key, label, price}
+		if (!empty($addons['items']) && is_array($addons['items'])){
+			foreach ($addons['items'] as $addon){
+				if (!empty($addon['label'])){
+					$item_data[] = [
+						'key' => __('Addon', 'gstore-epp'),
+						'value' => $addon['label']
+					];
+				}
+			}
+		}
+		// Legacy format support (kept for backward compatibility)
 		if (!empty($addons['ram'])){
 			$item_data[] = [
 				'key' => __('RAM Upgrade', 'gstore-epp'),
