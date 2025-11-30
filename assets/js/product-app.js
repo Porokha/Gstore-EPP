@@ -2444,8 +2444,8 @@
                                     className:"w-full py-2 px-4 rounded-lg border text-sm font-medium mb-2 " + (isSelected ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300"),
                                     onClick:function(){ toggleAddon(addon.key); }
                                 }, isSelected
-                                    ? "✓ " + addon.label + " (+" + gel(addon.price) + ")"
-                                    : "+ " + addon.label + " (+" + gel(addon.price) + ")"
+                                    ? "✓ " + addon.label + " Added (+" + gel(addon.price) + ")"
+                                    : "+ Add " + addon.label + " (+" + gel(addon.price) + ")"
                             );
                         }),
 
@@ -3089,8 +3089,8 @@
                                             style:{paddingRight:isSelected?'50px':'1rem'},
                                             onClick:function(){ toggleAddon(addon.key); }
                                         }, isSelected
-                                            ? "✓ " + addon.label + " (+" + gel(addon.price) + ")"
-                                            : "+ " + addon.label + " (+" + gel(addon.price) + ")"
+                                            ? "✓ " + addon.label + " Added (+" + gel(addon.price) + ")"
+                                            : "+ Add " + addon.label + " (+" + gel(addon.price) + ")"
                                     ),
                                     isSelected && e("button",{
                                         key:"remove",
