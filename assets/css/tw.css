@@ -46,3 +46,11 @@ button.secondary {
 .gstore-right {
     @apply flex flex-col gap-4;
 }
+
+/* Short description paragraph spacing */
+.text-gray-700 p {
+    margin-bottom: 1em;
+}
+.text-gray-700 p:last-child {
+    margin-bottom: 0;
+}
