@@ -259,7 +259,7 @@ add_action('wp_enqueue_scripts', function(){
 		'inStock'    => $product->is_in_stock(),
 		'stockStatus' => $product->get_stock_status(),
 		'description' => $product->get_description(),
-		'shortDescription' => $product->get_short_description(),
+		'shortDescription' => wpautop($product->get_short_description()),
 		'warrantyContent' => get_option('gstore_epp_warranty_content', ''),
 		'translations' => $translations,
 		'rest'       => [
