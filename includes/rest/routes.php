@@ -212,6 +212,20 @@ class GStore_EPP_REST {
 
 		$ctx = gstore_epp_parse_by_product_id($pid);
 
+		// SKIP SIBLING GROUPING FOR LAPTOPS
+		// Laptops have same model but different RAM/Storage/etc., causing incorrect grouping
+		if (isset($ctx['device_type']) && $ctx['device_type'] === 'laptop') {
+			$result = [
+				'ok' => true,
+				'brand' => $ctx['brand'],
+				'model' => $ctx['model'],
+				'siblings' => [], // Return empty siblings for laptops
+				'count' => 0
+			];
+			set_transient($cache_key, $result, HOUR_IN_SECONDS);
+			return new WP_REST_Response($result, 200);
+		}
+
 		$brand = $ctx['brand'];
 		$model = $ctx['model'];
 		$group_key = $ctx['group_key'];
