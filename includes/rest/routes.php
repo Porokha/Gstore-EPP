@@ -214,13 +214,71 @@ class GStore_EPP_REST {
 
 		// SKIP SIBLING GROUPING FOR LAPTOPS
 		// Laptops have same model but different RAM/Storage/etc., causing incorrect grouping
+		// Return only the current product itself so its condition is still available
 		if (isset($ctx['device_type']) && $ctx['device_type'] === 'laptop') {
+			$product = wc_get_product($pid);
+			if (!$product) {
+				$result = ['ok' => false, 'error' => 'PRODUCT_NOT_FOUND'];
+				set_transient($cache_key, $result, HOUR_IN_SECONDS);
+				return new WP_REST_Response($result, 200);
+			}
+
+			$img_id = $product->get_image_id();
+			$hero = $img_id ? wp_get_attachment_image_url($img_id, 'large') : wc_placeholder_img_src('large');
+
+			// Get raw condition and normalize it
+			$raw_condition = gstore_epp_attr($pid, 'condition');
+			$normalized_condition = strtolower(str_replace([' ', '(', ')', '-', '_'], '', $raw_condition));
+			if (strpos($normalized_condition, 'used') !== false) {
+				$normalized_condition = 'used';
+			} elseif (strpos($normalized_condition, 'new') !== false) {
+				$normalized_condition = 'new';
+			} elseif (strpos($normalized_condition, 'open') !== false) {
+				$normalized_condition = 'openbox';
+			}
+
+			// Get color info
+			$color_name = gstore_epp_attr($pid, 'color');
+			$color_hex = gstore_epp_attr($pid, 'color_hex');
+			if (!$color_hex && $color_name) {
+				$color_map = [
+					'black' => '#000000', 'white' => '#FFFFFF', 'silver' => '#C0C0C0',
+					'gray' => '#808080', 'grey' => '#808080', 'gold' => '#FFD700',
+					'rose gold' => '#B76E79', 'blue' => '#0000FF', 'navy' => '#000080',
+					'midnight' => '#191970', 'green' => '#008000', 'alpine green' => '#2F4F4F',
+					'red' => '#FF0000', 'product red' => '#E0115F', 'purple' => '#800080',
+					'deep purple' => '#673AB7', 'pink' => '#FFC0CB', 'yellow' => '#FFFF00',
+					'starlight' => '#F5F5DC', 'sierra blue' => '#69C2D0', 'graphite' => '#383838',
+					'space gray' => '#4A4A4A', 'space black' => '#1C1C1C', 'titanium' => '#878681'
+				];
+				$color_lower = strtolower(trim($color_name));
+				$color_hex = isset($color_map[$color_lower]) ? $color_map[$color_lower] : '#333333';
+			}
+
+			// Return current product only in siblings array
+			$current_item = [
+				'id' => $product->get_id(),
+				'title' => $product->get_title(),
+				'permalink' => get_permalink($pid),
+				'price' => $product->get_price(),
+				'regular' => $product->get_regular_price(),
+				'sale' => $product->get_sale_price(),
+				'condition' => $normalized_condition,
+				'condition_raw' => $raw_condition,
+				'brand' => gstore_epp_attr($pid, 'brand'),
+				'model' => gstore_epp_attr($pid, 'model'),
+				'storage' => gstore_epp_attr($pid, 'storage'),
+				'color' => $color_name,
+				'hex' => $color_hex,
+				'image' => $hero
+			];
+
 			$result = [
 				'ok' => true,
 				'brand' => $ctx['brand'],
 				'model' => $ctx['model'],
-				'siblings' => [], // Return empty siblings for laptops
-				'count' => 0
+				'siblings' => [$current_item], // Return only current product
+				'count' => 1
 			];
 			set_transient($cache_key, $result, HOUR_IN_SECONDS);
 			return new WP_REST_Response($result, 200);
