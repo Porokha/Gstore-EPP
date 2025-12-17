@@ -901,12 +901,22 @@
             // Load laptop addons
             useEffect(function(){
                 if (cur.deviceType !== 'laptop') return;
+
+                // Only show addons if product has "Add RAM" or "Add Storage" attributes
+                if (!BOOT.hasAddRAM && !BOOT.hasAddStorage) return;
+
                 var url = BOOT.rest.base.replace(/\/+$/,'') + '/laptop-addons';
                 fetchJSON(url).then(function(j){
                     if (j && j.ok){
                         var allAddons = [];
-                        if (j.laptop_ram && j.laptop_ram.length > 0){ j.laptop_ram.forEach(function(item){ allAddons.push({...item, type: 'ram'}); }); }
-                        if (j.laptop_storage && j.laptop_storage.length > 0){ j.laptop_storage.forEach(function(item){ allAddons.push({...item, type: 'storage'}); }); }
+                        // Only add RAM options if product has Add RAM attribute
+                        if (BOOT.hasAddRAM && j.laptop_ram && j.laptop_ram.length > 0){
+                            j.laptop_ram.forEach(function(item){ allAddons.push({...item, type: 'ram'}); });
+                        }
+                        // Only add Storage options if product has Add Storage attribute
+                        if (BOOT.hasAddStorage && j.laptop_storage && j.laptop_storage.length > 0){
+                            j.laptop_storage.forEach(function(item){ allAddons.push({...item, type: 'storage'}); });
+                        }
                         setLaptopAddons(allAddons);
                     }
                 }).catch(function(e){ console.error('laptop addons fetch failed', e); });
