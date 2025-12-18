@@ -344,10 +344,23 @@ function gstore_handle_save_rule(){
 
         // AUTO-UPDATE PRODUCT PRICES BASED ON DEFAULT TIER
         // If default condition is set, update all matching products' WooCommerce prices
+        gstore_log_debug('price_update_check', [
+            'default_condition' => $default_condition,
+            'has_clean_key' => isset($clean[$default_condition]),
+            'clean_keys' => array_keys($clean),
+            'group_key' => $group_key
+        ]);
+
         if ($default_condition && isset($clean[$default_condition])) {
             $default_prices = $clean[$default_condition];
             $regular_price = $default_prices['regular'];
             $sale_price = $default_prices['sale'];
+
+            gstore_log_debug('price_update_start', [
+                'regular_price' => $regular_price,
+                'sale_price' => $sale_price,
+                'is_numeric' => is_numeric($regular_price)
+            ]);
 
             // Only update if we have a regular price
             if (!empty($regular_price) && is_numeric($regular_price)) {
@@ -381,6 +394,12 @@ function gstore_handle_save_rule(){
                         LIMIT 200";
 
                 $product_ids = $wpdb->get_col($wpdb->prepare($sql, '%' . $wpdb->esc_like($model_slug) . '%'));
+
+                gstore_log_debug('price_update_products_found', [
+                    'model_slug' => $model_slug,
+                    'product_ids' => $product_ids,
+                    'count' => count($product_ids)
+                ]);
 
                 // Filter products to match exact group_key
                 foreach ($product_ids as $pid) {
