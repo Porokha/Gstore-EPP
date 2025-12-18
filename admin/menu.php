@@ -342,6 +342,99 @@ function gstore_handle_save_rule(){
             ], ['%s','%s','%s','%s','%s']);
         }
 
+        // AUTO-UPDATE PRODUCT PRICES BASED ON DEFAULT TIER
+        // If default condition is set, update all matching products' WooCommerce prices
+        if ($default_condition && isset($clean[$default_condition])) {
+            $default_prices = $clean[$default_condition];
+            $regular_price = $default_prices['regular'];
+            $sale_price = $default_prices['sale'];
+
+            // Only update if we have a regular price
+            if (!empty($regular_price) && is_numeric($regular_price)) {
+                // Find all products matching this group_key
+                $matching_products = [];
+
+                // Parse group_key to get model (strip storage if present)
+                $group_parts = explode(' ', $group_key);
+                $model_slug = '';
+
+                // Try to extract model slug - if group_key has storage, it's the last part
+                if (count($group_parts) > 1 && preg_match('/\d+(gb|tb)/i', end($group_parts))) {
+                    // Has storage, remove last part to get model
+                    array_pop($group_parts);
+                    $model_slug = implode('-', $group_parts);
+                } else {
+                    // No storage in group_key, use whole key
+                    $model_slug = str_replace(' ', '-', $group_key);
+                }
+
+                // Query products by model taxonomy
+                $sql = "SELECT DISTINCT p.ID
+                        FROM {$wpdb->posts} p
+                        INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+                        INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+                        INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
+                        WHERE p.post_type = 'product'
+                        AND p.post_status = 'publish'
+                        AND tt.taxonomy = 'pa_model'
+                        AND t.slug LIKE %s
+                        LIMIT 200";
+
+                $product_ids = $wpdb->get_col($wpdb->prepare($sql, '%' . $wpdb->esc_like($model_slug) . '%'));
+
+                // Filter products to match exact group_key
+                foreach ($product_ids as $pid) {
+                    if (function_exists('gstore_epp_parse_by_product_id')) {
+                        $ctx = gstore_epp_parse_by_product_id($pid);
+
+                        // Build comparison key
+                        $product_group_key = $ctx['group_key'] ?? '';
+                        $storage = $ctx['storage'] ?? '';
+                        $storage_normalized = strtolower(preg_replace('/[^a-z0-9]/', '', $storage));
+
+                        $product_key_with_storage = $product_group_key;
+                        if ($storage_normalized) {
+                            $product_key_with_storage = $product_group_key . ' ' . $storage_normalized;
+                        }
+
+                        // Check if this product matches the rule's group_key
+                        if ($product_key_with_storage === $group_key || $product_group_key === $group_key) {
+                            $matching_products[] = $pid;
+                        }
+                    }
+                }
+
+                // Update prices for matching products
+                $updated_count = 0;
+                foreach ($matching_products as $pid) {
+                    // Update regular price
+                    update_post_meta($pid, '_regular_price', $regular_price);
+                    update_post_meta($pid, '_price', $regular_price); // Also update _price
+
+                    // Update sale price if provided and less than regular
+                    if (!empty($sale_price) && is_numeric($sale_price) && floatval($sale_price) < floatval($regular_price)) {
+                        update_post_meta($pid, '_sale_price', $sale_price);
+                        update_post_meta($pid, '_price', $sale_price); // _price should be the lowest price
+                    } else {
+                        // Clear sale price if not set or invalid
+                        delete_post_meta($pid, '_sale_price');
+                    }
+
+                    // Clear product cache
+                    wc_delete_product_transients($pid);
+                    $updated_count++;
+                }
+
+                gstore_log_debug('prices_auto_updated', [
+                    'group_key' => $group_key,
+                    'default_tier' => $default_condition,
+                    'regular_price' => $regular_price,
+                    'sale_price' => $sale_price,
+                    'products_updated' => $updated_count
+                ]);
+            }
+        }
+
         // Clear ALL product caches to ensure prices update immediately
         global $wpdb;
         $sql = "SELECT DISTINCT p.ID FROM {$wpdb->posts} p
