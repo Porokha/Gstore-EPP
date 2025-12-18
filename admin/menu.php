@@ -368,16 +368,25 @@ function gstore_handle_save_rule(){
                 $matching_products = [];
 
                 // Parse group_key to get model (strip storage if present)
+                // Examples: "apple iphone 16 pro 256gb" -> "apple-iphone-16-pro"
+                //           "apple iphone 16 pro 256" -> "apple-iphone-16-pro"
+                //           "samsung galaxy s24 ultra 512gb" -> "samsung-galaxy-s24-ultra"
                 $group_parts = explode(' ', $group_key);
                 $model_slug = '';
 
-                // Try to extract model slug - if group_key has storage, it's the last part
-                if (count($group_parts) > 1 && preg_match('/\d+(gb|tb)/i', end($group_parts))) {
-                    // Has storage, remove last part to get model
-                    array_pop($group_parts);
-                    $model_slug = implode('-', $group_parts);
+                // Check if last part looks like storage (number with optional gb/tb suffix)
+                if (count($group_parts) > 1) {
+                    $last_part = end($group_parts);
+                    // Match: 256, 512, 1tb, 256gb, etc.
+                    if (preg_match('/^\d+(gb|tb)?$/i', $last_part)) {
+                        // Has storage, remove last part to get model
+                        array_pop($group_parts);
+                        $model_slug = implode('-', $group_parts);
+                    } else {
+                        // No storage in group_key, use whole key
+                        $model_slug = str_replace(' ', '-', $group_key);
+                    }
                 } else {
-                    // No storage in group_key, use whole key
                     $model_slug = str_replace(' ', '-', $group_key);
                 }
 
